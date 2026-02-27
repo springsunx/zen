@@ -56,6 +56,44 @@ export default function renderMarkdown(text) {
     }
   }
 
+  // 处理锚点链接点击（全局函数）
+  if (typeof window.handleAnchorClick !== 'function') {
+    window.handleAnchorClick = function(event, href) {
+      // 如果是锚点链接
+      if (href && href.startsWith('#')) {
+        event.preventDefault();
+        const id = href.substring(1);
+        const targetElement = document.getElementById(id);
+        if (targetElement) {
+          // 找到最近的滚动容器
+          const container = document.querySelector('.notes-editor-container');
+          if (container) {
+            // 计算目标元素相对于容器的位置
+            const targetRect = targetElement.getBoundingClientRect();
+            const containerRect = container.getBoundingClientRect();
+            const scrollTop = targetRect.top - containerRect.top + container.scrollTop;
+            container.scrollTo({
+              top: scrollTop - 20, // 减去一些边距
+              behavior: 'smooth'
+            });
+          } else {
+            // 如果没有找到容器，使用标准的scrollIntoView
+            targetElement.scrollIntoView({
+              behavior: 'smooth',
+              block: 'start'
+            });
+          }
+          // 更新URL哈希（不触发页面滚动）
+          if (window.history && window.history.pushState) {
+            window.history.pushState(null, null, href);
+          }
+        }
+        return false;
+      }
+      return true;
+    };
+  }
+
   // 复制函数定义
   if (typeof window.copyCodeToClipboard !== 'function') {
     window.copyCodeToClipboard = function(button) {
@@ -99,12 +137,13 @@ export default function renderMarkdown(text) {
   var defaultRender = md.renderer.rules.link_open || function (tokens, idx, options, env, self) {
     return self.renderToken(tokens, idx, options);
   };
-  md.renderer.rules.link_open = function (tokens, idx, options, env, self) {
+    md.renderer.rules.link_open = function (tokens, idx, options, env, self) {
     // 获取链接的href属性
     const token = tokens[idx];
     const hrefIndex = token.attrIndex('href');
+    let href = '';
     if (hrefIndex >= 0) {
-      const href = token.attrs[hrefIndex][1];
+      href = token.attrs[hrefIndex][1];
       if (href) {
         // 判断是否为外部链接
         const isExternal = isExternalLink(href);
@@ -112,6 +151,9 @@ export default function renderMarkdown(text) {
           token.attrSet('target', '_blank');
           // 同时添加rel="noopener noreferrer"以增强安全性
           token.attrSet('rel', 'noopener noreferrer');
+        } else if (href.startsWith('#')) {
+          // 为锚点链接添加onclick处理
+          token.attrSet('onclick', 'return window.handleAnchorClick(event, "' + href + '")');
         }
       }
     }
