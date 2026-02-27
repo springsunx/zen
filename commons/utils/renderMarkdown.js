@@ -99,8 +99,8 @@ export default function renderMarkdown(text) {
     // 返回包装后的HTML
     return '<div class="code-block-wrapper">' +
            '<div class="code-block-header">' +
-           (lang ? '<span class="code-block-lang">' + lang + '</span>' : '') +
            '<button class="copy-code-button" onclick="window.copyCodeToClipboard(this)">Copy</button>' +
+           (lang ? '<span class="code-block-lang">' + lang + '</span>' : '') +
            '</div>' +
            '<div class="code-block-content">' +
            highlighted +

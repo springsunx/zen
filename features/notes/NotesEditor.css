@@ -561,6 +561,8 @@
   font-weight: 600;
   text-transform: uppercase;
   color: #24292e;
+  margin-left: auto;  /* 确保靠右对齐 */
+  padding-right: 4px; /* 添加一些间距 */
 }
 .notes-editor-rendered .copy-code-button {
   background-color: #e1e4e8;  /* GitHub button background */
