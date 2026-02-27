@@ -2,6 +2,18 @@ import mark from "../../assets/markdown-it-mark.mjs";
 import tasks from "../../assets/markdown-it-task-lists.js";
 
 export default function renderMarkdown(text) {
+
+  // 自定义slugify函数，支持中文
+  function slugify(str) {
+    return str
+      .toLowerCase()
+      .replace(/[\s\-]+/g, '-')           // 将空格和连字符替换为单个连字符
+      .replace(/[^\w\u4e00-\u9fa5\-]/g, '') // 移除非单词字符、非中文、非连字符
+      .replace(/\-\-+/g, '-')               // 将多个连字符替换为单个
+      .replace(/^-+/, '')                     // 移除开头的连字符
+      .replace(/-+$/, '');                    // 移除结尾的连字符
+  }
+
   // 辅助函数定义
   function showCopyFeedback(button) {
     const originalText = button.innerText;
@@ -68,6 +80,9 @@ export default function renderMarkdown(text) {
     html: true,
     linkify: true,
     breaks: true,
+    headerIds: true,      // 为标题生成id属性
+    headerPrefix: '',     // id前缀，设为空字符串
+    slugify: slugify,       // 使用自定义的slugify函数
     highlight: function (str, lang) {
       if (lang && window.hljs.getLanguage(lang)) {
         try {
@@ -85,9 +100,55 @@ export default function renderMarkdown(text) {
     return self.renderToken(tokens, idx, options);
   };
   md.renderer.rules.link_open = function (tokens, idx, options, env, self) {
-    tokens[idx].attrSet('target', '_blank');
+    // 获取链接的href属性
+    const token = tokens[idx];
+    const hrefIndex = token.attrIndex('href');
+    if (hrefIndex >= 0) {
+      const href = token.attrs[hrefIndex][1];
+      if (href) {
+        // 判断是否为外部链接
+        const isExternal = isExternalLink(href);
+        if (isExternal) {
+          token.attrSet('target', '_blank');
+          // 同时添加rel="noopener noreferrer"以增强安全性
+          token.attrSet('rel', 'noopener noreferrer');
+        }
+      }
+    }
     return defaultRender(tokens, idx, options, env, self);
   };
+  
+  // 辅助函数：判断是否为外部链接
+  function isExternalLink(href) {
+    // 锚点链接不是外部链接
+    if (href.startsWith('#')) {
+      return false;
+    }
+    // 检查是否为绝对URL
+    try {
+      const url = new URL(href, window.location.origin);
+      // 如果协议是http:或https:，且主机名与当前页面不同，则是外部链接
+      if (url.protocol === 'http:' || url.protocol === 'https:') {
+        return url.hostname !== window.location.hostname;
+      }
+    } catch (e) {
+      // 如果不是有效的URL，可能是相对路径，不是外部链接
+      // 相对路径、协议相对链接(//example.com)、mailto:、tel:等都不是外部链接
+      if (href.startsWith('//')) {
+        // 协议相对链接，需要进一步检查
+        try {
+          const url = new URL('https:' + href);
+          return url.hostname !== window.location.hostname;
+        } catch (e2) {
+          return false;
+        }
+      }
+      // 其他情况（相对路径、mailto:、tel:等）不是外部链接
+      return false;
+    }
+    // 其他协议（如mailto:、tel:、file:等）不是外部链接
+    return false;
+  }
   // 为代码块添加复制按钮
   const defaultFenceRender = md.renderer.rules.fence || function(tokens, idx, options, env, self) {
     return self.renderToken(tokens, idx, options);
