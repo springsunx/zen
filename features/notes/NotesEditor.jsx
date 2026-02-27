@@ -288,7 +288,7 @@ export default function NotesEditor({ isNewNote, isFloating, onClose }) {
     );
   } else {
     contentArea = (
-      <div className="notes-editor-rendered" ref={contentRef} dangerouslySetInnerHTML={{ __html: renderMarkdown(content) }} />
+      <div className="notes-editor-rendered markdown-body" ref={contentRef} dangerouslySetInnerHTML={{ __html: renderMarkdown(content) }} />
     );
   }
 

@@ -31,8 +31,8 @@
     /* typography */
     /* Major Second */
     --font-scale: 1.125;
-    --font-family: ui-sans-serif, system-ui, sans-serif;
-    --font-family-code: ui-monospace, monospace;
+    --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+    --font-family-code: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, "Courier New", monospace;
     /* 1rem * pow(var(--font-scale), 6) */
     --h1: 600 2.027rem/1.2 var(--font-family);
     /* 1rem * pow(var(--font-scale), 5) */

@@ -121,7 +121,7 @@
             text-align: left;
             font-weight: 500;
             color: var(--neutral-400);
-            font-size: 14px;
+            font-size: 16px;
             cursor: pointer;
             transition-property: background-color, border-color;
             transition-duration: var(--transition-normal);
@@ -211,7 +211,7 @@
     outline: none;
     font-weight: 500;
     color: var(--neutral-400);
-    font-size: 14px;
+    font-size: 16px;
     border: 1px dashed var(--neutral-300);
     background-color: var(--bg-primary);
     border-radius: 4px;
@@ -237,6 +237,10 @@
 .notes-editor-rendered {
     display: block;
     overflow-x: auto;
+    font-size: 16px;
+    line-height: 1.5;
+    color: #24292e;  /* GitHub text color */
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
 
     strong {
         font-weight: 600;
@@ -280,9 +284,12 @@
     }
 
     a {
-        color: var(--neutral-500);
+        color: #0366d6;
         text-decoration: none;
-        border-bottom: 1px dashed var(--neutral-500);
+    }
+    
+    a:hover {
+        text-decoration: underline;
     }
 
     img {
@@ -303,7 +310,8 @@
     }
 
     code {
-        font: var(--code);
+        font-size: 16px;
+        font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, "Courier New", monospace;
         background-color: var(--neutral-50);
         border-radius: 4px;
         padding: var(--spacing-1) var(--spacing-2);
@@ -312,7 +320,7 @@
     pre {
         margin: 4px 0;
         padding: var(--spacing-3);
-        background-color: var(--neutral-50);
+        background-color: #f6f8fa;  /* GitHub code block background */
         border-radius: 4px;
         overflow: scroll;
 
@@ -327,14 +335,16 @@
         }
 
         * {
-            font: var(--code);
+            font-size: 16px;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, "Courier New", monospace;
         }
     }
 
     blockquote {
-        border-left: 3px solid var(--neutral-700);
+        border-left: 3px solid #dfe2e5;  /* GitHub blockquote border */
         padding-left: 10px;
         margin: 10px 4px;
+        color: #6a737d;  /* GitHub blockquote text color */
     }
 
     ul {
@@ -529,4 +539,51 @@
             display: none;
         }
     }
+}
+/* Code block copy button styles */
+.notes-editor-rendered .code-block-wrapper {
+  position: relative;
+  margin: 1em 0;
+  border-radius: 6px;
+  background-color: #f6f8fa;  /* GitHub code block background */
+  overflow: hidden;
+}
+.notes-editor-rendered .code-block-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 12px;
+  background-color: #f6f8fa;  /* GitHub header background */
+  border-bottom: 1px solid #e1e4e8;  /* GitHub border color */
+  font-size: 12px;
+  color: #586069;  /* GitHub text color */
+}
+.notes-editor-rendered .code-block-lang {
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #24292e;
+}
+.notes-editor-rendered .copy-code-button {
+  background-color: #e1e4e8;  /* GitHub button background */
+  border: 1px solid #d1d5da;  /* GitHub button border */
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #24292e;  /* GitHub button text color */
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+.notes-editor-rendered .copy-code-button:hover {
+  background-color: #d1d5da;  /* GitHub button hover */
+}
+.notes-editor-rendered .code-block-content {
+  padding: 12px;
+  overflow-x: auto;
+  background-color: #f6f8fa;  /* GitHub code background */
+}
+.notes-editor-rendered .code-block-content pre {
+  margin: 0;
+  padding: 0;
+  background-color: transparent;
 }
