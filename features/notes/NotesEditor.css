@@ -540,14 +540,13 @@
     }
 }
 /* Code block copy button styles */
-.notes-editor-rendered .code-block-wrapper {
-  position: relative;
-  margin: 1em 0;
+.code-block-wrapper {
+  margin: 16px 0;
   border-radius: 6px;
-  background-color: #f6f8fa;  /* GitHub code block background */
   overflow: hidden;
+  border: 1px solid #d1d9e0;
 }
-.notes-editor-rendered .code-block-header {
+.code-block-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -557,14 +556,14 @@
   font-size: 12px;
   color: #586069;  /* GitHub text color */
 }
-.notes-editor-rendered .code-block-lang {
+.code-block-lang {
   font-weight: 600;
   text-transform: lowercase;
   color: #24292e;
   margin-left: auto;  /* 确保靠右对齐 */
   padding-right: 4px; /* 添加一些间距 */
 }
-.notes-editor-rendered .copy-code-button {
+.copy-code-button {
   background-color: #e1e4e8;  /* GitHub button background */
   border: 1px solid #d1d5da;  /* GitHub button border */
   border-radius: 4px;
@@ -575,15 +574,15 @@
   cursor: pointer;
   transition: background-color 0.2s ease;
 }
-.notes-editor-rendered .copy-code-button:hover {
+.copy-code-button:hover {
   background-color: #d1d5da;  /* GitHub button hover */
 }
-.notes-editor-rendered .code-block-content {
+.code-block-content {
   padding: 12px;
   overflow-x: auto;
   background-color: #f6f8fa;  /* GitHub code background */
 }
-.notes-editor-rendered .code-block-content pre {
+.code-block-content pre {
   margin: 0;
   padding: 0;
   background-color: transparent;
