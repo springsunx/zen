@@ -587,3 +587,62 @@
   padding: 0;
   background-color: transparent;
 }
+/* 确保工具栏在滚动时固定 */
+.notes-editor-container .notes-editor-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: var(--z-base);
+    background-color: var(--bg-primary);
+    box-shadow: 0 1px 0 var(--neutral-100);
+}
+
+/* 内容区域滚动 */
+.notes-editor-content {
+    overflow-y: auto;
+    max-height: calc(100vh - 200px); /* 动态高度，减去工具栏、标题等高度 */
+    min-height: 200px;
+}
+
+/* 在可编辑模式下，文本区域高度自适应 */
+.notes-editor.is-editable .notes-editor-content {
+    max-height: calc(100vh - 250px);
+}
+
+/* 移动端适配 */
+@media screen and (max-width: 948px) {
+    .notes-editor-content {
+        max-height: calc(100vh - 180px);
+    }
+}
+
+/* 改进的滚动布局 */
+.notes-editor {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.notes-editor-toolbar {
+    flex-shrink: 0;
+}
+
+.notes-editor-header,
+.notes-editor-tags,
+.notes-editor-image-dropzone,
+.notes-editor-image-attachment-preview,
+.formatting-toolbar {
+    flex-shrink: 0;
+}
+
+.notes-editor-content {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0; /* 重要：允许内容区域收缩并滚动 */
+}
+
+/* 确保在可编辑模式下文本区域填满内容区域 */
+.notes-editor.is-editable .notes-editor-textarea {
+    height: 100%;
+    min-height: 200px;
+}
+
