@@ -559,10 +559,10 @@
 }
 .notes-editor-rendered .code-block-lang {
   font-weight: 600;
-  text-transform: uppercase;
+  text-transform: lowercase;
   color: #24292e;
-  margin-left: auto;  /* È·±£¿¿ÓÒ¶ÔÆë */
-  padding-right: 4px; /* Ìí¼ÓÒ»Ğ©¼ä¾à */
+  margin-left: auto;  /* ç¡®ä¿é å³å¯¹é½ */
+  padding-right: 4px; /* æ·»åŠ ä¸€äº›é—´è· */
 }
 .notes-editor-rendered .copy-code-button {
   background-color: #e1e4e8;  /* GitHub button background */
