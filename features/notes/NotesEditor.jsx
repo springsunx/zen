@@ -74,6 +74,18 @@ export default function NotesEditor({ isNewNote, isFloating, onClose }) {
     handleTextAreaHeight();
   }, [content, isEditable]);
 
+  // Setup anchor links after markdown is rendered
+  useEffect(() => {
+    if (!isEditable && contentRef.current) {
+      // Wait a tick for DOM to update
+      setTimeout(() => {
+        if (window.setupAnchorLinks) {
+          window.setupAnchorLinks(contentRef.current);
+        }
+      }, 0);
+    }
+  }, [content, isEditable]);
+
   const handleSaveClick = useCallback(() => {
     const currentTitle = titleRef.current?.textContent || "";
     const currentContent = textareaRef.current?.value || content;
@@ -288,7 +300,7 @@ export default function NotesEditor({ isNewNote, isFloating, onClose }) {
     );
   } else {
     contentArea = (
-      <div className="notes-editor-rendered markdown-body" ref={contentRef} dangerouslySetInnerHTML={{ __html: renderMarkdown(content) }} />
+      <div className="notes-editor-rendered" ref={contentRef} dangerouslySetInnerHTML={{ __html: renderMarkdown(content) }} />
     );
   }
 

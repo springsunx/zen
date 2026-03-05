@@ -1,18 +1,24 @@
 import mark from "../../assets/markdown-it-mark.mjs";
 import tasks from "../../assets/markdown-it-task-lists.js";
 
-export default function renderMarkdown(text) {
+// Helper function to generate ID from heading text
+function generateId(text) {
+  if (!text) return '';
+  
+  // 非常简单的ID生成：只替换空格为连字符，不移除任何字符
+  // HTML ID规范允许大部分Unicode字符
+  let processed = text.trim();
+  
+  // 将连续的空格转换为单个连字符
+  processed = processed.replace(/\s+/g, '-');
+  
+  // 确保不以连字符开头或结尾
+  processed = processed.replace(/^-+/, '').replace(/-+$/, '');
+  
+  return processed || 'heading';
+}
 
-  // 自定义slugify函数，支持中文
-  function slugify(str) {
-    return str
-      .toLowerCase()
-      .replace(/[\s\-]+/g, '-')           // 将空格和连字符替换为单个连字符
-      .replace(/[^\w\u4e00-\u9fa5\-]/g, '') // 移除非单词字符、非中文、非连字符
-      .replace(/\-\-+/g, '-')               // 将多个连字符替换为单个
-      .replace(/^-+/, '')                     // 移除开头的连字符
-      .replace(/-+$/, '');                    // 移除结尾的连字符
-  }
+export default function renderMarkdown(text) {
 
   // 辅助函数定义
   function showCopyFeedback(button) {
@@ -118,9 +124,6 @@ export default function renderMarkdown(text) {
     html: true,
     linkify: true,
     breaks: true,
-    headerIds: true,      // 为标题生成id属性
-    headerPrefix: '',     // id前缀，设为空字符串
-    slugify: slugify,       // 使用自定义的slugify函数
     highlight: function (str, lang) {
       if (lang && window.hljs.getLanguage(lang)) {
         try {
@@ -133,64 +136,6 @@ export default function renderMarkdown(text) {
   .use(mark)
   .use(tasks);
 
-  // https://github.com/markdown-it/markdown-it/blob/master/docs/architecture.md#renderer
-  var defaultRender = md.renderer.rules.link_open || function (tokens, idx, options, env, self) {
-    return self.renderToken(tokens, idx, options);
-  };
-    md.renderer.rules.link_open = function (tokens, idx, options, env, self) {
-    // 获取链接的href属性
-    const token = tokens[idx];
-    const hrefIndex = token.attrIndex('href');
-    let href = '';
-    if (hrefIndex >= 0) {
-      href = token.attrs[hrefIndex][1];
-      if (href) {
-        // 判断是否为外部链接
-        const isExternal = isExternalLink(href);
-        if (isExternal) {
-          token.attrSet('target', '_blank');
-          // 同时添加rel="noopener noreferrer"以增强安全性
-          token.attrSet('rel', 'noopener noreferrer');
-        } else if (href.startsWith('#')) {
-          // 为锚点链接添加onclick处理
-          token.attrSet('onclick', 'return window.handleAnchorClick(event, "' + href + '")');
-        }
-      }
-    }
-    return defaultRender(tokens, idx, options, env, self);
-  };
-  
-  // 辅助函数：判断是否为外部链接
-  function isExternalLink(href) {
-    // 锚点链接不是外部链接
-    if (href.startsWith('#')) {
-      return false;
-    }
-    // 检查是否为绝对URL
-    try {
-      const url = new URL(href, window.location.origin);
-      // 如果协议是http:或https:，且主机名与当前页面不同，则是外部链接
-      if (url.protocol === 'http:' || url.protocol === 'https:') {
-        return url.hostname !== window.location.hostname;
-      }
-    } catch (e) {
-      // 如果不是有效的URL，可能是相对路径，不是外部链接
-      // 相对路径、协议相对链接(//example.com)、mailto:、tel:等都不是外部链接
-      if (href.startsWith('//')) {
-        // 协议相对链接，需要进一步检查
-        try {
-          const url = new URL('https:' + href);
-          return url.hostname !== window.location.hostname;
-        } catch (e2) {
-          return false;
-        }
-      }
-      // 其他情况（相对路径、mailto:、tel:等）不是外部链接
-      return false;
-    }
-    // 其他协议（如mailto:、tel:、file:等）不是外部链接
-    return false;
-  }
   // 为代码块添加复制按钮
   const defaultFenceRender = md.renderer.rules.fence || function(tokens, idx, options, env, self) {
     return self.renderToken(tokens, idx, options);
@@ -211,5 +156,221 @@ export default function renderMarkdown(text) {
            '</div>';
   };
 
+  // Generate IDs for headings
+  const originalHeadingOpen = md.renderer.rules.heading_open || function(tokens, idx, options, env, self) {
+    return self.renderToken(tokens, idx, options);
+  };
+  
+  md.renderer.rules.heading_open = function(tokens, idx, options, env, self) {
+    const token = tokens[idx];
+    
+    // Check if id already exists
+    const existingId = token.attrs ? token.attrs.find(attr => attr[0] === 'id') : null;
+    if (!existingId) {
+      // Find the inline token with heading content
+      let headingText = '';
+      for (let i = idx + 1; i < tokens.length && tokens[i].type !== 'heading_close'; i++) {
+        if (tokens[i].type === 'inline') {
+          headingText = tokens[i].content;
+          break;
+        }
+      }
+      
+      if (headingText) {
+        const id = generateId(headingText);
+        if (id) {
+          token.attrSet('id', id);
+        }
+      }
+    }
+    
+    return originalHeadingOpen(tokens, idx, options, env, self);
+  };
+
+  // Handle links - markdown-it will URL encode the href, we need to handle that
+  const originalLinkOpen = md.renderer.rules.link_open || function (tokens, idx, options, env, self) {
+    return self.renderToken(tokens, idx, options);
+  };
+  
+  md.renderer.rules.link_open = function (tokens, idx, options, env, self) {
+    const token = tokens[idx];
+    const hrefAttr = token.attrs.find(attr => attr[0] === 'href');
+    
+    if (hrefAttr) {
+      const href = hrefAttr[1];
+      
+      // Check if it's an internal anchor link (starts with #)
+      if (href.startsWith('#')) {
+        // Don't add target="_blank" for anchor links
+        // Add a class for styling and identification
+        token.attrPush(['class', 'internal-anchor-link']);
+        // Add data attribute
+        token.attrPush(['data-anchor-link', 'true']);
+        
+        // Note: markdown-it will URL encode the href
+        // We'll handle this in the scrollToAnchor function
+      } else {
+        // External link, open in new tab
+        token.attrSet('target', '_blank');
+        token.attrSet('rel', 'noopener noreferrer');
+      }
+    }
+    
+    return originalLinkOpen(tokens, idx, options, env, self);
+  };
+
   return md.render(text);
+}
+
+// Global functions for handling anchor link clicks
+if (typeof window !== 'undefined') {
+  // Initialize only once
+  if (!window._zenAnchorInitialized) {
+    window._zenAnchorInitialized = true;
+    
+    // Simple ID generation (same as above)
+    window.generateHeadingId = function(text) {
+      if (!text) return '';
+      let processed = text.trim();
+      processed = processed.replace(/\s+/g, '-');
+      processed = processed.replace(/^-+/, '').replace(/-+$/, '');
+      return processed || 'heading';
+    };
+    
+    // Decode URL encoded string
+    function decodeHash(hash) {
+      if (!hash) return '';
+      const withoutHash = hash.replace(/^#/, '');
+      try {
+        return decodeURIComponent(withoutHash);
+      } catch (e) {
+        return withoutHash;
+      }
+    }
+    
+    // Find element by ID, trying multiple variations
+    function findElementById(id) {
+      // Try exact match first
+      let element = document.getElementById(id);
+      if (element) return element;
+      
+      // Try decoding URL encoding
+      try {
+        const decoded = decodeURIComponent(id);
+        element = document.getElementById(decoded);
+        if (element) return element;
+        
+        // Try with our ID generation
+        const generatedId = window.generateHeadingId(decoded);
+        element = document.getElementById(generatedId);
+        if (element) return element;
+      } catch (e) {
+        // Ignore decoding errors
+      }
+      
+      // Try with our ID generation on original
+      const generatedId = window.generateHeadingId(id);
+      element = document.getElementById(generatedId);
+      if (element) return element;
+      
+      // Last resort: search all headings
+      const allHeadings = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
+      for (const heading of allHeadings) {
+        if (heading.id === id || 
+            heading.id === decodeURIComponent(id) ||
+            window.generateHeadingId(heading.textContent) === window.generateHeadingId(id) ||
+            window.generateHeadingId(heading.textContent) === window.generateHeadingId(decodeURIComponent(id))) {
+          return heading;
+        }
+      }
+      
+      return null;
+    }
+    
+    window.scrollToAnchor = function(hash, smooth = true) {
+      if (!hash) return false;
+      
+      // Remove the # character
+      const id = hash.replace(/^#/, '');
+      if (!id) return false;
+      
+      const element = findElementById(id);
+      
+      if (element) {
+        // Scroll to the element
+        if (smooth && 'scrollBehavior' in document.documentElement.style) {
+          element.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'start' 
+          });
+        } else {
+          element.scrollIntoView();
+        }
+        
+        // Update URL hash (use the element's actual ID)
+        try {
+          if (history.replaceState) {
+            history.replaceState(null, null, '#' + element.id);
+          } else {
+            window.location.hash = '#' + element.id;
+          }
+        } catch (e) {
+          console.warn('Could not update history:', e);
+        }
+        
+        return true;
+      } else {
+        console.warn('Anchor element not found for hash:', hash, 'id:', id);
+        console.warn('Available IDs:', Array.from(document.querySelectorAll('[id]')).map(el => el.id).filter(id => id));
+        return false;
+      }
+    };
+
+    // Event delegation for internal anchor links
+    window.setupAnchorLinks = function(container = document) {
+      // Remove any existing listeners
+      if (window._zenAnchorClickHandler) {
+        container.removeEventListener('click', window._zenAnchorClickHandler);
+      }
+      
+      // Add new listener
+      window._zenAnchorClickHandler = function(event) {
+        let target = event.target;
+        while (target && target !== container) {
+          if (target.tagName === 'A' && 
+              target.classList.contains('internal-anchor-link')) {
+            const href = target.getAttribute('href');
+            if (href && href.startsWith('#')) {
+              event.preventDefault();
+              event.stopPropagation();
+              
+              window.scrollToAnchor(href);
+              return false;
+            }
+          }
+          target = target.parentElement;
+        }
+      };
+      
+      container.addEventListener('click', window._zenAnchorClickHandler);
+    };
+
+    // Setup on load
+    window.addEventListener('DOMContentLoaded', function() {
+      window.setupAnchorLinks();
+      
+      if (window.location.hash) {
+        setTimeout(() => {
+          window.scrollToAnchor(window.location.hash);
+        }, 100);
+      }
+    });
+    
+    // Re-setup on navigation
+    window.addEventListener('navigate', function() {
+      setTimeout(() => {
+        window.setupAnchorLinks();
+      }, 50);
+    });
+  }
 }
