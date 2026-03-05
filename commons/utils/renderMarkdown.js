@@ -288,7 +288,107 @@ export default function renderMarkdown(text) {
     return originalLinkOpen(tokens, idx, options, env, self);
   };
 
-  return md.render(text);
+  
+
+  // Parse image attributes from {...} syntax
+  function parseImageAttributes(text) {
+    if (!text) return { cleanedText: text, attributes: {} };
+    
+    // Match {key=value key2=value2 ...} at the end of the text
+    // Support both single and double quotes: {width=300 height=200} or {width='300' height="200"}
+    const match = text.match(/\s*(\{[^}]+\})\s*$/);
+    if (!match) {
+      return { cleanedText: text.trim(), attributes: {} };
+    }
+    
+    const attrStr = match[1];
+    const cleanedText = text.substring(0, match.index).trim();
+    const attributes = {};
+    
+    // Parse key=value pairs inside {...}
+    // Remove outer braces
+    const inner = attrStr.slice(1, -1).trim();
+    
+    // Match key=value pairs, supporting quoted values
+    const regex = /(\w+)\s*=\s*("([^"]*)"|'([^']*)'|([^\s}]+))/g;
+    let attrMatch;
+    while ((attrMatch = regex.exec(inner)) !== null) {
+      const key = attrMatch[1];
+      const value = attrMatch[3] || attrMatch[4] || attrMatch[5] || '';
+      attributes[key] = value;
+    }
+    
+    return { cleanedText, attributes };
+  }
+
+  // Handle image attributes
+  const originalImage = md.renderer.rules.image || function(tokens, idx, options, env, self) {
+    return self.renderToken(tokens, idx, options);
+  };
+  
+  md.renderer.rules.image = function(tokens, idx, options, env, self) {
+    const token = tokens[idx];
+    let altText = token.content || '';
+    const attributes = {};
+    
+    // Case 1: Attributes in alt text
+    const { cleanedText: newAltText, attributes: altAttrs } = parseImageAttributes(altText);
+    if (Object.keys(altAttrs).length > 0) {
+      altText = newAltText;
+      Object.assign(attributes, altAttrs);
+    }
+    
+    // Case 2: Attributes in following text token
+    // Look for tokens after the image (skip whitespace)
+    let nextIdx = idx + 1;
+    while (nextIdx < tokens.length && tokens[nextIdx].type === 'text' && /^\s*$/.test(tokens[nextIdx].content || '')) {
+      nextIdx++;
+    }
+    
+    if (nextIdx < tokens.length && tokens[nextIdx].type === 'text') {
+      const nextToken = tokens[nextIdx];
+      const nextText = nextToken.content || '';
+      const { cleanedText: newNextText, attributes: nextAttrs } = parseImageAttributes(nextText);
+      
+      if (Object.keys(nextAttrs).length > 0) {
+        // Found attributes, update or remove the text token
+        Object.assign(attributes, nextAttrs);
+        if (newNextText) {
+          nextToken.content = newNextText;
+        } else {
+          // If text token only contained attributes, remove it entirely
+          // But we need to be careful not to break other inline elements
+          // For now, just clear the content
+          nextToken.content = '';
+        }
+      }
+    }
+    
+    // Apply found attributes
+    if (Object.keys(attributes).length > 0) {
+      token.content = altText;
+      
+      for (const [key, value] of Object.entries(attributes)) {
+        if (key === 'width' || key === 'height') {
+          token.attrSet(key, value);
+        } else if (key === 'class') {
+          const existingClass = token.attrGet('class') || '';
+          const newClass = existingClass ? existingClass + ' ' + value : value;
+          token.attrSet('class', newClass);
+        } else if (key === 'id') {
+          token.attrSet('id', value);
+        } else if (key === 'style') {
+          token.attrSet('style', value);
+        } else {
+          // Set other attributes directly
+          token.attrSet(key, value);
+        }
+      }
+    }
+    
+    return originalImage(tokens, idx, options, env, self);
+  };
+return md.render(text);
 }
 
 // Global functions for handling anchor link clicks
