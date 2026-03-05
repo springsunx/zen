@@ -558,7 +558,6 @@
 }
 .code-block-lang {
   font-weight: 600;
-  text-transform: lowercase;
   color: #24292e;
   margin-left: auto;  /* 确保靠右对齐 */
   padding-right: 4px; /* 添加一些间距 */
