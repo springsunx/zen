@@ -18,6 +18,57 @@ function generateId(text) {
   return processed || 'heading';
 }
 
+// Clean custom ID: replace spaces with hyphens, remove invalid characters
+function cleanCustomId(id) {
+  if (!id) return '';
+  
+  let cleaned = id.trim();
+  
+  // Replace spaces and underscores with hyphens
+  cleaned = cleaned.replace(/[\s_]+/g, '-');
+  
+  // Remove characters that are problematic for HTML IDs
+  // HTML ID can contain letters, digits, hyphens, underscores, colons, and periods
+  // We'll be more permissive and keep most Unicode characters
+  // But remove control characters and certain special chars
+  cleaned = cleaned.replace(/[\x00-\x1F\x7F]/g, ''); // Control chars
+  cleaned = cleaned.replace(/[<>"']/g, ''); // HTML special chars
+  
+  // Ensure it doesn't start with a digit (HTML4 restriction, but HTML5 allows it)
+  // We'll keep it as-is for now
+  
+  // Remove leading/trailing hyphens and dots
+  cleaned = cleaned.replace(/^[-.]+/, '').replace(/[-.]+$/, '');
+  
+  // Collapse multiple hyphens
+  cleaned = cleaned.replace(/-+/g, '-');
+  
+  return cleaned || '';
+}
+
+// Extract custom ID from heading text (e.g., "Title {#custom-id}")
+function extractCustomId(text) {
+  if (!text) return { cleanedText: text, customId: null };
+  
+  // Match {#custom-id} at the end of the text
+  // Allow optional spaces before the pattern
+  const match = text.match(/\s*\{#([^}]+)\}\s*$/);
+  if (match) {
+    let customId = match[1].trim();
+    // Clean the custom ID
+    customId = cleanCustomId(customId);
+    if (!customId) {
+      // If cleaned ID is empty, treat as no custom ID
+      return { cleanedText: text.trim(), customId: null };
+    }
+    // Remove the custom ID pattern from the text
+    const cleanedText = text.substring(0, match.index).trim();
+    return { cleanedText, customId };
+  }
+  
+  return { cleanedText: text.trim(), customId: null };
+}
+
 export default function renderMarkdown(text) {
 
   // 辅助函数定义
@@ -60,44 +111,6 @@ export default function renderMarkdown(text) {
     } finally {
       document.body.removeChild(textArea);
     }
-  }
-
-  // 处理锚点链接点击（全局函数）
-  if (typeof window.handleAnchorClick !== 'function') {
-    window.handleAnchorClick = function(event, href) {
-      // 如果是锚点链接
-      if (href && href.startsWith('#')) {
-        event.preventDefault();
-        const id = href.substring(1);
-        const targetElement = document.getElementById(id);
-        if (targetElement) {
-          // 找到最近的滚动容器
-          const container = document.querySelector('.notes-editor-container');
-          if (container) {
-            // 计算目标元素相对于容器的位置
-            const targetRect = targetElement.getBoundingClientRect();
-            const containerRect = container.getBoundingClientRect();
-            const scrollTop = targetRect.top - containerRect.top + container.scrollTop;
-            container.scrollTo({
-              top: scrollTop - 20, // 减去一些边距
-              behavior: 'smooth'
-            });
-          } else {
-            // 如果没有找到容器，使用标准的scrollIntoView
-            targetElement.scrollIntoView({
-              behavior: 'smooth',
-              block: 'start'
-            });
-          }
-          // 更新URL哈希（不触发页面滚动）
-          if (window.history && window.history.pushState) {
-            window.history.pushState(null, null, href);
-          }
-        }
-        return false;
-      }
-      return true;
-    };
   }
 
   // 复制函数定义
@@ -164,22 +177,78 @@ export default function renderMarkdown(text) {
   md.renderer.rules.heading_open = function(tokens, idx, options, env, self) {
     const token = tokens[idx];
     
-    // Check if id already exists
-    const existingId = token.attrs ? token.attrs.find(attr => attr[0] === 'id') : null;
-    if (!existingId) {
-      // Find the inline token with heading content
-      let headingText = '';
-      for (let i = idx + 1; i < tokens.length && tokens[i].type !== 'heading_close'; i++) {
-        if (tokens[i].type === 'inline') {
-          headingText = tokens[i].content;
-          break;
-        }
+    // Find the inline token with heading content
+    let headingInlineToken = null;
+    let headingText = '';
+    for (let i = idx + 1; i < tokens.length && tokens[i].type !== 'heading_close'; i++) {
+      if (tokens[i].type === 'inline') {
+        headingInlineToken = tokens[i];
+        headingText = headingInlineToken.content;
+        break;
       }
+    }
+    
+    if (headingText && headingInlineToken) {
+      // Extract custom ID if present
+      const { cleanedText, customId } = extractCustomId(headingText);
       
-      if (headingText) {
-        const id = generateId(headingText);
-        if (id) {
-          token.attrSet('id', id);
+      if (customId) {
+        // Set custom ID on the heading
+        token.attrSet('id', customId);
+        
+        // Update the inline token content
+        headingInlineToken.content = cleanedText;
+        
+        // Clean up children tokens to remove the {#...} pattern
+        if (headingInlineToken.children) {
+          // Find and remove text tokens that contain only the custom ID pattern
+          // or trim the pattern from text tokens
+          const newChildren = [];
+          let foundCustomId = false;
+          
+          for (const child of headingInlineToken.children) {
+            if (child.type === 'text') {
+              // Try to extract custom ID from this text token
+              const { cleanedText: childCleanedText, customId: childCustomId } = extractCustomId(child.content);
+              
+              if (childCustomId) {
+                // This text token contains the custom ID pattern
+                if (childCleanedText) {
+                  // There's still some text before the pattern, keep it
+                  child.content = childCleanedText;
+                  newChildren.push(child);
+                }
+                // If childCleanedText is empty, we skip this token entirely
+                foundCustomId = true;
+              } else {
+                // No custom ID in this text token
+                newChildren.push(child);
+              }
+            } else {
+              // Keep non-text tokens (bold, italic, etc.)
+              newChildren.push(child);
+            }
+          }
+          
+          // If we removed all children (unlikely), add an empty text token
+          if (newChildren.length === 0) {
+            newChildren.push({ type: 'text', content: '' });
+          }
+          
+          headingInlineToken.children = newChildren;
+          
+          // Also ensure the inline token content matches the cleaned text
+          headingInlineToken.content = cleanedText;
+        }
+      } else {
+        // Check if id already exists (should not happen for headings)
+        const existingId = token.attrs ? token.attrs.find(attr => attr[0] === 'id') : null;
+        if (!existingId) {
+          // Generate automatic ID
+          const id = generateId(headingText);
+          if (id) {
+            token.attrSet('id', id);
+          }
         }
       }
     }
@@ -235,6 +304,34 @@ if (typeof window !== 'undefined') {
       processed = processed.replace(/\s+/g, '-');
       processed = processed.replace(/^-+/, '').replace(/-+$/, '');
       return processed || 'heading';
+    };
+    
+    // Clean custom ID (same as above)
+    window.cleanCustomId = function(id) {
+      if (!id) return '';
+      let cleaned = id.trim();
+      cleaned = cleaned.replace(/[\s_]+/g, '-');
+      cleaned = cleaned.replace(/[\x00-\x1F\x7F]/g, '');
+      cleaned = cleaned.replace(/[<>"']/g, '');
+      cleaned = cleaned.replace(/^[-.]+/, '').replace(/[-.]+$/, '');
+      cleaned = cleaned.replace(/-+/g, '-');
+      return cleaned || '';
+    };
+    
+    // Function to extract custom ID (same as above)
+    window.extractCustomId = function(text) {
+      if (!text) return { cleanedText: text, customId: null };
+      const match = text.match(/\s*\{#([^}]+)\}\s*$/);
+      if (match) {
+        let customId = match[1].trim();
+        customId = window.cleanCustomId(customId);
+        if (!customId) {
+          return { cleanedText: text.trim(), customId: null };
+        }
+        const cleanedText = text.substring(0, match.index).trim();
+        return { cleanedText, customId };
+      }
+      return { cleanedText: text.trim(), customId: null };
     };
     
     // Decode URL encoded string
