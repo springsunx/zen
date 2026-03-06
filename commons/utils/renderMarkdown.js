@@ -9,6 +9,9 @@ function generateId(text) {
   // HTML ID规范允许大部分Unicode字符
   let processed = text.trim();
   
+  // 转换为小写以实现大小写不敏感匹配
+  processed = processed.toLowerCase();
+  
   // 将连续的空格转换为单个连字符
   processed = processed.replace(/\s+/g, '-');
   
@@ -401,6 +404,8 @@ if (typeof window !== 'undefined') {
     window.generateHeadingId = function(text) {
       if (!text) return '';
       let processed = text.trim();
+      // Convert to lowercase for case-insensitive matching
+      processed = processed.toLowerCase();
       processed = processed.replace(/\s+/g, '-');
       processed = processed.replace(/^-+/, '').replace(/-+$/, '');
       return processed || 'heading';
@@ -446,37 +451,86 @@ if (typeof window !== 'undefined') {
     }
     
     // Find element by ID, trying multiple variations
-    function findElementById(id) {
-      // Try exact match first
+        function findElementById(id) {
+      if (!id) return null;
+      
+      // 1. Try exact match first (case-sensitive)
       let element = document.getElementById(id);
       if (element) return element;
       
-      // Try decoding URL encoding
+      // 2. Try case-insensitive match
+      // Find all elements with ID and compare case-insensitively
+      const allElements = document.querySelectorAll('[id]');
+      for (const elem of allElements) {
+        if (elem.id && elem.id.toLowerCase() === id.toLowerCase()) {
+          return elem;
+        }
+      }
+      
+      // 3. Try decoding URL encoding
       try {
         const decoded = decodeURIComponent(id);
+        // Try case-sensitive match with decoded
         element = document.getElementById(decoded);
         if (element) return element;
         
-        // Try with our ID generation
+        // Try case-insensitive match with decoded
+        for (const elem of allElements) {
+          if (elem.id && elem.id.toLowerCase() === decoded.toLowerCase()) {
+            return elem;
+          }
+        }
+        
+        // 4. Try with our ID generation (case-insensitive)
         const generatedId = window.generateHeadingId(decoded);
         element = document.getElementById(generatedId);
         if (element) return element;
+        
+        // Case-insensitive match with generated ID
+        for (const elem of allElements) {
+          if (elem.id && elem.id.toLowerCase() === generatedId.toLowerCase()) {
+            return elem;
+          }
+        }
       } catch (e) {
         // Ignore decoding errors
       }
       
-      // Try with our ID generation on original
+      // 5. Try with our ID generation on original
       const generatedId = window.generateHeadingId(id);
       element = document.getElementById(generatedId);
       if (element) return element;
       
-      // Last resort: search all headings
+      // Case-insensitive match with generated ID on original
+      const allElements2 = document.querySelectorAll('[id]');
+      for (const elem of allElements2) {
+        if (elem.id && elem.id.toLowerCase() === generatedId.toLowerCase()) {
+          return elem;
+        }
+      }
+      
+      // 6. Last resort: search all headings with text matching (case-insensitive)
       const allHeadings = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
       for (const heading of allHeadings) {
-        if (heading.id === id || 
-            heading.id === decodeURIComponent(id) ||
-            window.generateHeadingId(heading.textContent) === window.generateHeadingId(id) ||
-            window.generateHeadingId(heading.textContent) === window.generateHeadingId(decodeURIComponent(id))) {
+        // Case-insensitive ID comparison
+        if (heading.id && heading.id.toLowerCase() === id.toLowerCase()) {
+          return heading;
+        }
+        
+        // Try with decoded
+        try {
+          const decoded = decodeURIComponent(id);
+          if (heading.id && heading.id.toLowerCase() === decoded.toLowerCase()) {
+            return heading;
+          }
+        } catch (e) {
+          // Ignore decoding errors
+        }
+        
+        // Try with generated ID from text content
+        const headingGeneratedId = window.generateHeadingId(heading.textContent);
+        if (headingGeneratedId.toLowerCase() === id.toLowerCase() || 
+            (typeof decoded !== 'undefined' && headingGeneratedId.toLowerCase() === decoded.toLowerCase())) {
           return heading;
         }
       }
