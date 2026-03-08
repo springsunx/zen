@@ -84,14 +84,23 @@ function TableOfContentsPopover({ headings, visibleHeadings = [], onMouseEnter, 
     let targetElement = null;
 
     for (const element of headingElements) {
-      if (element.textContent.trim() === heading.text) {
+      // Get the text content and clean it (remove any custom ID pattern)
+      const elementText = element.textContent.trim();
+      const { cleanedText: cleanedElementText } = extractCustomId(elementText);
+      
+      // Compare with the heading text (already cleaned)
+      if (cleanedElementText === heading.text) {
         targetElement = element;
         break;
       }
     }
 
     if (targetElement !== null) {
-      targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if ('scrollBehavior' in document.documentElement.style) {
+        targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        targetElement.scrollIntoView();
+      }
     }
 
     closeModal();
@@ -128,6 +137,30 @@ function TableOfContentsPopover({ headings, visibleHeadings = [], onMouseEnter, 
   );
 }
 
+// Extract custom ID from heading text (e.g., "Title {#custom-id}")
+function extractCustomId(text) {
+  if (!text) return { cleanedText: text, customId: null };
+  
+  // Match {#custom-id} at the end of the text
+  // Allow optional spaces before the pattern
+  const match = text.match(/\s*\{#([^}]+)\}\s*$/);
+  if (match) {
+    let customId = match[1].trim();
+    // Clean the custom ID - simplified version
+    customId = customId.replace(/[\s_]+/g, '-');
+    customId = customId.replace(/[^\w\-]/g, '');
+    customId = customId.replace(/^-+/, '').replace(/-+$/, '');
+    customId = customId.toLowerCase(); // Convert to lowercase for case-insensitive matching
+    if (!customId) {
+      return { cleanedText: text.trim(), customId: null };
+    }
+    const cleanedText = text.substring(0, match.index).trim();
+    return { cleanedText, customId };
+  }
+  
+  return { cleanedText: text.trim(), customId: null };
+}
+
 function extractHeadings(content) {
   if (content === '') {
     return [];
@@ -162,7 +195,10 @@ function extractHeadings(content) {
     const match = line.match(/^(#{1,3})\s+(.+)$/);
     if (match) {
       const level = match[1].length;
-      const text = match[2].trim();
+      let text = match[2].trim();
+      // Extract custom ID and clean the text
+      const { cleanedText } = extractCustomId(text);
+      text = cleanedText;
       headings.push({ text, level, index: headingIndex });
       headingIndex++;
     }
