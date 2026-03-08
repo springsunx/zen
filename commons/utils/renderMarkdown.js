@@ -1,3 +1,6 @@
+import ins from "../../assets/markdown-it-ins.mjs";
+import sub from "../../assets/markdown-it-sub.mjs";
+import sup from "../../assets/markdown-it-sup.mjs";
 import mark from "../../assets/markdown-it-mark.mjs";
 import tasks from "../../assets/markdown-it-task-lists.js";
 
@@ -149,6 +152,9 @@ export default function renderMarkdown(text) {
       return '';
     }
   })
+  .use(ins)
+  .use(sub)
+  .use(sup)
   .use(mark)
   .use(tasks);
 
