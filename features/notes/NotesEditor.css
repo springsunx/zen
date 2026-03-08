@@ -586,6 +586,7 @@
   margin: 0;
   padding: 0;
   background-color: transparent;
+  white-space: pre;
 }
 /* 确保工具栏在滚动时固定 */
 .notes-editor-container .notes-editor-toolbar {
