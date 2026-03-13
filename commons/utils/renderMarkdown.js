@@ -1,61 +1,55 @@
-import ins from "../../assets/markdown-it-ins.mjs";
-import sub from "../../assets/markdown-it-sub.mjs";
-import sup from "../../assets/markdown-it-sup.mjs";
-import mark from "../../assets/markdown-it-mark.mjs";
-import tasks from "../../assets/markdown-it-task-lists.js";
-
 // Helper function to generate ID from heading text
 function generateId(text) {
   if (!text) return '';
-  
+
   // 非常简单的ID生成：只替换空格为连字符，不移除任何字符
   // HTML ID规范允许大部分Unicode字符
   let processed = text.trim();
-  
+
   // 转换为小写以实现大小写不敏感匹配
   processed = processed.toLowerCase();
-  
+
   // 将连续的空格转换为单个连字符
   processed = processed.replace(/\s+/g, '-');
-  
+
   // 确保不以连字符开头或结尾
   processed = processed.replace(/^-+/, '').replace(/-+$/, '');
-  
+
   return processed || 'heading';
 }
 
 // Clean custom ID: replace spaces with hyphens, remove invalid characters
 function cleanCustomId(id) {
   if (!id) return '';
-  
+
   let cleaned = id.trim();
-  
+
   // Replace spaces and underscores with hyphens
   cleaned = cleaned.replace(/[\s_]+/g, '-');
-  
+
   // Remove characters that are problematic for HTML IDs
   // HTML ID can contain letters, digits, hyphens, underscores, colons, and periods
   // We'll be more permissive and keep most Unicode characters
   // But remove control characters and certain special chars
   cleaned = cleaned.replace(/[\x00-\x1F\x7F]/g, ''); // Control chars
   cleaned = cleaned.replace(/[<>"']/g, ''); // HTML special chars
-  
+
   // Ensure it doesn't start with a digit (HTML4 restriction, but HTML5 allows it)
   // We'll keep it as-is for now
-  
+
   // Remove leading/trailing hyphens and dots
   cleaned = cleaned.replace(/^[-.]+/, '').replace(/[-.]+$/, '');
-  
+
   // Collapse multiple hyphens
   cleaned = cleaned.replace(/-+/g, '-');
-  
+
   return cleaned || '';
 }
 
 // Extract custom ID from heading text (e.g., "Title {#custom-id}")
 function extractCustomId(text) {
   if (!text) return { cleanedText: text, customId: null };
-  
+
   // Match {#custom-id} at the end of the text
   // Allow optional spaces before the pattern
   const match = text.match(/\s*\{#([^}]+)\}\s*$/);
@@ -71,7 +65,7 @@ function extractCustomId(text) {
     const cleanedText = text.substring(0, match.index).trim();
     return { cleanedText, customId };
   }
-  
+
   return { cleanedText: text.trim(), customId: null };
 }
 
@@ -83,7 +77,7 @@ export default function renderMarkdown(text) {
     button.innerText = 'Copied!';
     setTimeout(() => { button.innerText = originalText; }, 2000);
   }
-  
+
   function copyToClipboardTraditional(text, button) {
     const textArea = document.createElement('textarea');
     textArea.value = text;
@@ -97,10 +91,10 @@ export default function renderMarkdown(text) {
     textArea.style.outline = 'none';
     textArea.style.boxShadow = 'none';
     textArea.style.background = 'transparent';
-    
+
     document.body.appendChild(textArea);
     textArea.select();
-    
+
     try {
       const successful = document.execCommand('copy');
       if (successful) {
@@ -127,13 +121,13 @@ export default function renderMarkdown(text) {
         console.error('Copy function called in non-browser environment');
         return;
       }
-      
+
       const codeBlock = button.closest('.code-block-wrapper');
       if (!codeBlock) return;
       const codeElement = codeBlock.querySelector('.code-block-content');
       if (!codeElement) return;
       const code = codeElement.innerText || codeElement.textContent;
-      
+
       // 使用传统的document.execCommand方法
       copyToClipboardTraditional(code, button);
     };
@@ -152,11 +146,42 @@ export default function renderMarkdown(text) {
       return '';
     }
   })
-  .use(ins)
-  .use(sub)
-  .use(sup)
-  .use(mark)
-  .use(tasks);
+
+  // Load and use mdit plugins if available
+  const plugins = {
+    alert: window.mdItPluginAlert?.alert,
+    imgSize: window.mdItPluginImgSize?.imgSize,
+    //footnote: window.mdItPluginFootnote?.footnote,
+    //emoji: window.mdItPluginEmoji?.emoji,
+    sub: window.mdItPluginSub?.sub,
+    sup: window.mdItPluginSup?.sup,
+    ins: window.mdItPluginIns?.ins,
+    mark: window.mdItPluginMark?.mark,
+    //abbr: window.mdItPluginAbbr?.abbr,
+    dl: window.mdItPluginDl?.dl,
+    tasklist: window.mdItPluginTasklist?.tasklist,
+    //spoiler: window.mdItPluginSpoiler?.spoiler,
+    //ruby: window.mdItPluginRuby?.ruby,
+    //tab: window.mdItPluginTab?.tab,
+    //align: window.mdItPluginAlign?.align,
+    //attrs: window.mdItPluginAttrs?.attrs,
+    //figure: window.mdItPluginFigure?.figure,
+  };
+
+  Object.entries(plugins).forEach(([name, plugin]) => {
+    switch (name) {
+      case 'alert':
+        // 可对 katex 插件传入额外参数
+        md.use(plugin);
+        break;
+      default:
+        try {
+          md.use(plugin);
+        } catch (err) {
+          console.warn(`Failed to apply plugin "${name}":`, err);
+        }
+    }
+});
 
   // 为代码块添加复制按钮
   const defaultFenceRender = md.renderer.rules.fence || function(tokens, idx, options, env, self) {
@@ -182,10 +207,10 @@ export default function renderMarkdown(text) {
   const originalHeadingOpen = md.renderer.rules.heading_open || function(tokens, idx, options, env, self) {
     return self.renderToken(tokens, idx, options);
   };
-  
+
   md.renderer.rules.heading_open = function(tokens, idx, options, env, self) {
     const token = tokens[idx];
-    
+
     // Find the inline token with heading content
     let headingInlineToken = null;
     let headingText = '';
@@ -196,30 +221,30 @@ export default function renderMarkdown(text) {
         break;
       }
     }
-    
+
     if (headingText && headingInlineToken) {
       // Extract custom ID if present
       const { cleanedText, customId } = extractCustomId(headingText);
-      
+
       if (customId) {
         // Set custom ID on the heading
         token.attrSet('id', customId);
-        
+
         // Update the inline token content
         headingInlineToken.content = cleanedText;
-        
+
         // Clean up children tokens to remove the {#...} pattern
         if (headingInlineToken.children) {
           // Find and remove text tokens that contain only the custom ID pattern
           // or trim the pattern from text tokens
           const newChildren = [];
           let foundCustomId = false;
-          
+
           for (const child of headingInlineToken.children) {
             if (child.type === 'text') {
               // Try to extract custom ID from this text token
               const { cleanedText: childCleanedText, customId: childCustomId } = extractCustomId(child.content);
-              
+
               if (childCustomId) {
                 // This text token contains the custom ID pattern
                 if (childCleanedText) {
@@ -238,14 +263,14 @@ export default function renderMarkdown(text) {
               newChildren.push(child);
             }
           }
-          
+
           // If we removed all children (unlikely), add an empty text token
           if (newChildren.length === 0) {
             newChildren.push({ type: 'text', content: '' });
           }
-          
+
           headingInlineToken.children = newChildren;
-          
+
           // Also ensure the inline token content matches the cleaned text
           headingInlineToken.content = cleanedText;
         }
@@ -261,7 +286,7 @@ export default function renderMarkdown(text) {
         }
       }
     }
-    
+
     return originalHeadingOpen(tokens, idx, options, env, self);
   };
 
@@ -269,14 +294,14 @@ export default function renderMarkdown(text) {
   const originalLinkOpen = md.renderer.rules.link_open || function (tokens, idx, options, env, self) {
     return self.renderToken(tokens, idx, options);
   };
-  
+
   md.renderer.rules.link_open = function (tokens, idx, options, env, self) {
     const token = tokens[idx];
     const hrefAttr = token.attrs.find(attr => attr[0] === 'href');
-    
+
     if (hrefAttr) {
       const href = hrefAttr[1];
-      
+
       // Check if it's an internal anchor link (starts with #)
       if (href.startsWith('#')) {
         // Don't add target="_blank" for anchor links
@@ -284,7 +309,7 @@ export default function renderMarkdown(text) {
         token.attrPush(['class', 'internal-anchor-link']);
         // Add data attribute
         token.attrPush(['data-anchor-link', 'true']);
-        
+
         // Note: markdown-it will URL encode the href
         // We'll handle this in the scrollToAnchor function
       } else {
@@ -293,111 +318,9 @@ export default function renderMarkdown(text) {
         token.attrSet('rel', 'noopener noreferrer');
       }
     }
-    
     return originalLinkOpen(tokens, idx, options, env, self);
   };
-
-  
-
-  // Parse image attributes from {...} syntax
-  function parseImageAttributes(text) {
-    if (!text) return { cleanedText: text, attributes: {} };
-    
-    // Match {key=value key2=value2 ...} at the end of the text
-    // Support both single and double quotes: {width=300 height=200} or {width='300' height="200"}
-    const match = text.match(/\s*(\{[^}]+\})\s*$/);
-    if (!match) {
-      return { cleanedText: text.trim(), attributes: {} };
-    }
-    
-    const attrStr = match[1];
-    const cleanedText = text.substring(0, match.index).trim();
-    const attributes = {};
-    
-    // Parse key=value pairs inside {...}
-    // Remove outer braces
-    const inner = attrStr.slice(1, -1).trim();
-    
-    // Match key=value pairs, supporting quoted values
-    const regex = /(\w+)\s*=\s*("([^"]*)"|'([^']*)'|([^\s}]+))/g;
-    let attrMatch;
-    while ((attrMatch = regex.exec(inner)) !== null) {
-      const key = attrMatch[1];
-      const value = attrMatch[3] || attrMatch[4] || attrMatch[5] || '';
-      attributes[key] = value;
-    }
-    
-    return { cleanedText, attributes };
-  }
-
-  // Handle image attributes
-  const originalImage = md.renderer.rules.image || function(tokens, idx, options, env, self) {
-    return self.renderToken(tokens, idx, options);
-  };
-  
-  md.renderer.rules.image = function(tokens, idx, options, env, self) {
-    const token = tokens[idx];
-    let altText = token.content || '';
-    const attributes = {};
-    
-    // Case 1: Attributes in alt text
-    const { cleanedText: newAltText, attributes: altAttrs } = parseImageAttributes(altText);
-    if (Object.keys(altAttrs).length > 0) {
-      altText = newAltText;
-      Object.assign(attributes, altAttrs);
-    }
-    
-    // Case 2: Attributes in following text token
-    // Look for tokens after the image (skip whitespace)
-    let nextIdx = idx + 1;
-    while (nextIdx < tokens.length && tokens[nextIdx].type === 'text' && /^\s*$/.test(tokens[nextIdx].content || '')) {
-      nextIdx++;
-    }
-    
-    if (nextIdx < tokens.length && tokens[nextIdx].type === 'text') {
-      const nextToken = tokens[nextIdx];
-      const nextText = nextToken.content || '';
-      const { cleanedText: newNextText, attributes: nextAttrs } = parseImageAttributes(nextText);
-      
-      if (Object.keys(nextAttrs).length > 0) {
-        // Found attributes, update or remove the text token
-        Object.assign(attributes, nextAttrs);
-        if (newNextText) {
-          nextToken.content = newNextText;
-        } else {
-          // If text token only contained attributes, remove it entirely
-          // But we need to be careful not to break other inline elements
-          // For now, just clear the content
-          nextToken.content = '';
-        }
-      }
-    }
-    
-    // Apply found attributes
-    if (Object.keys(attributes).length > 0) {
-      token.content = altText;
-      
-      for (const [key, value] of Object.entries(attributes)) {
-        if (key === 'width' || key === 'height') {
-          token.attrSet(key, value);
-        } else if (key === 'class') {
-          const existingClass = token.attrGet('class') || '';
-          const newClass = existingClass ? existingClass + ' ' + value : value;
-          token.attrSet('class', newClass);
-        } else if (key === 'id') {
-          token.attrSet('id', value);
-        } else if (key === 'style') {
-          token.attrSet('style', value);
-        } else {
-          // Set other attributes directly
-          token.attrSet(key, value);
-        }
-      }
-    }
-    
-    return originalImage(tokens, idx, options, env, self);
-  };
-return md.render(text);
+  return md.render(text);
 }
 
 // Global functions for handling anchor link clicks
@@ -405,7 +328,7 @@ if (typeof window !== 'undefined') {
   // Initialize only once
   if (!window._zenAnchorInitialized) {
     window._zenAnchorInitialized = true;
-    
+
     // Simple ID generation (same as above)
     window.generateHeadingId = function(text) {
       if (!text) return '';
@@ -416,7 +339,7 @@ if (typeof window !== 'undefined') {
       processed = processed.replace(/^-+/, '').replace(/-+$/, '');
       return processed || 'heading';
     };
-    
+
     // Clean custom ID (same as above)
     window.cleanCustomId = function(id) {
       if (!id) return '';
@@ -428,7 +351,7 @@ if (typeof window !== 'undefined') {
       cleaned = cleaned.replace(/-+/g, '-');
       return cleaned || '';
     };
-    
+
     // Function to extract custom ID (same as above)
     window.extractCustomId = function(text) {
       if (!text) return { cleanedText: text, customId: null };
@@ -444,7 +367,7 @@ if (typeof window !== 'undefined') {
       }
       return { cleanedText: text.trim(), customId: null };
     };
-    
+
     // Decode URL encoded string
     function decodeHash(hash) {
       if (!hash) return '';
@@ -455,15 +378,15 @@ if (typeof window !== 'undefined') {
         return withoutHash;
       }
     }
-    
+
     // Find element by ID, trying multiple variations
         function findElementById(id) {
       if (!id) return null;
-      
+
       // 1. Try exact match first (case-sensitive)
       let element = document.getElementById(id);
       if (element) return element;
-      
+
       // 2. Try case-insensitive match
       // Find all elements with ID and compare case-insensitively
       const allElements = document.querySelectorAll('[id]');
@@ -472,26 +395,26 @@ if (typeof window !== 'undefined') {
           return elem;
         }
       }
-      
+
       // 3. Try decoding URL encoding
       try {
         const decoded = decodeURIComponent(id);
         // Try case-sensitive match with decoded
         element = document.getElementById(decoded);
         if (element) return element;
-        
+
         // Try case-insensitive match with decoded
         for (const elem of allElements) {
           if (elem.id && elem.id.toLowerCase() === decoded.toLowerCase()) {
             return elem;
           }
         }
-        
+
         // 4. Try with our ID generation (case-insensitive)
         const generatedId = window.generateHeadingId(decoded);
         element = document.getElementById(generatedId);
         if (element) return element;
-        
+
         // Case-insensitive match with generated ID
         for (const elem of allElements) {
           if (elem.id && elem.id.toLowerCase() === generatedId.toLowerCase()) {
@@ -501,12 +424,12 @@ if (typeof window !== 'undefined') {
       } catch (e) {
         // Ignore decoding errors
       }
-      
+
       // 5. Try with our ID generation on original
       const generatedId = window.generateHeadingId(id);
       element = document.getElementById(generatedId);
       if (element) return element;
-      
+
       // Case-insensitive match with generated ID on original
       const allElements2 = document.querySelectorAll('[id]');
       for (const elem of allElements2) {
@@ -514,7 +437,7 @@ if (typeof window !== 'undefined') {
           return elem;
         }
       }
-      
+
       // 6. Last resort: search all headings with text matching (case-insensitive)
       const allHeadings = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
       for (const heading of allHeadings) {
@@ -522,7 +445,7 @@ if (typeof window !== 'undefined') {
         if (heading.id && heading.id.toLowerCase() === id.toLowerCase()) {
           return heading;
         }
-        
+
         // Try with decoded
         try {
           const decoded = decodeURIComponent(id);
@@ -532,38 +455,38 @@ if (typeof window !== 'undefined') {
         } catch (e) {
           // Ignore decoding errors
         }
-        
+
         // Try with generated ID from text content
         const headingGeneratedId = window.generateHeadingId(heading.textContent);
-        if (headingGeneratedId.toLowerCase() === id.toLowerCase() || 
+        if (headingGeneratedId.toLowerCase() === id.toLowerCase() ||
             (typeof decoded !== 'undefined' && headingGeneratedId.toLowerCase() === decoded.toLowerCase())) {
           return heading;
         }
       }
-      
+
       return null;
     }
-    
+
     window.scrollToAnchor = function(hash, smooth = true) {
       if (!hash) return false;
-      
+
       // Remove the # character
       const id = hash.replace(/^#/, '');
       if (!id) return false;
-      
+
       const element = findElementById(id);
-      
+
       if (element) {
         // Scroll to the element
         if (smooth && 'scrollBehavior' in document.documentElement.style) {
-          element.scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'start' 
+          element.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
           });
         } else {
           element.scrollIntoView();
         }
-        
+
         // Update URL hash (use the element's actual ID)
         try {
           if (history.replaceState) {
@@ -574,7 +497,7 @@ if (typeof window !== 'undefined') {
         } catch (e) {
           console.warn('Could not update history:', e);
         }
-        
+
         return true;
       } else {
         console.warn('Anchor element not found for hash:', hash, 'id:', id);
@@ -589,18 +512,18 @@ if (typeof window !== 'undefined') {
       if (window._zenAnchorClickHandler) {
         container.removeEventListener('click', window._zenAnchorClickHandler);
       }
-      
+
       // Add new listener
       window._zenAnchorClickHandler = function(event) {
         let target = event.target;
         while (target && target !== container) {
-          if (target.tagName === 'A' && 
+          if (target.tagName === 'A' &&
               target.classList.contains('internal-anchor-link')) {
             const href = target.getAttribute('href');
             if (href && href.startsWith('#')) {
               event.preventDefault();
               event.stopPropagation();
-              
+
               window.scrollToAnchor(href);
               return false;
             }
@@ -608,21 +531,21 @@ if (typeof window !== 'undefined') {
           target = target.parentElement;
         }
       };
-      
+
       container.addEventListener('click', window._zenAnchorClickHandler);
     };
 
     // Setup on load
     window.addEventListener('DOMContentLoaded', function() {
       window.setupAnchorLinks();
-      
+
       if (window.location.hash) {
         setTimeout(() => {
           window.scrollToAnchor(window.location.hash);
         }, 100);
       }
     });
-    
+
     // Re-setup on navigation
     window.addEventListener('navigate', function() {
       setTimeout(() => {
