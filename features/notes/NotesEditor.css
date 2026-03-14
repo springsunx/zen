@@ -280,9 +280,8 @@
     }
 
     a {
-        color: var(--neutral-500);
+        color: #0366d6;
         text-decoration: none;
-        border-bottom: 1px dashed var(--neutral-500);
     }
     
     a:hover {
