@@ -3,6 +3,7 @@ import Sidebar from '../../commons/components/Sidebar.jsx';
 import NotesList from './NotesList.jsx';
 import NotesEditor from './NotesEditor.jsx';
 import MobileNavbar from '../../commons/components/MobileNavbar.jsx';
+import RightSideToc from "./RightSideToc.jsx";
 import ApiClient from "../../commons/http/ApiClient.js";
 import isMobile from "../../commons/utils/isMobile.js";
 import useSearchParams from "../../commons/components/useSearchParams.jsx";
@@ -42,6 +43,7 @@ function NotesPageContent({ noteId }) {
     resetPagination
   } = useNotes();
 
+const [isEditorEditable, setIsEditorEditable] = useState(false);
   const searchParams = useSearchParams();
   const selectedTagId = searchParams.get("tagId");
   const selectedFocusId = searchParams.get("focusId");
@@ -160,9 +162,10 @@ function NotesPageContent({ noteId }) {
       </div>
 
       <div className={editorClassName}>
-        <NotesEditor isNewNote={noteId === "new"} key={selectedNote?.noteId} />
+        <NotesEditor isNewNote={noteId === "new"} onEditModeChange={setIsEditorEditable} key={selectedNote?.noteId} />
       </div>
 
+      <RightSideToc content={selectedNote?.content || ""} isEditable={isEditorEditable} isNewNote={noteId === "new"} />
       <MobileNavbar />
 
       <div className="note-modal-root"></div>

@@ -304,3 +304,25 @@ svg.lucide {
         transition: transform var(--transition-fast) ease-out;
     }
 }
+/* Layout adjustments for right side table of contents */
+body.has-right-toc .page-container {
+  padding-right: 220px;
+}
+
+body.has-right-toc .notes-editor-container {
+  flex: 1;
+  min-width: 0; /* 允许flex项收缩 */
+}
+
+/* Responsive adjustments */
+@media screen and (max-width: 1200px) {
+  body.has-right-toc .page-container {
+    padding-right: 200px;
+  }
+}
+
+@media screen and (max-width: 1024px) {
+  body.has-right-toc .page-container {
+    padding-right: 0;
+  }
+}

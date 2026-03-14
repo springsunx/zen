@@ -20,7 +20,7 @@ import useMarkdownFormatter from "./useMarkdownFormatter.js";
 import "./NotesEditor.css";
 import { CloseIcon, SidebarCloseIcon, SidebarOpenIcon, BackIcon } from "../../commons/components/Icon.jsx";
 
-export default function NotesEditor({ isNewNote, isFloating, onClose }) {
+export default function NotesEditor({ isNewNote, isFloating, onClose, onEditModeChange = () => {} }) {
   const { selectedNote, handleNoteChange, handlePinToggle } = useNotes();
 
   if (!isNewNote && selectedNote === null) {
@@ -29,6 +29,9 @@ export default function NotesEditor({ isNewNote, isFloating, onClose }) {
 
   const [isEditable, setIsEditable] = useState(isNewNote);
   const [title, setTitle] = useState(selectedNote?.title || "");
+  useEffect(() => {
+    onEditModeChange(isEditable);
+  }, [isEditable, onEditModeChange]);
   const [content, setContent] = useState(selectedNote?.content || "");
   const [tags, setTags] = useState(selectedNote?.tags || []);
   const [isSaveLoading, setIsSaveLoading] = useState(false);
