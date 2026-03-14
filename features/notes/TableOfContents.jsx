@@ -161,6 +161,18 @@ function extractCustomId(text) {
   return { cleanedText: text.trim(), customId: null };
 }
 
+// 清理Markdown链接，提取链接文本
+function cleanMarkdownLinks(text) {
+  if (!text) return text;
+  
+  // 匹配 [text](url) 或 [text](url "title")
+  // 使用非贪婪匹配，处理多个链接
+  const linkRegex = /\[([^\]]+?)\]\([^)]+\)/g;
+  
+  // 替换所有Markdown链接为链接文本
+  return text.replace(linkRegex, '$1').trim();
+}
+
 function extractHeadings(content) {
   if (content === '') {
     return [];
@@ -199,6 +211,8 @@ function extractHeadings(content) {
       // Extract custom ID and clean the text
       const { cleanedText } = extractCustomId(text);
       text = cleanedText;
+      // 清理Markdown链接
+      text = cleanMarkdownLinks(text);
       headings.push({ text, level, index: headingIndex });
       headingIndex++;
     }
