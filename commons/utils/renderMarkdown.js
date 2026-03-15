@@ -1,55 +1,55 @@
 // Helper function to generate ID from heading text
 function generateId(text) {
   if (!text) return '';
-  
+
   // 非常简单的ID生成：只替换空格为连字符，不移除任何字符
   // HTML ID规范允许大部分Unicode字符
   let processed = text.trim();
-  
+
   // 转换为小写以实现大小写不敏感匹配
   processed = processed.toLowerCase();
-  
+
   // 将连续的空格转换为单个连字符
   processed = processed.replace(/\s+/g, '-');
-  
+
   // 确保不以连字符开头或结尾
   processed = processed.replace(/^-+/, '').replace(/-+$/, '');
-  
+
   return processed || 'heading';
 }
 
 // Clean custom ID: replace spaces with hyphens, remove invalid characters
 function cleanCustomId(id) {
   if (!id) return '';
-  
+
   let cleaned = id.trim();
-  
+
   // Replace spaces and underscores with hyphens
   cleaned = cleaned.replace(/[\s_]+/g, '-');
-  
+
   // Remove characters that are problematic for HTML IDs
   // HTML ID can contain letters, digits, hyphens, underscores, colons, and periods
   // We'll be more permissive and keep most Unicode characters
   // But remove control characters and certain special chars
   cleaned = cleaned.replace(/[\x00-\x1F\x7F]/g, ''); // Control chars
   cleaned = cleaned.replace(/[<>"']/g, ''); // HTML special chars
-  
+
   // Ensure it doesn't start with a digit (HTML4 restriction, but HTML5 allows it)
   // We'll keep it as-is for now
-  
+
   // Remove leading/trailing hyphens and dots
   cleaned = cleaned.replace(/^[-.]+/, '').replace(/[-.]+$/, '');
-  
+
   // Collapse multiple hyphens
   cleaned = cleaned.replace(/-+/g, '-');
-  
+
   return cleaned || '';
 }
 
 // Extract custom ID from heading text (e.g., "Title {#custom-id}")
 function extractCustomId(text) {
   if (!text) return { cleanedText: text, customId: null };
-  
+
   // Match {#custom-id} at the end of the text
   // Allow optional spaces before the pattern
   const match = text.match(/\s*\{#([^}]+)\}\s*$/);
@@ -65,7 +65,7 @@ function extractCustomId(text) {
     const cleanedText = text.substring(0, match.index).trim();
     return { cleanedText, customId };
   }
-  
+
   return { cleanedText: text.trim(), customId: null };
 }
 
@@ -77,7 +77,7 @@ export default function renderMarkdown(text) {
     button.innerText = 'Copied!';
     setTimeout(() => { button.innerText = originalText; }, 2000);
   }
-  
+
   function copyToClipboardTraditional(text, button) {
     const textArea = document.createElement('textarea');
     textArea.value = text;
@@ -91,10 +91,10 @@ export default function renderMarkdown(text) {
     textArea.style.outline = 'none';
     textArea.style.boxShadow = 'none';
     textArea.style.background = 'transparent';
-    
+
     document.body.appendChild(textArea);
     textArea.select();
-    
+
     try {
       const successful = document.execCommand('copy');
       if (successful) {
@@ -121,13 +121,13 @@ export default function renderMarkdown(text) {
         console.error('Copy function called in non-browser environment');
         return;
       }
-      
+
       const codeBlock = button.closest('.code-block-wrapper');
       if (!codeBlock) return;
       const codeElement = codeBlock.querySelector('.code-block-content');
       if (!codeElement) return;
       const code = codeElement.innerText || codeElement.textContent;
-      
+
       // 使用传统的document.execCommand方法
       copyToClipboardTraditional(code, button);
     };
@@ -150,25 +150,25 @@ export default function renderMarkdown(text) {
   // Load and use mdit plugins if available
   const plugins = {
     alert: window.mdItPluginAlert?.alert,
-    katex: window.mdItPluginKatex?.katex,
-    imgSize: window.mdItPluginImgSize?.imgSize,
-    //footnote: window.mdItPluginFootnote?.footnote,
+    attrs: window.mdItPluginAttrs?.attrs,
+    dl: window.mdItPluginDl?.dl,
     fullEmoji: window.mdItPluginEmoji?.fullEmoji,
-    sub: window.mdItPluginSub?.sub,
-    sup: window.mdItPluginSup?.sup,
+    imgSize: window.mdItPluginImgSize?.imgSize,
     ins: window.mdItPluginIns?.ins,
     mark: window.mdItPluginMark?.mark,
-    //abbr: window.mdItPluginAbbr?.abbr,
-    dl: window.mdItPluginDl?.dl,
+    sub: window.mdItPluginSub?.sub,
+    sup: window.mdItPluginSup?.sup,
     tasklist: window.mdItPluginTasklist?.tasklist,
+    katex: window.mdItPluginKatex?.katex,
+    //abbr: window.mdItPluginAbbr?.abbr,
+    //align: window.mdItPluginAlign?.align,
+    //footnote: window.mdItPluginFootnote?.footnote,
     //spoiler: window.mdItPluginSpoiler?.spoiler,
     //ruby: window.mdItPluginRuby?.ruby,
     //tab: window.mdItPluginTab?.tab,
-    //align: window.mdItPluginAlign?.align,
-    //attrs: window.mdItPluginAttrs?.attrs,
     //figure: window.mdItPluginFigure?.figure,
   };
-  
+
   Object.entries(plugins).forEach(([name, plugin]) => {
     switch (name) {
       case 'alert':
@@ -211,7 +211,7 @@ export default function renderMarkdown(text) {
 
   md.renderer.rules.heading_open = function(tokens, idx, options, env, self) {
     const token = tokens[idx];
-    
+
     // Find the inline token with heading content
     let headingInlineToken = null;
     let headingText = '';
@@ -226,26 +226,26 @@ export default function renderMarkdown(text) {
     if (headingText && headingInlineToken) {
       // Extract custom ID if present
       const { cleanedText, customId } = extractCustomId(headingText);
-      
+
       if (customId) {
         // Set custom ID on the heading
         token.attrSet('id', customId);
-        
+
         // Update the inline token content
         headingInlineToken.content = cleanedText;
-        
+
         // Clean up children tokens to remove the {#...} pattern
         if (headingInlineToken.children) {
           // Find and remove text tokens that contain only the custom ID pattern
           // or trim the pattern from text tokens
           const newChildren = [];
           let foundCustomId = false;
-          
+
           for (const child of headingInlineToken.children) {
             if (child.type === 'text') {
               // Try to extract custom ID from this text token
               const { cleanedText: childCleanedText, customId: childCustomId } = extractCustomId(child.content);
-              
+
               if (childCustomId) {
                 // This text token contains the custom ID pattern
                 if (childCleanedText) {
@@ -264,14 +264,14 @@ export default function renderMarkdown(text) {
               newChildren.push(child);
             }
           }
-          
+
           // If we removed all children (unlikely), add an empty text token
           if (newChildren.length === 0) {
             newChildren.push({ type: 'text', content: '' });
           }
-          
+
           headingInlineToken.children = newChildren;
-          
+
           // Also ensure the inline token content matches the cleaned text
           headingInlineToken.content = cleanedText;
         }
@@ -310,7 +310,7 @@ export default function renderMarkdown(text) {
         token.attrPush(['class', 'internal-anchor-link']);
         // Add data attribute
         token.attrPush(['data-anchor-link', 'true']);
-        
+
         // Note: markdown-it will URL encode the href
         // We'll handle this in the scrollToAnchor function
       } else {
@@ -329,7 +329,7 @@ if (typeof window !== 'undefined') {
   // Initialize only once
   if (!window._zenAnchorInitialized) {
     window._zenAnchorInitialized = true;
-    
+
     // Simple ID generation (same as above)
     window.generateHeadingId = function(text) {
       if (!text) return '';
@@ -340,7 +340,7 @@ if (typeof window !== 'undefined') {
       processed = processed.replace(/^-+/, '').replace(/-+$/, '');
       return processed || 'heading';
     };
-    
+
     // Clean custom ID (same as above)
     window.cleanCustomId = function(id) {
       if (!id) return '';
@@ -352,7 +352,7 @@ if (typeof window !== 'undefined') {
       cleaned = cleaned.replace(/-+/g, '-');
       return cleaned || '';
     };
-    
+
     // Function to extract custom ID (same as above)
     window.extractCustomId = function(text) {
       if (!text) return { cleanedText: text, customId: null };
@@ -368,7 +368,7 @@ if (typeof window !== 'undefined') {
       }
       return { cleanedText: text.trim(), customId: null };
     };
-    
+
     // Decode URL encoded string
     function decodeHash(hash) {
       if (!hash) return '';
@@ -379,15 +379,15 @@ if (typeof window !== 'undefined') {
         return withoutHash;
       }
     }
-    
+
     // Find element by ID, trying multiple variations
         function findElementById(id) {
       if (!id) return null;
-      
+
       // 1. Try exact match first (case-sensitive)
       let element = document.getElementById(id);
       if (element) return element;
-      
+
       // 2. Try case-insensitive match
       // Find all elements with ID and compare case-insensitively
       const allElements = document.querySelectorAll('[id]');
@@ -396,26 +396,26 @@ if (typeof window !== 'undefined') {
           return elem;
         }
       }
-      
+
       // 3. Try decoding URL encoding
       try {
         const decoded = decodeURIComponent(id);
         // Try case-sensitive match with decoded
         element = document.getElementById(decoded);
         if (element) return element;
-        
+
         // Try case-insensitive match with decoded
         for (const elem of allElements) {
           if (elem.id && elem.id.toLowerCase() === decoded.toLowerCase()) {
             return elem;
           }
         }
-        
+
         // 4. Try with our ID generation (case-insensitive)
         const generatedId = window.generateHeadingId(decoded);
         element = document.getElementById(generatedId);
         if (element) return element;
-        
+
         // Case-insensitive match with generated ID
         for (const elem of allElements) {
           if (elem.id && elem.id.toLowerCase() === generatedId.toLowerCase()) {
@@ -425,12 +425,12 @@ if (typeof window !== 'undefined') {
       } catch (e) {
         // Ignore decoding errors
       }
-      
+
       // 5. Try with our ID generation on original
       const generatedId = window.generateHeadingId(id);
       element = document.getElementById(generatedId);
       if (element) return element;
-      
+
       // Case-insensitive match with generated ID on original
       const allElements2 = document.querySelectorAll('[id]');
       for (const elem of allElements2) {
@@ -438,7 +438,7 @@ if (typeof window !== 'undefined') {
           return elem;
         }
       }
-      
+
       // 6. Last resort: search all headings with text matching (case-insensitive)
       const allHeadings = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
       for (const heading of allHeadings) {
@@ -446,7 +446,7 @@ if (typeof window !== 'undefined') {
         if (heading.id && heading.id.toLowerCase() === id.toLowerCase()) {
           return heading;
         }
-        
+
         // Try with decoded
         try {
           const decoded = decodeURIComponent(id);
@@ -456,38 +456,38 @@ if (typeof window !== 'undefined') {
         } catch (e) {
           // Ignore decoding errors
         }
-        
+
         // Try with generated ID from text content
         const headingGeneratedId = window.generateHeadingId(heading.textContent);
-        if (headingGeneratedId.toLowerCase() === id.toLowerCase() || 
+        if (headingGeneratedId.toLowerCase() === id.toLowerCase() ||
             (typeof decoded !== 'undefined' && headingGeneratedId.toLowerCase() === decoded.toLowerCase())) {
           return heading;
         }
       }
-      
+
       return null;
     }
-    
+
     window.scrollToAnchor = function(hash, smooth = true) {
       if (!hash) return false;
-      
+
       // Remove the # character
       const id = hash.replace(/^#/, '');
       if (!id) return false;
-      
+
       const element = findElementById(id);
-      
+
       if (element) {
         // Scroll to the element
         if (smooth && 'scrollBehavior' in document.documentElement.style) {
-          element.scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'start' 
+          element.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
           });
         } else {
           element.scrollIntoView();
         }
-        
+
         // Update URL hash (use the element's actual ID)
         try {
           if (history.replaceState) {
@@ -498,7 +498,7 @@ if (typeof window !== 'undefined') {
         } catch (e) {
           console.warn('Could not update history:', e);
         }
-        
+
         return true;
       } else {
         console.warn('Anchor element not found for hash:', hash, 'id:', id);
@@ -513,18 +513,18 @@ if (typeof window !== 'undefined') {
       if (window._zenAnchorClickHandler) {
         container.removeEventListener('click', window._zenAnchorClickHandler);
       }
-      
+
       // Add new listener
       window._zenAnchorClickHandler = function(event) {
         let target = event.target;
         while (target && target !== container) {
-          if (target.tagName === 'A' && 
+          if (target.tagName === 'A' &&
               target.classList.contains('internal-anchor-link')) {
             const href = target.getAttribute('href');
             if (href && href.startsWith('#')) {
               event.preventDefault();
               event.stopPropagation();
-              
+
               window.scrollToAnchor(href);
               return false;
             }
@@ -532,21 +532,21 @@ if (typeof window !== 'undefined') {
           target = target.parentElement;
         }
       };
-      
+
       container.addEventListener('click', window._zenAnchorClickHandler);
     };
 
     // Setup on load
     window.addEventListener('DOMContentLoaded', function() {
       window.setupAnchorLinks();
-      
+
       if (window.location.hash) {
         setTimeout(() => {
           window.scrollToAnchor(window.location.hash);
         }, 100);
       }
     });
-    
+
     // Re-setup on navigation
     window.addEventListener('navigate', function() {
       setTimeout(() => {
