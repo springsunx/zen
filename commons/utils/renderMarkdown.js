@@ -126,18 +126,61 @@ export default function renderMarkdown(text) {
     sup: window.mdItPluginSup?.sup,
     tasklist: window.mdItPluginTasklist?.tasklist,
     katex: window.mdItPluginKatex?.katex,
+    container: window.mdItPluginContainer?.container,
   };
   
-  Object.values(plugins).forEach(plugin => {
-    if (plugin) {
-      try {
-        md.use(plugin);
-      } catch (err) {
-        console.warn('Plugin load failed:', err);
-      }
+  // 通用插件注册
+  
+  Object.entries(plugins).forEach(([name, plugin]) => {
+    if (!plugin) return;
+    try {
+      if (name !== 'container') { md.use(plugin); }
+    } catch (err) {
+      console.warn(`Plugin load failed: ${name}`, err);
     }
   });
-  
+
+  // 容器插件注册（支持：info, warning, danger, success, tip, note, details）
+  if (plugins.container) {
+    const container = plugins.container;
+    const types = ['info', 'warning', 'danger', 'success', 'tip', 'note'];
+    types.forEach(type => {
+      try {
+        md.use(container, type, {
+          render(tokens, idx) {
+            const token = tokens[idx];
+            const info = token.info.trim().slice(type.length).trim();
+            if (token.nesting === 1) {
+              const title = info ? md.utils.escapeHtml(info) : type.toUpperCase();
+              return `<div class="md-container md-container-${type}"><div class="md-container-title">${title}</div><div class="md-container-body">`;
+            } else {
+              return `</div></div>`;
+            }
+          }
+        });
+      } catch (err) {
+        console.warn(`Container type failed: ${type}`, err);
+      }
+    });
+    try {
+      md.use(container, 'details', {
+        render(tokens, idx) {
+          const token = tokens[idx];
+          const info = token.info.trim().slice('details'.length).trim();
+          if (token.nesting === 1) {
+            const summary = info ? md.utils.escapeHtml(info) : 'Details';
+            return `<details class="md-container md-container-details"><summary>${summary}</summary><div class="md-container-body">`;
+          } else {
+            return `</div></details>`;
+          }
+        }
+      });
+    } catch (err) {
+      console.warn('Container type failed: details', err);
+    }
+  }
+
+
   // ========== 自定义渲染规则 ==========
   
   // 1. 代码块：添加复制按钮

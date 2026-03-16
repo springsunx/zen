@@ -1,0 +1,121 @@
+/* plugin-container.css: Minimal banner-style containers for mdit containers */
+
+/* Base banner + details summary share the same look */
+.md-container,
+.md-container-details summary {
+  /* defaults (info/note) */
+  --mc-bg: var(--neutral-50);
+  --mc-fg: var(--neutral-900);
+  --mc-icon: 'i';
+  --mc-icon-bg: var(--neutral-500);
+  --mc-icon-fg: var(--neutral-50);
+
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 10px;
+  background-color: var(--mc-bg, #FAFAFA) !important;
+  color: var(--mc-fg, #171717);
+  margin: 8px 0;
+  box-shadow: none;
+  box-sizing: border-box;
+  cursor: default;
+}
+
+/* Unified leading circle icon */
+.md-container::before,
+.md-container-details summary::before {
+  content: var(--mc-icon);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1;
+  background-color: var(--mc-icon-bg, var(--neutral-500, #737373));
+  color: var(--mc-icon-fg, var(--neutral-50, #FAFAFA));
+  flex-shrink: 0;
+}
+
+/* Content area */
+.md-container .md-container-title { display: none; }
+.md-container .md-container-body { padding: 0; margin: 0; flex: 1; }
+.md-container-details .md-container-body { padding: 10px 14px; }
+.md-container-details summary { list-style: none; }
+.md-container-details summary::marker { content: ''; }
+
+/* Variants override only variables */
+.md-container-info,
+.md-container-note {
+  --mc-bg: #F5F5F5;
+  --mc-fg: #111827;
+  --mc-icon: i;
+  --mc-icon-bg: #737373;
+  --mc-icon-fg: #FFFFFF;
+}
+
+
+.md-container-tip {
+  --mc-bg: #EFF6FF;
+  --mc-fg: #111827;
+  --mc-icon: ?;
+  --mc-icon-bg: #2563EB;
+  --mc-icon-fg: #FFFFFF;
+}
+
+
+.md-container-success {
+  --mc-bg: #F0FDF4;
+  --mc-fg: #111827;
+  --mc-icon: ✓;
+  --mc-icon-bg: #16A34A;
+  --mc-icon-fg: #FFFFFF;
+}
+
+
+.md-container-warning {
+  --mc-bg: #FFFBEB;
+  --mc-fg: #111827;
+  --mc-icon: !;
+  --mc-icon-bg: #EAB308;
+  --mc-icon-fg: #111827;
+}
+
+
+.md-container-danger {
+  --mc-bg: #FEF2F2;
+  --mc-fg: #111827;
+  --mc-icon: ✕;
+  --mc-icon-bg: #DC2626;
+  --mc-icon-fg: #FFFFFF;
+}
+
+
+/* Minimal dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+  .md-container,
+  .md-container-details summary { --mc-fg: var(--neutral-100); }
+  .md-container-info,
+  .md-container-note { --mc-bg: var(--neutral-800); }
+  .md-container-tip    { --mc-bg: color-mix(in srgb, var(--blue-600) 18%, transparent); }
+  .md-container-success{ --mc-bg: color-mix(in srgb, var(--green-600) 18%, transparent); }
+  .md-container-warning{ --mc-bg: color-mix(in srgb, var(--yellow-600) 22%, transparent); }
+  .md-container-danger { --mc-bg: color-mix(in srgb, var(--red-600) 18%, transparent); }
+}
+
+/* Explicit theme override hook if you use [data-theme="dark"] */
+[data-theme="dark"] .md-container,
+[data-theme="dark"] .md-container-details summary { --mc-fg: var(--neutral-100); }
+/* Explicit icon content per variant to ensure cross-browser rendering */
+.md-container-info::before,
+.md-container-note::before { content: "i"; }
+.md-container-tip::before { content: "?"; }
+.md-container-success::before { content: "\2713"; /* ✓ */ }
+.md-container-warning::before { content: "!"; }
+.md-container-danger::before { content: "\2715"; /* ✕ */ }
