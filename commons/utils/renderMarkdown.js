@@ -1,106 +1,71 @@
-// Helper function to generate ID from heading text
+// =============================================
+// Markdown渲染器 - 简洁重构版
+// 功能完整：标题ID生成、自定义ID提取、代码块复制、锚链接处理
+// =============================================
+
+// 辅助函数：生成标题ID
 function generateId(text) {
   if (!text) return '';
-
-  // 非常简单的ID生成：只替换空格为连字符，不移除任何字符
-  // HTML ID规范允许大部分Unicode字符
-  let processed = text.trim();
-
-  // 转换为小写以实现大小写不敏感匹配
-  processed = processed.toLowerCase();
-
-  // 将连续的空格转换为单个连字符
-  processed = processed.replace(/\s+/g, '-');
-
-  // 确保不以连字符开头或结尾
-  processed = processed.replace(/^-+/, '').replace(/-+$/, '');
-
-  return processed || 'heading';
+  return text.trim()
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/^-+/, '')
+    .replace(/-+$/, '') || 'heading';
 }
 
-// Clean custom ID: replace spaces with hyphens, remove invalid characters
+// 辅助函数：清理自定义ID
 function cleanCustomId(id) {
   if (!id) return '';
-
-  let cleaned = id.trim();
-
-  // Replace spaces and underscores with hyphens
-  cleaned = cleaned.replace(/[\s_]+/g, '-');
-
-  // Remove characters that are problematic for HTML IDs
-  // HTML ID can contain letters, digits, hyphens, underscores, colons, and periods
-  // We'll be more permissive and keep most Unicode characters
-  // But remove control characters and certain special chars
-  cleaned = cleaned.replace(/[\x00-\x1F\x7F]/g, ''); // Control chars
-  cleaned = cleaned.replace(/[<>"']/g, ''); // HTML special chars
-
-  // Ensure it doesn't start with a digit (HTML4 restriction, but HTML5 allows it)
-  // We'll keep it as-is for now
-
-  // Remove leading/trailing hyphens and dots
-  cleaned = cleaned.replace(/^[-.]+/, '').replace(/[-.]+$/, '');
-
-  // Collapse multiple hyphens
-  cleaned = cleaned.replace(/-+/g, '-');
-
-  return cleaned || '';
+  
+  return id.trim()
+    .replace(/[\s_]+/g, '-')
+    .replace(/[\x00-\x1F\x7F<>"']/g, '')  // 移除控制字符和HTML特殊字符
+    .replace(/^[-.]+/, '')
+    .replace(/[-.]+$/, '')
+    .replace(/-+/g, '-') || '';
 }
 
-// Extract custom ID from heading text (e.g., "Title {#custom-id}")
+// 辅助函数：从标题文本提取自定义ID（例如 "标题 {#custom-id}"）
 function extractCustomId(text) {
   if (!text) return { cleanedText: text, customId: null };
-
-  // Match {#custom-id} at the end of the text
-  // Allow optional spaces before the pattern
+  
   const match = text.match(/\s*\{#([^}]+)\}\s*$/);
-  if (match) {
-    let customId = match[1].trim();
-    // Clean the custom ID
-    customId = cleanCustomId(customId);
-    if (!customId) {
-      // If cleaned ID is empty, treat as no custom ID
-      return { cleanedText: text.trim(), customId: null };
-    }
-    // Remove the custom ID pattern from the text
-    const cleanedText = text.substring(0, match.index).trim();
-    return { cleanedText, customId };
-  }
-
-  return { cleanedText: text.trim(), customId: null };
+  if (!match) return { cleanedText: text.trim(), customId: null };
+  
+  const customId = cleanCustomId(match[1].trim());
+  if (!customId) return { cleanedText: text.trim(), customId: null };
+  
+  const cleanedText = text.substring(0, match.index).trim();
+  return { cleanedText, customId };
 }
 
-export default function renderMarkdown(text) {
-
-  // 辅助函数定义
+// 辅助函数：复制代码到剪贴板
+function createCopyHandler() {
+  if (typeof window.copyCodeToClipboard === 'function') return;
+  
   function showCopyFeedback(button) {
     const originalText = button.innerText;
     button.innerText = 'Copied!';
     setTimeout(() => { button.innerText = originalText; }, 2000);
   }
-
-  function copyToClipboardTraditional(text, button) {
+  
+  function copyToClipboard(text, button) {
     const textArea = document.createElement('textarea');
     textArea.value = text;
-    textArea.style.position = 'fixed';
-    textArea.style.top = '0';
-    textArea.style.left = '0';
-    textArea.style.width = '2em';
-    textArea.style.height = '2em';
-    textArea.style.padding = '0';
-    textArea.style.border = 'none';
-    textArea.style.outline = 'none';
-    textArea.style.boxShadow = 'none';
-    textArea.style.background = 'transparent';
-
+    Object.assign(textArea.style, {
+      position: 'fixed', top: '0', left: '0',
+      width: '2em', height: '2em', padding: '0',
+      border: 'none', outline: 'none', boxShadow: 'none',
+      background: 'transparent'
+    });
+    
     document.body.appendChild(textArea);
     textArea.select();
-
+    
     try {
-      const successful = document.execCommand('copy');
-      if (successful) {
+      if (document.execCommand('copy')) {
         showCopyFeedback(button);
       } else {
-        console.error('Copy failed');
         button.innerText = 'Copy failed';
         setTimeout(() => { button.innerText = 'Copy'; }, 2000);
       }
@@ -112,42 +77,43 @@ export default function renderMarkdown(text) {
       document.body.removeChild(textArea);
     }
   }
+  
+  window.copyCodeToClipboard = function(button) {
+    if (typeof document === 'undefined') return;
+    
+    const codeBlock = button.closest('.code-block-wrapper');
+    const codeElement = codeBlock?.querySelector('.code-block-content');
+    const code = codeElement?.innerText || codeElement?.textContent || '';
+    
+    copyToClipboard(code, button);
+  };
+}
 
-  // 复制函数定义
-  if (typeof window.copyCodeToClipboard !== 'function') {
-    window.copyCodeToClipboard = function(button) {
-      // 检查是否在浏览器环境中
-      if (typeof document === 'undefined' || typeof window === 'undefined') {
-        console.error('Copy function called in non-browser environment');
-        return;
-      }
-
-      const codeBlock = button.closest('.code-block-wrapper');
-      if (!codeBlock) return;
-      const codeElement = codeBlock.querySelector('.code-block-content');
-      if (!codeElement) return;
-      const code = codeElement.innerText || codeElement.textContent;
-
-      // 使用传统的document.execCommand方法
-      copyToClipboardTraditional(code, button);
-    };
+// 主函数：渲染Markdown
+export default function renderMarkdown(text) {
+  // 确保复制处理器已初始化
+  if (typeof window !== 'undefined') {
+    createCopyHandler();
   }
-
+  
+  // 配置markdown-it
   const md = window.markdownit({
     html: true,
     linkify: true,
     breaks: true,
     highlight: function (str, lang) {
-      if (lang && window.hljs.getLanguage(lang)) {
+      if (lang && window.hljs?.getLanguage(lang)) {
         try {
           return window.hljs.highlight(str, { language: lang }).value;
-        } catch (__) { }
+        } catch (err) {
+          console.warn('Code highlight failed:', err);
+        }
       }
       return '';
     }
-  })
-
-  // Load and use mdit plugins if available
+  });
+  
+  // 加载可用插件
   const plugins = {
     alert: window.mdItPluginAlert?.alert,
     attrs: window.mdItPluginAttrs?.attrs,
@@ -160,398 +126,252 @@ export default function renderMarkdown(text) {
     sup: window.mdItPluginSup?.sup,
     tasklist: window.mdItPluginTasklist?.tasklist,
     katex: window.mdItPluginKatex?.katex,
-    //abbr: window.mdItPluginAbbr?.abbr,
-    //align: window.mdItPluginAlign?.align,
-    //footnote: window.mdItPluginFootnote?.footnote,
-    //spoiler: window.mdItPluginSpoiler?.spoiler,
-    //ruby: window.mdItPluginRuby?.ruby,
-    //tab: window.mdItPluginTab?.tab,
-    //figure: window.mdItPluginFigure?.figure,
   };
-
-  Object.entries(plugins).forEach(([name, plugin]) => {
-    switch (name) {
-      case 'alert':
-        // 可对 katex 插件传入额外参数
+  
+  Object.values(plugins).forEach(plugin => {
+    if (plugin) {
+      try {
         md.use(plugin);
-        break;
-      default:
-        try {
-          md.use(plugin);
-        } catch (err) {
-          console.warn(`Failed to apply plugin "${name}":`, err);
-        }
+      } catch (err) {
+        console.warn('Plugin load failed:', err);
+      }
     }
-});
-
-  // 为代码块添加复制按钮
-  const defaultFenceRender = md.renderer.rules.fence || function(tokens, idx, options, env, self) {
-    return self.renderToken(tokens, idx, options);
-  };
+  });
+  
+  // ========== 自定义渲染规则 ==========
+  
+  // 1. 代码块：添加复制按钮
+  const originalFenceRender = md.renderer.rules.fence || 
+    ((tokens, idx, options, env, self) => self.renderToken(tokens, idx, options));
+  
   md.renderer.rules.fence = function(tokens, idx, options, env, self) {
     const token = tokens[idx];
-    const lang = token.info ? token.info.trim() : '';
-    const highlighted = defaultFenceRender(tokens, idx, options, env, self);
-    // 返回包装后的HTML
-    return '<div class="code-block-wrapper">' +
-           '<div class="code-block-header">' +
-           '<button class="copy-code-button" onclick="window.copyCodeToClipboard(this)">Copy</button>' +
-           (lang ? '<span class="code-block-lang">' + lang + '</span>' : '') +
-           '</div>' +
-           '<div class="code-block-content">' +
-           highlighted +
-           '</div>' +
-           '</div>';
+    const lang = token.info?.trim() || '';
+    const highlighted = originalFenceRender(tokens, idx, options, env, self);
+    
+    return `<div class="code-block-wrapper">
+      <div class="code-block-header">
+        <button class="copy-code-button" onclick="window.copyCodeToClipboard(this)">Copy</button>
+        ${lang ? `<span class="code-block-lang">${lang}</span>` : ''}
+      </div>
+      <div class="code-block-content">${highlighted}</div>
+    </div>`;
   };
-
-  // Generate IDs for headings
-  const originalHeadingOpen = md.renderer.rules.heading_open || function(tokens, idx, options, env, self) {
-    return self.renderToken(tokens, idx, options);
-  };
-
+  
+  // 2. 标题：生成ID（支持自定义ID语法）
+  const originalHeadingOpen = md.renderer.rules.heading_open ||
+    ((tokens, idx, options, env, self) => self.renderToken(tokens, idx, options));
+  
   md.renderer.rules.heading_open = function(tokens, idx, options, env, self) {
     const token = tokens[idx];
-
-    // Find the inline token with heading content
-    let headingInlineToken = null;
+    
+    // 查找标题内容
     let headingText = '';
+    let inlineToken = null;
+    
     for (let i = idx + 1; i < tokens.length && tokens[i].type !== 'heading_close'; i++) {
       if (tokens[i].type === 'inline') {
-        headingInlineToken = tokens[i];
-        headingText = headingInlineToken.content;
+        inlineToken = tokens[i];
+        headingText = inlineToken.content;
         break;
       }
     }
-
-    if (headingText && headingInlineToken) {
-      // Extract custom ID if present
+    
+    if (headingText && inlineToken) {
       const { cleanedText, customId } = extractCustomId(headingText);
-
-      if (customId) {
-        // Set custom ID on the heading
-        token.attrSet('id', customId);
-
-        // Update the inline token content
-        headingInlineToken.content = cleanedText;
-
-        // Clean up children tokens to remove the {#...} pattern
-        if (headingInlineToken.children) {
-          // Find and remove text tokens that contain only the custom ID pattern
-          // or trim the pattern from text tokens
-          const newChildren = [];
-          let foundCustomId = false;
-
-          for (const child of headingInlineToken.children) {
-            if (child.type === 'text') {
-              // Try to extract custom ID from this text token
-              const { cleanedText: childCleanedText, customId: childCustomId } = extractCustomId(child.content);
-
-              if (childCustomId) {
-                // This text token contains the custom ID pattern
-                if (childCleanedText) {
-                  // There's still some text before the pattern, keep it
-                  child.content = childCleanedText;
-                  newChildren.push(child);
-                }
-                // If childCleanedText is empty, we skip this token entirely
-                foundCustomId = true;
-              } else {
-                // No custom ID in this text token
-                newChildren.push(child);
-              }
-            } else {
-              // Keep non-text tokens (bold, italic, etc.)
-              newChildren.push(child);
-            }
-          }
-
-          // If we removed all children (unlikely), add an empty text token
-          if (newChildren.length === 0) {
-            newChildren.push({ type: 'text', content: '' });
-          }
-
-          headingInlineToken.children = newChildren;
-
-          // Also ensure the inline token content matches the cleaned text
-          headingInlineToken.content = cleanedText;
-        }
-      } else {
-        // Check if id already exists (should not happen for headings)
-        const existingId = token.attrs ? token.attrs.find(attr => attr[0] === 'id') : null;
-        if (!existingId) {
-          // Generate automatic ID
-          const id = generateId(headingText);
-          if (id) {
-            token.attrSet('id', id);
+      const id = customId || generateId(headingText);
+      
+      if (id && !token.attrs?.find(attr => attr[0] === 'id')) {
+        token.attrSet('id', id);
+      }
+      
+      // 更新清理后的文本
+      if (cleanedText !== headingText) {
+        inlineToken.content = cleanedText;
+        
+        // 清理子token中的自定义ID模式
+        if (inlineToken.children) {
+          inlineToken.children = inlineToken.children.filter(child => {
+            if (child.type !== 'text') return true;
+            
+            const { cleanedText: childCleaned } = extractCustomId(child.content);
+            if (childCleaned) child.content = childCleaned;
+            return childCleaned !== '';
+          });
+          
+          if (inlineToken.children.length === 0) {
+            inlineToken.children.push({ type: 'text', content: '' });
           }
         }
       }
     }
-
+    
     return originalHeadingOpen(tokens, idx, options, env, self);
   };
-
-  // Handle links - markdown-it will URL encode the href, we need to handle that
-  const originalLinkOpen = md.renderer.rules.link_open || function (tokens, idx, options, env, self) {
-    return self.renderToken(tokens, idx, options);
-  };
-
-  md.renderer.rules.link_open = function (tokens, idx, options, env, self) {
+  
+  // 3. 链接：内部锚链接特殊处理，外部链接在新标签页打开
+  const originalLinkOpen = md.renderer.rules.link_open ||
+    ((tokens, idx, options, env, self) => self.renderToken(tokens, idx, options));
+  
+  md.renderer.rules.link_open = function(tokens, idx, options, env, self) {
     const token = tokens[idx];
-    const hrefAttr = token.attrs.find(attr => attr[0] === 'href');
-
+    const hrefAttr = token.attrs?.find(attr => attr[0] === 'href');
+    
     if (hrefAttr) {
-      const href = hrefAttr[1];
-
-      // Check if it's an internal anchor link (starts with #)
-      if (href.startsWith('#')) {
-        // Don't add target="_blank" for anchor links
-        // Add a class for styling and identification
+      if (hrefAttr[1].startsWith('#')) {
         token.attrPush(['class', 'internal-anchor-link']);
-        // Add data attribute
         token.attrPush(['data-anchor-link', 'true']);
-
-        // Note: markdown-it will URL encode the href
-        // We'll handle this in the scrollToAnchor function
       } else {
-        // External link, open in new tab
         token.attrSet('target', '_blank');
         token.attrSet('rel', 'noopener noreferrer');
       }
     }
+    
     return originalLinkOpen(tokens, idx, options, env, self);
   };
+  
   return md.render(text);
 }
 
-// Global functions for handling anchor link clicks
-if (typeof window !== 'undefined') {
-  // Initialize only once
-  if (!window._zenAnchorInitialized) {
-    window._zenAnchorInitialized = true;
-
-    // Simple ID generation (same as above)
-    window.generateHeadingId = function(text) {
-      if (!text) return '';
-      let processed = text.trim();
-      // Convert to lowercase for case-insensitive matching
-      processed = processed.toLowerCase();
-      processed = processed.replace(/\s+/g, '-');
-      processed = processed.replace(/^-+/, '').replace(/-+$/, '');
-      return processed || 'heading';
-    };
-
-    // Clean custom ID (same as above)
-    window.cleanCustomId = function(id) {
-      if (!id) return '';
-      let cleaned = id.trim();
-      cleaned = cleaned.replace(/[\s_]+/g, '-');
-      cleaned = cleaned.replace(/[\x00-\x1F\x7F]/g, '');
-      cleaned = cleaned.replace(/[<>"']/g, '');
-      cleaned = cleaned.replace(/^[-.]+/, '').replace(/[-.]+$/, '');
-      cleaned = cleaned.replace(/-+/g, '-');
-      return cleaned || '';
-    };
-
-    // Function to extract custom ID (same as above)
-    window.extractCustomId = function(text) {
-      if (!text) return { cleanedText: text, customId: null };
-      const match = text.match(/\s*\{#([^}]+)\}\s*$/);
-      if (match) {
-        let customId = match[1].trim();
-        customId = window.cleanCustomId(customId);
-        if (!customId) {
-          return { cleanedText: text.trim(), customId: null };
-        }
-        const cleanedText = text.substring(0, match.index).trim();
-        return { cleanedText, customId };
-      }
-      return { cleanedText: text.trim(), customId: null };
-    };
-
-    // Decode URL encoded string
-    function decodeHash(hash) {
-      if (!hash) return '';
-      const withoutHash = hash.replace(/^#/, '');
-      try {
-        return decodeURIComponent(withoutHash);
-      } catch (e) {
-        return withoutHash;
+// ========== 全局锚链接处理 ==========
+if (typeof window !== 'undefined' && !window._zenAnchorInitialized) {
+  window._zenAnchorInitialized = true;
+  
+  // 暴露工具函数到全局
+  window.generateHeadingId = generateId;
+  window.cleanCustomId = cleanCustomId;
+  window.extractCustomId = extractCustomId;
+  
+  // 辅助函数：查找元素（支持大小写不敏感和URL解码）
+  function findElementById(id) {
+    if (!id) return null;
+    
+    // 1. 精确匹配
+    let element = document.getElementById(id);
+    if (element) return element;
+    
+    // 2. 大小写不敏感匹配
+    const allElements = document.querySelectorAll('[id]');
+    for (const elem of allElements) {
+      if (elem.id?.toLowerCase() === id.toLowerCase()) {
+        return elem;
       }
     }
-
-    // Find element by ID, trying multiple variations
-        function findElementById(id) {
-      if (!id) return null;
-
-      // 1. Try exact match first (case-sensitive)
-      let element = document.getElementById(id);
+    
+    // 3. 尝试URL解码
+    try {
+      const decoded = decodeURIComponent(id);
+      element = document.getElementById(decoded);
       if (element) return element;
-
-      // 2. Try case-insensitive match
-      // Find all elements with ID and compare case-insensitively
-      const allElements = document.querySelectorAll('[id]');
+      
       for (const elem of allElements) {
-        if (elem.id && elem.id.toLowerCase() === id.toLowerCase()) {
+        if (elem.id?.toLowerCase() === decoded.toLowerCase()) {
           return elem;
         }
       }
-
-      // 3. Try decoding URL encoding
-      try {
-        const decoded = decodeURIComponent(id);
-        // Try case-sensitive match with decoded
-        element = document.getElementById(decoded);
-        if (element) return element;
-
-        // Try case-insensitive match with decoded
-        for (const elem of allElements) {
-          if (elem.id && elem.id.toLowerCase() === decoded.toLowerCase()) {
-            return elem;
-          }
-        }
-
-        // 4. Try with our ID generation (case-insensitive)
-        const generatedId = window.generateHeadingId(decoded);
-        element = document.getElementById(generatedId);
-        if (element) return element;
-
-        // Case-insensitive match with generated ID
-        for (const elem of allElements) {
-          if (elem.id && elem.id.toLowerCase() === generatedId.toLowerCase()) {
-            return elem;
-          }
-        }
-      } catch (e) {
-        // Ignore decoding errors
-      }
-
-      // 5. Try with our ID generation on original
-      const generatedId = window.generateHeadingId(id);
+      
+      // 4. 使用生成的ID匹配
+      const generatedId = generateId(decoded);
       element = document.getElementById(generatedId);
       if (element) return element;
-
-      // Case-insensitive match with generated ID on original
-      const allElements2 = document.querySelectorAll('[id]');
-      for (const elem of allElements2) {
-        if (elem.id && elem.id.toLowerCase() === generatedId.toLowerCase()) {
+      
+      for (const elem of allElements) {
+        if (elem.id?.toLowerCase() === generatedId.toLowerCase()) {
           return elem;
         }
       }
-
-      // 6. Last resort: search all headings with text matching (case-insensitive)
-      const allHeadings = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
-      for (const heading of allHeadings) {
-        // Case-insensitive ID comparison
-        if (heading.id && heading.id.toLowerCase() === id.toLowerCase()) {
-          return heading;
-        }
-
-        // Try with decoded
-        try {
-          const decoded = decodeURIComponent(id);
-          if (heading.id && heading.id.toLowerCase() === decoded.toLowerCase()) {
-            return heading;
-          }
-        } catch (e) {
-          // Ignore decoding errors
-        }
-
-        // Try with generated ID from text content
-        const headingGeneratedId = window.generateHeadingId(heading.textContent);
-        if (headingGeneratedId.toLowerCase() === id.toLowerCase() ||
-            (typeof decoded !== 'undefined' && headingGeneratedId.toLowerCase() === decoded.toLowerCase())) {
-          return heading;
-        }
-      }
-
-      return null;
+    } catch (e) {
+      // 解码失败，继续尝试
     }
-
-    window.scrollToAnchor = function(hash, smooth = true) {
-      if (!hash) return false;
-
-      // Remove the # character
-      const id = hash.replace(/^#/, '');
-      if (!id) return false;
-
-      const element = findElementById(id);
-
-      if (element) {
-        // Scroll to the element
-        if (smooth && 'scrollBehavior' in document.documentElement.style) {
-          element.scrollIntoView({
-            behavior: 'smooth',
-            block: 'start'
-          });
-        } else {
-          element.scrollIntoView();
-        }
-
-        // Update URL hash (use the element's actual ID)
-        try {
-          if (history.replaceState) {
-            history.replaceState(null, null, '#' + element.id);
-          } else {
-            window.location.hash = '#' + element.id;
-          }
-        } catch (e) {
-          console.warn('Could not update history:', e);
-        }
-
-        return true;
-      } else {
-        console.warn('Anchor element not found for hash:', hash, 'id:', id);
-        console.warn('Available IDs:', Array.from(document.querySelectorAll('[id]')).map(el => el.id).filter(id => id));
-        return false;
+    
+    // 5. 使用原始文本生成ID匹配
+    const generatedId = generateId(id);
+    element = document.getElementById(generatedId);
+    if (element) return element;
+    
+    for (const elem of allElements) {
+      if (elem.id?.toLowerCase() === generatedId.toLowerCase()) {
+        return elem;
       }
-    };
-
-    // Event delegation for internal anchor links
-    window.setupAnchorLinks = function(container = document) {
-      // Remove any existing listeners
-      if (window._zenAnchorClickHandler) {
-        container.removeEventListener('click', window._zenAnchorClickHandler);
-      }
-
-      // Add new listener
-      window._zenAnchorClickHandler = function(event) {
-        let target = event.target;
-        while (target && target !== container) {
-          if (target.tagName === 'A' &&
-              target.classList.contains('internal-anchor-link')) {
-            const href = target.getAttribute('href');
-            if (href && href.startsWith('#')) {
-              event.preventDefault();
-              event.stopPropagation();
-
-              window.scrollToAnchor(href);
-              return false;
-            }
-          }
-          target = target.parentElement;
-        }
-      };
-
-      container.addEventListener('click', window._zenAnchorClickHandler);
-    };
-
-    // Setup on load
-    window.addEventListener('DOMContentLoaded', function() {
-      window.setupAnchorLinks();
-
-      if (window.location.hash) {
-        setTimeout(() => {
-          window.scrollToAnchor(window.location.hash);
-        }, 100);
-      }
-    });
-
-    // Re-setup on navigation
-    window.addEventListener('navigate', function() {
-      setTimeout(() => {
-        window.setupAnchorLinks();
-      }, 50);
-    });
+    }
+    
+    return null;
   }
+  
+  // 主函数：滚动到锚点
+  window.scrollToAnchor = function(hash, smooth = true) {
+    if (!hash) return false;
+    
+    const id = hash.replace(/^#/, '');
+    if (!id) return false;
+    
+    const element = findElementById(id);
+    if (!element) {
+      console.warn('Anchor not found:', hash);
+      return false;
+    }
+    
+    // 执行滚动
+    if (smooth && 'scrollBehavior' in document.documentElement.style) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      element.scrollIntoView();
+    }
+    
+    // 更新URL哈希
+    try {
+      if (history.replaceState) {
+        history.replaceState(null, null, '#' + element.id);
+      } else {
+        window.location.hash = '#' + element.id;
+      }
+    } catch (e) {
+      console.warn('History update failed:', e);
+    }
+    
+    return true;
+  };
+  
+  // 事件委托：处理内部锚链接点击
+  window.setupAnchorLinks = function(container = document) {
+    // 移除现有监听器
+    if (window._zenAnchorClickHandler) {
+      container.removeEventListener('click', window._zenAnchorClickHandler);
+    }
+    
+    // 创建新监听器
+    window._zenAnchorClickHandler = function(event) {
+      let target = event.target;
+      
+      while (target && target !== container) {
+        if (target.tagName === 'A' && target.classList.contains('internal-anchor-link')) {
+          const href = target.getAttribute('href');
+          if (href?.startsWith('#')) {
+            event.preventDefault();
+            event.stopPropagation();
+            window.scrollToAnchor(href);
+            return false;
+          }
+        }
+        target = target.parentElement;
+      }
+    };
+    
+    container.addEventListener('click', window._zenAnchorClickHandler);
+  };
+  
+  // 初始化和事件绑定
+  window.addEventListener('DOMContentLoaded', () => {
+    window.setupAnchorLinks();
+    
+    // 页面加载时处理URL哈希
+    if (window.location.hash) {
+      setTimeout(() => window.scrollToAnchor(window.location.hash), 100);
+    }
+  });
+  
+  // 导航时重新设置
+  window.addEventListener('navigate', () => {
+    setTimeout(() => window.setupAnchorLinks(), 50);
+  });
 }
