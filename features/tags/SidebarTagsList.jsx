@@ -43,7 +43,7 @@ export default function SidebarTagsList() {
       onDragOver={e => handleDragOver(e, idx)}
       onDrop={e => handleDrop(e, idx)}
     >
-      {tag.name}
+      {tag.name}{typeof tag.noteCount === "number" ? ` (${tag.noteCount})` : ""}
       <span className="tag-actions" style="display:flex; gap:6px; align-items:center; margin-left:auto">
         <ArrowUpIcon onClick={e => handleMove(e, idx, -1)} />
         <ArrowDownIcon onClick={e => handleMove(e, idx, 1)} />
