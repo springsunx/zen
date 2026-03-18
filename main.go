@@ -102,6 +102,7 @@ func newRouter() *http.ServeMux {
 
 	addPrivateRoute(mux, "GET /api/tags/", tags.HandleGetTags)
 	addPrivateRoute(mux, "PUT /api/tags/", tags.HandleUpdateTag)
+	addPrivateRoute(mux, "PUT /api/tags/reorder/", tags.HandleReorderTags)
 	addPrivateRoute(mux, "DELETE /api/tags/{tagId}/", tags.HandleDeleteTag)
 
 	addPrivateRoute(mux, "GET /api/focus/", focus.HandleGetAllFocusModes)

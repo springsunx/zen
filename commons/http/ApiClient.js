@@ -352,5 +352,10 @@ export default {
   incrementTemplateUsage,
   getTokens,
   createToken,
-  deleteToken
+  deleteToken,
+  reorderTags
 };
+
+async function reorderTags(order) {
+  return await request('PUT', '/api/tags/reorder/', { order });
+}

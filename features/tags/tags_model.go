@@ -18,8 +18,9 @@ func GetAllTags() ([]Tag, error) {
 		LEFT JOIN
 			note_tags nt ON t.tag_id = nt.tag_id
 		GROUP BY
-			t.tag_id, t.name
+			t.tag_id, t.name, t.sort_order
 		ORDER BY
+			COALESCE(t.sort_order, 2147483647) ASC,
 			note_count DESC
 	`
 
@@ -60,7 +61,7 @@ func SearchTags(term string) ([]Tag, error) {
 		WHERE
 			t.name LIKE '%' || ? || '%'
 		GROUP BY
-			t.tag_id, t.name
+			t.tag_id, t.name, t.sort_order
 		ORDER BY 
 			-- Boosting rows starting with the search term
 			CASE
@@ -110,7 +111,7 @@ func GetTagsByFocusModeID(focusModeID int) ([]Tag, error) {
 		WHERE
 			f.focus_mode_id = ?
 		GROUP BY
-			t.tag_id, t.name
+			t.tag_id, t.name, t.sort_order
 		ORDER BY
 			t.tag_id ASC
 	`
@@ -188,4 +189,23 @@ func DeleteTag(tagID int) error {
 	}
 
 	return nil
+}
+
+
+func UpdateTagOrder(tagIDs []int) error {
+    tx, err := sqlite.DB.Begin()
+    if err != nil {
+        return fmt.Errorf("error starting transaction: %w", err)
+    }
+    defer tx.Rollback()
+    for idx, id := range tagIDs {
+        _, err := tx.Exec("UPDATE tags SET sort_order = ? WHERE tag_id = ?", idx, id)
+        if err != nil {
+            return fmt.Errorf("error updating sort order: %w", err)
+        }
+    }
+    if err := tx.Commit(); err != nil {
+        return fmt.Errorf("error committing sort order: %w", err)
+    }
+    return nil
 }

@@ -75,3 +75,17 @@ func HandleDeleteTag(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusNoContent)
 }
+
+
+func HandleReorderTags(w http.ResponseWriter, r *http.Request) {
+    var payload struct{ Order []int `json:"order"` }
+    if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+        utils.SendErrorResponse(w, "INVALID_REQUEST_BODY", "Invalid request data", err, http.StatusBadRequest)
+        return
+    }
+    if err := UpdateTagOrder(payload.Order); err != nil {
+        utils.SendErrorResponse(w, "TAG_REORDER_FAILED", "Error reordering tags.", err, http.StatusInternalServerError)
+        return
+    }
+    w.WriteHeader(http.StatusNoContent)
+}

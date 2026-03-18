@@ -1,7 +1,7 @@
 import { h } from '../../assets/preact.esm.js';
 import navigateTo from '../utils/navigateTo.js';
 
-export default function Link({ to, shouldPreserveSearchParams, children, className = "", activeClassName = "" }) {
+export default function Link({ to, shouldPreserveSearchParams, children, className = "", activeClassName = "", ...rest }) {
   function handleClick(event) {
     event.stopPropagation();
     event.preventDefault();
@@ -36,7 +36,7 @@ export default function Link({ to, shouldPreserveSearchParams, children, classNa
   }
 
   return (
-    <a href={to} onClick={handleClick} className={finalClassName}>
+    <a href={to} onClick={handleClick} className={finalClassName} {...rest}>
       {children}
     </a>
   );
