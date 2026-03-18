@@ -1,16 +1,14 @@
-const CACHE_NAME = 'zen-v1';
+const CACHE_NAME = 'zen-v2';
 const STATIC_ASSETS = [
   '/',
   '/assets/index.html',
   '/assets/bundle.js',
   '/assets/index.css',
   '/assets/reset.css',
-  '/assets/notes-editor.css',
   '/assets/github.min.css',
   '/assets/preact.esm.js',
   '/assets/markdown-it.min.js',
-  '/assets/highlight.min.js',
-  '/assets/markdown-it-task-lists.js'
+  '/assets/highlight.min.js'
 ];
 
 self.addEventListener('install', event => {
@@ -27,7 +25,15 @@ self.addEventListener('fetch', event => {
 
 async function handleInstall() {
     const cache = await caches.open(CACHE_NAME);
-    await cache.addAll(STATIC_ASSETS);
+    for (const url of STATIC_ASSETS) {
+        try {
+            const resp = await fetch(url, { cache: 'no-cache' });
+            if (!resp.ok) throw new Error(resp.status + ' ' + resp.statusText);
+            await cache.put(url, resp.clone());
+        } catch (err) {
+            console.error('[SW] precache failed:', url, err);
+        }
+    }
     await self.skipWaiting();
 }
 
