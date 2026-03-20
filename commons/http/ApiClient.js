@@ -1,6 +1,23 @@
+
+import ApiCache from '../storage/ApiCache.js';
+import BackendHealth from '../net/BackendHealth.js';
+import NotesCache from '../storage/NotesCache.js';
+import ApiCacheFind from '../storage/ApiCache.js';
 import { showToast } from "../components/Toast.jsx";
 
 async function request(method, url, payload) {
+  const isApiGet = method === 'GET' && url.startsWith('/api/');
+  if (BackendHealth.shouldSkipNetwork() && isApiGet) {
+    const cached = await ApiCache.get(url);
+    if (cached) return cached;
+    // If no cache, avoid network but return null to let caller handle gracefully
+  }
+  if (!navigator.onLine && isApiGet) {
+    const cached = await ApiCache.get(url);
+    if (cached) {
+      return cached;
+    }
+  }
   const options = {
     method: method,
     headers: {}
@@ -17,12 +34,41 @@ async function request(method, url, payload) {
     const response = await fetch(url, options);
 
     if (!response.ok) {
+      if (isApiGet) {
+        const cached = await ApiCache.get(url);
+        if (cached) return cached;
+      }
       throw response;
     }
 
+    if (isApiGet) {
+      try { await ApiCache.set(url, await response.clone().json()); } catch(_) {}
+    }
+    try { BackendHealth.clearFailure(); } catch(_) {}
     const isJsonResponse = response.headers.get('content-type')?.includes('application/json');
     return isJsonResponse ? await response.json() : null;
   } catch (error) {
+    try { BackendHealth.markFailure(); } catch(_) {}
+    if (isApiGet) {
+      try {
+        const cached = await ApiCache.get(url);
+        if (cached) {
+          return cached;
+        }
+      } catch (_) {}
+    }
+    // Extra fallback for note detail: try NotesCache and cached lists by ID
+    try {
+      const noteIdMatch = url.match(/\/api\/notes\/(\d+)\/?/);
+      if (isApiGet && noteIdMatch) {
+        const nid = parseInt(noteIdMatch[1], 10);
+        let note = await NotesCache.get(nid);
+        if (note) { return note; }
+        const fromList = await ApiCacheFind.findNoteById(nid);
+        if (fromList) { try { await NotesCache.set(fromList); } catch(_) {} return fromList; }
+      }
+    } catch (_) {}
+
     if (!navigator.onLine) {
       showToast("No internet connection.");
       console.error("Network error:", error);
@@ -131,11 +177,45 @@ async function getNotes(tagId, focusId, isArchived, isDeleted, page) {
     url += '?' + params.toString();
   }
 
-  return await request('GET', url);
+  const resp = await request('GET', url);
+  try {
+    const arr = Array.isArray(resp?.notes) ? resp.notes : (Array.isArray(resp) ? resp : []);
+    for (const n of arr) { await NotesCache.set(n); }
+  } catch (_) {}
+  return resp;
 }
 
 async function getNoteById(noteId) {
-  return await request('GET', `/api/notes/${noteId}`);
+  // Circuit-breaker: if recent failures and cache exists, skip network to avoid error spam
+  try {
+    const failKey = 'api_fail_notes_detail';
+    const lastFail = parseInt(sessionStorage.getItem(failKey) || '0', 10);
+    const within = Date.now() - lastFail < 30000;
+    if (within) {
+      const nid = parseInt(noteId, 10);
+      const cachedNote = await NotesCache.get(nid);
+      if (cachedNote) return cachedNote;
+      try {
+        const fromList = await ApiCacheFind.findNoteById(nid);
+        if (fromList) { try { await NotesCache.set(fromList); } catch(_) {} return fromList; }
+      } catch (_) {}
+    }
+  } catch (_) {}
+  try {
+    const note = await request('GET', `/api/notes/${noteId}`);
+    try { await NotesCache.set(note); } catch(_) {}
+    return note;
+  } catch (e) {
+    try { sessionStorage.setItem('api_fail_notes_detail', String(Date.now())); } catch(_) {}
+    let cached = await NotesCache.get(parseInt(noteId, 10));
+    if (cached) return cached;
+    // try find in cached lists
+    try {
+      const hit = await ApiCacheFind.findNoteById(parseInt(noteId, 10));
+      if (hit) { try { await NotesCache.set(hit); } catch(_) {} return hit; }
+    } catch(_) {}
+    throw e;
+  }
 }
 
 async function createNote(note) {
@@ -183,7 +263,12 @@ async function getTags(focusId) {
     url += `?focusId=${focusId}`;
   }
 
-  return await request('GET', url);
+  const resp = await request('GET', url);
+  try {
+    const arr = Array.isArray(resp?.notes) ? resp.notes : (Array.isArray(resp) ? resp : []);
+    for (const n of arr) { await NotesCache.set(n); }
+  } catch (_) {}
+  return resp;
 }
 
 async function searchTags(query) {
@@ -218,7 +303,12 @@ async function getImages(tagId, focusId, page) {
     url += '?' + params.toString();
   }
 
-  return await request('GET', url);
+  const resp = await request('GET', url);
+  try {
+    const arr = Array.isArray(resp?.notes) ? resp.notes : (Array.isArray(resp) ? resp : []);
+    for (const n of arr) { await NotesCache.set(n); }
+  } catch (_) {}
+  return resp;
 }
 
 async function uploadImage(formData) {
@@ -252,6 +342,10 @@ async function exportNotes() {
   });
 
   if (!response.ok) {
+      if (isApiGet) {
+        const cached = await ApiCache.get(url);
+        if (cached) return cached;
+      }
     throw new Error('Export failed');
   }
 
