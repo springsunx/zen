@@ -89,7 +89,7 @@ export default function LoginPage({ isOnboarding = false }) {
   if (isOnboarding) {
     header = (
       <div>
-        <div className="login-title">Let's get started!</div>
+        <div className="login-title">{t('login.getStarted')}</div>
         <div className="login-subtitle">{t("login.subtitle")}</div>
       </div>
     );

@@ -180,5 +180,6 @@
   "login.error.invalidEmail": "Invalid email address",
   "login.error.invalidPassword": "Invalid password",
   "login.error.incorrectEmail": "Incorrect email address",
-  "login.error.incorrectPassword": "Incorrect password"
+  "login.error.incorrectPassword": "Incorrect password",
+  "login.getStarted": "Let's get started!"
 }

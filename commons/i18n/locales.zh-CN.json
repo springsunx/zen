@@ -180,5 +180,6 @@
   "login.error.invalidEmail": "邮箱地址不合法",
   "login.error.invalidPassword": "密码不正确",
   "login.error.incorrectEmail": "邮箱地址不正确",
-  "login.error.incorrectPassword": "密码不正确"
+  "login.error.incorrectPassword": "密码不正确",
+  "login.getStarted": "开始吧！"
 }
