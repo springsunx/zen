@@ -10,6 +10,8 @@
 
 <p align="center"><img src="https://github.com/sheshbabu/zen/blob/master/docs/screenshot.png?raw=true"/></p>
 
+English | [中文](./readme-cn.md)
+
 ### Features
 * Single Go binary or Docker Compose
 * Low resource usage
@@ -24,6 +26,13 @@
 * Minimal dependency footprint
 * Automated backups (via [Zen Backup](https://github.com/sheshbabu/zen-backup))
 
+### Add Features
+* Add multilingual support
+* Add code block copy functionality
+* Support custom ID navigation
+* Add a table of contents on the right side with navigation support
+* Support more Markdown syntax
+* Add tag count, tag moving up/down, and drag-and-drop sorting
 
 ### Experimental Features
 * Canvas for spatial organization of notes and images (stored as [JSON Canvas](https://jsoncanvas.org/docs/apps/))
@@ -31,14 +40,11 @@
 * Similar images (via [Zen Intelligence](https://github.com/sheshbabu/zen-intelligence))
 * MCP for searching, listing and reading notes
 
-
-
 ### Installation
 Build from source
 ```shell
 $ make build
 ```
-
 
 ### Local Development
 Run the application using default configuration
@@ -59,11 +65,9 @@ $ go install github.com/evanw/esbuild/cmd/esbuild@latest
 $ make watch
 ```
 
-
 ### Schema Migrations
 * Create new migration file under `./migrations`
 * Use the format `<version>_<title>.sql`
-
 
 ### Image Versioning
 ```bash
@@ -71,10 +75,8 @@ $ git tag x.y.z
 $ git push origin x.y.z
 ```
 
-
 ### Contributions
 This is a personal project built for my own use. The codebase is available for forking and modifications. Note that I may not actively review pull requests or respond to issues due to time constraints.
-
 
 ### Thanks
 * [go-sqlite3](https://github.com/mattn/go-sqlite3)
