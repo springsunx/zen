@@ -18,53 +18,60 @@
       var pos = state.bMarks[startLine] + state.tShift[startLine];
       var max = state.eMarks[startLine];
 
-      // Must start with :::
-      if (pos + 3 > max) return false;
-      if (state.src.slice(pos, pos + 3) !== ':::') return false;
-      pos += 3;
-
-      // Info string after :::
-      var params = state.src.slice(pos, max).trim();
-      if (!params || (name && !params.startsWith(name))) return false;
-
-      // Extract title (text after type)
-      var info = params.slice(name.length).trim();
-
-      // Find the closing :::
+      // Accept markers with 3 or more colons (::: or ::::)
+      var markerPos = state.bMarks[startLine] + state.tShift[startLine];
+      var lineMax = state.eMarks[startLine];
+      // Count leading colons
+      var colonCount = 0;
+      while (markerPos + colonCount < lineMax && state.src.charCodeAt(markerPos + colonCount) === 0x3A /* : */) {
+        colonCount++;
+      }
+      if (colonCount < 3) return false;
+      var markerStr = state.src.slice(markerPos, markerPos + colonCount);
+      var pos = markerPos + colonCount;
+      // Params after marker
+      var params = state.src.slice(pos, lineMax).trim();
+if (!params) return false;
+var firstSpace = params.indexOf(' ');
+var typeName = (firstSpace === -1 ? params : params.slice(0, firstSpace)).toLowerCase();
+if (opts.validate && typeof opts.validate === 'function') {
+  if (!opts.validate(params)) return false;
+} else if (name && typeName !== name) {
+  return false;
+}
+// Title is whatever after the first token (type name)
+var info = firstSpace === -1 ? '' : params.slice(firstSpace + 1).trim();
+// Find the closing marker with the same colon count
       var nextLine = startLine;
       for (;;) {
         nextLine++;
         if (nextLine >= endLine) return false; // no closing mark
-        pos = state.bMarks[nextLine] + state.tShift[nextLine];
-        max = state.eMarks[nextLine];
-        if (pos < max && state.src.slice(pos, pos + 3) === ':::') {
-          var after = state.src.slice(pos + 3, max).trim();
-          if (after === '') break;
+        var closePos = state.bMarks[nextLine] + state.tShift[nextLine];
+        var closeMax = state.eMarks[nextLine];
+        if (closePos < closeMax) {
+          if (state.src.slice(closePos, closePos + colonCount) === markerStr) {
+            var after = state.src.slice(closePos + colonCount, closeMax).trim();
+            if (after === '') break;
+          }
         }
       }
-
       if (silent) return true;
-
       // Open token
       var token = state.push('container_' + name + '_open', 'div', 1);
-      token.markup = ':::';
+      token.markup = markerStr;
       token.block = true;
       token.info = info;
       token.map = [startLine, nextLine];
-
       // Tokenize inside
       state.md.block.tokenize(state, startLine + 1, nextLine);
-
       // Close token
       token = state.push('container_' + name + '_close', 'div', -1);
-      token.markup = ':::';
+      token.markup = markerStr;
       token.block = true;
-
       state.line = nextLine + 1;
       return true;
-    }
-
-    md.block.ruler.before('fence', 'container_' + name, containerRule, {
+      }
+md.block.ruler.before('fence', 'container_' + name, containerRule, {
       alt: ['paragraph', 'reference', 'blockquote', 'list']
     });
 

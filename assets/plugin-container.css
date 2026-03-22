@@ -10,8 +10,7 @@
 }
 
 /* Base banner + details summary share the same look */
-.md-container,
-.md-container-details summary {
+.md-container {
   /* defaults (info/note) */
   --mc-bg: var(--neutral-50);
   --mc-fg: var(--neutral-900);
@@ -35,8 +34,7 @@
 }
 
 /* Unified leading circle icon */
-.md-container::before,
-.md-container-details summary::before {
+.md-container::before {
   content: ' ';
   display: inline-block;
   width: 24px;
@@ -47,12 +45,13 @@
   flex-shrink: 0;
 }
 
+
+
+
+
 /* Content area */
 .md-container .md-container-title { display: none; }
 .md-container .md-container-body { padding: 0; margin: 0; flex: 1; }
-.md-container-details .md-container-body { padding: 10px 14px; }
-.md-container-details summary { list-style: none; }
-.md-container-details summary::marker { content: ''; }
 
 
 /* Variants aligned with plugin-alert.css */
@@ -100,8 +99,7 @@
 /* Minimal dark mode adjustments */
 @media (prefers-color-scheme: dark) {
   .md-container,
-  .md-container-details summary { --mc-fg: var(--neutral-100); }
-  .md-container-note { --mc-bg: color-mix(in srgb, var(--mc-note-color) 18%, var(--neutral-800)); }
+    .md-container-note { --mc-bg: color-mix(in srgb, var(--mc-note-color) 18%, var(--neutral-800)); }
   .md-container-important { --mc-bg: color-mix(in srgb, var(--mc-important-color) 18%, var(--neutral-800)); }
   .md-container-tip { --mc-bg: color-mix(in srgb, var(--mc-tip-color) 18%, var(--neutral-800)); }
   .md-container-warning { --mc-bg: color-mix(in srgb, var(--mc-warning-color) 22%, var(--neutral-800)); }
@@ -111,3 +109,52 @@
 /* Explicit theme override hook if you use [data-theme="dark"] */
 [data-theme="dark"] .md-container,
 [data-theme="dark"] .md-container-details summary { --mc-fg: var(--neutral-100); }
+
+/* Details — compact, aligned, custom arrow (A plan) */
+
+.md-container-details summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+  line-height: 1.3;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+.md-container-details summary::-webkit-details-marker { display: none; }
+.md-container-details summary::marker { content: ""; }
+.md-container-details .md-container-body { padding: 4px 0 0; margin: 0; }
+
+
+
+/* Body spacing and trim inner block margins */
+.md-container-details .md-container-body > :first-child{margin-top:0;}
+.md-container-details .md-container-body > :last-child{margin-bottom:0;}
+
+.md-container.md-container-details::before{content:none !important;background:none !important;}
+
+.md-container.md-container-details{display:block; padding:0;}
+
+/* Details: keep container shape, vertical layout, compact spacing */
+.md-container.md-container-details summary{
+  display:flex;align-items:center;gap:8px;
+  padding:10px 14px;line-height:1.2;font-weight:600;cursor:pointer;list-style:none;
+}
+.md-container.md-container-details summary::-webkit-details-marker{display:none;}
+.md-container.md-container-details summary::marker{content:"";}
+/* Chevron arrow (no font dependency) */
+.md-container.md-container-details summary::before{
+  content:"";display:inline-block;width:8px;height:8px;
+  border-right:2px solid currentColor;border-bottom:2px solid currentColor;
+  transform: rotate(-45deg); /* right arrow */ margin-right:2px;
+}
+.md-container.md-container-details[open] summary::before{transform: rotate(45deg);} /* down arrow */
+/* Body block spacing; match container padding horizontally */
+.md-container.md-container-details .md-container-body{padding: 0 14px 12px;margin:0;}
+.md-container.md-container-details .md-container-body > :first-child{margin-top:0;}
+.md-container.md-container-details .md-container-body > :last-child{margin-bottom:0;}
+
+
+/* Icon-only summary (no text) spacing */
+.md-container.md-container-details summary:empty{padding:10px 14px; min-height: 22px;}

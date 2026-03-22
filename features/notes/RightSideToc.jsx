@@ -149,7 +149,7 @@ export default function RightSideToc({ content, isEditable, isNewNote }) {
   return (
     <div className="right-toc-container">
       <div className="right-toc-header">
-        <span className="right-toc-title">目录</span>
+        <span className="right-toc-title">Contents</span>
       </div>
       <div className="right-toc-content">
         {items}

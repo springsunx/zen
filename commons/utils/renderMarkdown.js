@@ -148,9 +148,10 @@ export default function renderMarkdown(text) {
     Object.entries(legacyMap).forEach(([legacy, target]) => {
       try {
         md.use(container, legacy, {
+          validate: (params) => params.trim().toLowerCase().startsWith(legacy),
           render(tokens, idx) {
             const token = tokens[idx];
-            const info = token.info.trim().slice(legacy.length).trim();
+            const info = token.info.trim();
             if (token.nesting === 1) {
               const title = info ? md.utils.escapeHtml(info) : legacy.toUpperCase();
               return `<div class="md-container md-container-${target}"><div class="md-container-title">${title}</div><div class="md-container-body">`;
@@ -165,9 +166,10 @@ export default function renderMarkdown(text) {
     types.forEach(type => {
       try {
         md.use(container, type, {
+          validate: (params) => params.trim().toLowerCase().startsWith(type),
           render(tokens, idx) {
             const token = tokens[idx];
-            const info = token.info.trim().slice(type.length).trim();
+            const info = token.info.trim();
             if (token.nesting === 1) {
               const title = info ? md.utils.escapeHtml(info) : type.toUpperCase();
               return `<div class="md-container md-container-${type}"><div class="md-container-title">${title}</div><div class="md-container-body">`;
@@ -184,10 +186,10 @@ export default function renderMarkdown(text) {
       md.use(container, 'details', {
         render(tokens, idx) {
           const token = tokens[idx];
-          const info = token.info.trim().slice('details'.length).trim();
+          const info = token.info.trim();
           if (token.nesting === 1) {
             const summary = info ? md.utils.escapeHtml(info) : 'Details';
-            return `<details class="md-container md-container-details"><summary>${summary}</summary><div class="md-container-body">`;
+            return `<details class="md-container md-container-details">${summary ? `<summary>${summary}</summary>` : `<summary aria-label="展开/收起"></summary>`}<div class="md-container-body">`;
           } else {
             return `</div></details>`;
           }
