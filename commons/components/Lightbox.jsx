@@ -3,6 +3,7 @@ import { ModalBackdrop, ModalContainer } from "./Modal.jsx";
 import { CloseIcon, ImagesIcon, BackIcon } from "./Icon.jsx";
 import ApiClient from "../http/ApiClient.js";
 import "./Lightbox.css";
+import { t } from "../i18n/index.js";
 
 export default function Lightbox({ selectedImage, imageDetails, onClose }) {
   const [currentImage, setCurrentImage] = useState(selectedImage);

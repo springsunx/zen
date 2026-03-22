@@ -2,6 +2,7 @@ import { h, useEffect, useRef, useState, useCallback, Fragment } from "../../ass
 import { closeModal, openModal } from "../../commons/components/Modal.jsx";
 import Lightbox from "../../commons/components/Lightbox.jsx";
 import "./ImageGallery.css";
+import { t } from "../../commons/i18n/index.js";
 
 const MIN_COLUMN_WIDTH = 300;
 const GUTTER_WIDTH = 20;
@@ -138,4 +139,3 @@ export default function ImageGallery({ images }) {
     </div>
   );
 }
-

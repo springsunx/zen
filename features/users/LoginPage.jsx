@@ -5,8 +5,35 @@ import { ArrowRightIcon } from "../../commons/components/Icon.jsx";
 import navigateTo from "../../commons/utils/navigateTo.js";
 import ApiClient from "../../commons/http/ApiClient.js";
 import "./LoginPage.css";
+import { t, setLang, getPrefLang } from "../../commons/i18n/index.js";
+
+
+function LanguageSelect() {
+  const [lang, setState] = useState(getPrefLang());
+  function change(e) {
+    const v = e.target.value;
+    setLang(v);
+    setState(v);
+  }
+  return (
+    <div className="login-lang" style="margin-top:12px; display:flex; gap:8px; align-items:center; justify-content:center;">
+      <label style="color:var(--text-secondary); font: var(--sm);">{t('settings.language')}</label>
+      <select value={lang} onChange={change}>
+        <option value="auto">{t('settings.language.auto')}</option>
+        <option value="zh-CN">{t('settings.language.zh')}</option>
+        <option value="en">{t('settings.language.en')}</option>
+      </select>
+    </div>
+  );
+}
 
 export default function LoginPage({ isOnboarding = false }) {
+  const [langVersion, setLangVersion] = useState(0);
+  useEffect(() => {
+    const onChange = () => setLangVersion(v => v + 1);
+    window.addEventListener("i18n:change", onChange);
+    return () => window.removeEventListener("i18n:change", onChange);
+  }, []);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [emailError, setEmailError] = useState("");
@@ -41,46 +68,47 @@ export default function LoginPage({ isOnboarding = false }) {
       .catch(e => {
         switch (e.code) {
           case "INVALID_EMAIL":
-            setEmailError("Invalid email address");
+            setEmailError(t("login.error.invalidEmail"));
             break;
           case "INVALID_PASSWORD":
-            setPasswordError("Invalid password");
+            setPasswordError(t("login.error.invalidPassword"));
             break;
           case "INCORRECT_EMAIL":
-            setEmailError("Incorrect email address");
+            setEmailError(t("login.error.incorrectEmail"));
             break;
           case "INCORRECT_PASSWORD":
-            setPasswordError("Incorrect password");
+            setPasswordError(t("login.error.incorrectPassword"));
             break;
         }
       });
   }
 
   let header = null;
-  let buttonText = "Login";
+  let buttonText = t("login.button.login");
 
   if (isOnboarding) {
     header = (
       <div>
         <div className="login-title">Let's get started!</div>
-        <div className="login-subtitle">Create your admin account</div>
+        <div className="login-subtitle">{t("login.subtitle")}</div>
       </div>
     );
-    buttonText = "Continue";
+    buttonText = t("login.button.continue");
   } else {
     header = (
       <div>
-        <div className="login-title">Login</div>
+        <div className="login-title">{t("login.title")}</div>
       </div>
     );
   }
 
   return (
     <>
+      <div className="login-topbar"><LanguageSelect /></div>
       <form className="login-container" onSubmit={handleLoginClick}>
         {header}
-        <Input id="email" label="Email" type="email" placeholder="Enter your email address" value={email} hint="" error={emailError} isDisabled={false} onChange={handleEmailChange} />
-        <Input id="password" label="Password" type="password" placeholder="Enter your password" value={password} hint="" error={passwordError} isDisabled={false} onChange={handlePasswordChange} />
+        <Input id="email" label={t("login.email")} type="email" placeholder={t("login.ph.email")} value={email} hint="" error={emailError} isDisabled={false} onChange={handleEmailChange} />
+        <Input id="password" label={t("login.password")} type="password" placeholder={t("login.ph.password")} value={password} hint="" error={passwordError} isDisabled={false} onChange={handlePasswordChange} />
         <Button variant="primary" type="submit" onClick={handleLoginClick}>{buttonText}<ArrowRightIcon /></Button>
       </form>
       <div className="toast-root"></div>

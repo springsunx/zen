@@ -3,6 +3,7 @@ import Input from "../../commons/components/Input.jsx";
 import Button from "../../commons/components/Button.jsx";
 import ApiClient from "../../commons/http/ApiClient.js";
 import formatDate from "../../commons/utils/formatDate.js";
+import { t } from "../../commons/i18n/index.js";
 
 export default function McpPane() {
   const [tokens, setTokens] = useState([]);
@@ -34,7 +35,8 @@ export default function McpPane() {
 
   async function handleCreateToken() {
     if (!newTokenName.trim()) {
-      setError("Token name is required");
+      setError(t('settings.mcp.err.nameRequired'));
+
       return;
     }
 
@@ -71,20 +73,18 @@ export default function McpPane() {
         <div className="mcp-token-name">{token.name}</div>
         <div className="mcp-token-date" title={token.createdAt}>{formatDate(new Date(token.createdAt))}</div>
       </div>
-      <Button variant="danger" onClick={() => revokeToken(token.tokenId, token.name)}>
-        Revoke
-      </Button>
+      <Button variant="danger" onClick={() => revokeToken(token.tokenId, token.name)}>{t('settings.mcp.btn.revoke')}</Button>
     </div>
   ));
 
-  const buttonText = isCreating ? "Generating..." : "Generate Token";
+  const buttonText = isCreating ? t('settings.mcp.btn.generating') : t('settings.mcp.btn.generate');
   
   let tokenDisplay = null;
   if (newlyCreatedToken) {
     tokenDisplay = (
       <div className="mcp-token-display">
         <div className="mcp-token-display-header">
-          <strong>Your New Token</strong>
+          <strong>{t('settings.mcp.newToken.title')}</strong>
         </div>
         <div className="mcp-token-value">
           <code>{newlyCreatedToken}</code>
@@ -95,7 +95,7 @@ export default function McpPane() {
 
   let tokensContent = null;
   if (tokens.length === 0 && isTokensLoading === false) {
-    tokensContent = <p className="mcp-no-tokens">No tokens created yet. Create your first token above.</p>;
+    tokensContent = <p className="mcp-no-tokens">{t('settings.mcp.tokens.none')}</p>;
   } else {
     tokensContent = (
       <div className="mcp-tokens-list">
@@ -106,15 +106,15 @@ export default function McpPane() {
 
   return (
     <div className="settings-tab-content">
-      <h3>MCP Access Tokens</h3>
-      <p>Create tokens for MCP clients and agents to access your notes.</p>
+      <h3>{t('settings.mcp.title')}</h3>
+      <p>{t('settings.mcp.desc')}</p>
       
       <div className="mcp-token-creator">
         <Input
           id="mcp-token-name"
-          label="Token Name"
+          label={t('settings.mcp.input.label')}
           type="text"
-          placeholder="e.g., Claude Desktop, Cursor, etc."
+          placeholder={t('settings.mcp.input.placeholder')}
           value={newTokenName}
           error={error}
           isDisabled={isCreating}
@@ -130,7 +130,7 @@ export default function McpPane() {
       <hr/>
 
       <div className="mcp-tokens-section">
-        <h4>Active Tokens</h4>
+        <h4>{t('settings.mcp.tokens.title')}</h4>
         {tokensContent}
       </div>
     </div>

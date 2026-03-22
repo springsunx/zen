@@ -6,6 +6,7 @@ import { ModalBackdrop, ModalContainer, closeModal, openModal } from "../../comm
 import Lightbox from "../../commons/components/Lightbox.jsx";
 import SearchHistory from "../../commons/preferences/SearchHistory.js";
 import "./SearchMenu.css";
+import { t } from "../../commons/i18n/index.js";
 
 export default function SearchMenu() {
   const [query, setQuery] = useState("");
@@ -144,7 +145,7 @@ export default function SearchMenu() {
 
       lexicalNotesSection = (
         <div className="search-section">
-          <h4 className="search-section-title">Notes</h4>
+          <h4 className="search-section-title">{t('search.notes')}</h4>
           {noteItems}
         </div>
       );
@@ -160,7 +161,7 @@ export default function SearchMenu() {
 
       semanticNotesSection = (
         <div className="search-section">
-          <h4 className="search-section-title">Similar Notes</h4>
+          <h4 className="search-section-title">{t('search.similar')}</h4>
           {noteItems}
         </div>
       );
@@ -199,7 +200,7 @@ export default function SearchMenu() {
           <SearchIcon />
           <input
             type="text"
-            placeholder="Search..."
+            placeholder={t('search.placeholder')}
             ref={inputRef}
             value={query}
             onInput={handleChange}

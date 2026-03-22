@@ -1,4 +1,4 @@
-import { h, render } from './assets/preact.esm.js';
+import { h, render, useState, useEffect } from './assets/preact.esm.js';
 import Router from './commons/components/Router.jsx';
 import Route from './commons/components/Route.jsx';
 import useAuth from './commons/auth/useAuth.jsx';
@@ -11,14 +11,28 @@ import navigateTo from './commons/utils/navigateTo.js';
 import SearchMenu from './features/search/SearchMenu.jsx';
 import OfflineIndicator from './commons/components/OfflineIndicator.jsx';
 import Tooltip from './commons/components/Tooltip.js';
+import { initI18n } from './commons/i18n/index.js';
+
 import { AppProvider } from './commons/contexts/AppContext.jsx';
 import ThemePreferences from './commons/preferences/ThemePreferences.js';
+
+
+function Shell() {
+  const [langVersion, setLangVersion] = useState(0);
+  useEffect(() => {
+    const onChange = () => setLangVersion(v => v + 1);
+    window.addEventListener('i18n:change', onChange);
+    return () => window.removeEventListener('i18n:change', onChange);
+  }, []);
+  return <App langVersion={langVersion} />;
+}
 
 document.addEventListener('DOMContentLoaded', () => {
   ThemePreferences.applyTheme();
   Tooltip.init();
+  initI18n();
   render(
-    <App />,
+    <Shell />,
     document.body
   );
 });

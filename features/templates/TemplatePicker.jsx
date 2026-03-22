@@ -1,6 +1,7 @@
 import { h, useState, useEffect } from "../../assets/preact.esm.js"
 import ApiClient from "../../commons/http/ApiClient.js";
 import "./TemplatePicker.css";
+import { t } from "../../commons/i18n/index.js";
 
 export default function TemplatePicker({ onTemplateApply }) {
   const [templates, setTemplates] = useState([]);
@@ -38,9 +39,7 @@ export default function TemplatePicker({ onTemplateApply }) {
 
   return (
     <div className="templates-picker">
-      <div className="templates-picker-header">
-        Templates
-      </div>
+      <div className="templates-picker-header">{t("nav.templates")}      </div>
       <div className="templates-picker-list">
         {items}
       </div>

@@ -4,6 +4,7 @@ import SearchMenu from "../../features/search/SearchMenu.jsx";
 import { openModal } from "./Modal.jsx";
 import { NotesIcon, SearchIcon, NewIcon } from "./Icon.jsx";
 import "./MobileNavbar.css";
+import { t } from "../../commons/i18n/index.js";
 
 export default function MobileNavbar() {
   function handleSearchClick() {
@@ -14,17 +15,11 @@ export default function MobileNavbar() {
     <div className="mobile-navbar-container">
       <div className="mobile-navbar">
         <Link className="mobile-navbar-button" to="/notes/" shouldPreserveSearchParams>
-          <NotesIcon />
-          Notes
-        </Link>
+          <NotesIcon />{t('nav.notes')}        </Link>
         <div className="mobile-navbar-button" onClick={handleSearchClick}>
-          <SearchIcon />
-          Search
-        </div>
+          <SearchIcon />{t('nav.search')}        </div>
         <Link className="mobile-navbar-button" to="/notes/new" shouldPreserveSearchParams>
-          <NewIcon />
-          New
-        </Link>
+          <NewIcon />{t('nav.new')}        </Link>
       </div>
     </div>
   );

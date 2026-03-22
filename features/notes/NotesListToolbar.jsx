@@ -10,6 +10,7 @@ import navigateTo from "../../commons/utils/navigateTo.js";
 import isMobile from "../../commons/utils/isMobile.js";
 import TrashClearModal from "./TrashClearModal.jsx"
 import "./NotesListToolbar.css";
+import { t } from "../../commons/i18n/index.js";
 
 export default function NotesListToolbar({ onSidebarToggle, onViewChange }) {
   const searchParams = useSearchParams();
@@ -21,7 +22,7 @@ export default function NotesListToolbar({ onSidebarToggle, onViewChange }) {
   const isArchivesPage = searchParams.get("isArchived") === "true";
   const isTrashPage = searchParams.get("isDeleted") === "true";
 
-  let listName = "All Notes";
+  let listName = t('notes.list.all');
 
   if (selectedFocusId !== null) {
     const focusId = parseInt(selectedFocusId, 10);
@@ -36,9 +37,9 @@ export default function NotesListToolbar({ onSidebarToggle, onViewChange }) {
       listName = tag.name;
     }
   } else if (isArchivesPage === true) {
-    listName = "Archived";
+    listName = t('notes.list.archived');
   } else if (isTrashPage === true) {
-    listName = "Trash";
+    listName = t('notes.list.trash');
   }
 
   function handleTrashCleared() {
@@ -63,7 +64,7 @@ export default function NotesListToolbar({ onSidebarToggle, onViewChange }) {
       {
         icon: BrushCleaningIcon,
         onClick: handleClearTrash,
-        title: 'Clear Trash'
+        title: t('notes.trash.clear')
       }
     ];
   } else {
@@ -71,17 +72,17 @@ export default function NotesListToolbar({ onSidebarToggle, onViewChange }) {
       {
         icon: ListViewIcon,
         onClick: () => onViewChange("list"),
-        title: 'List View'
+        title: t('notes.view.list')
       },
       {
         icon: CardViewIcon,
         onClick: () => onViewChange("card"),
-        title: 'Card View'
+        title: t('notes.view.card')
       },
       {
         icon: GalleryViewIcon,
         onClick: () => onViewChange("gallery"),
-        title: 'Gallery View'
+        title: t('notes.view.gallery')
       }
     ];
   }
@@ -106,7 +107,7 @@ function Toolbar({ actions, onSidebarToggle, listName, className }) {
   return (
     <div className={className}>
       <ButtonGroup isMobile={true}>
-        <div onClick={onSidebarToggle} title="Toggle Sidebar">
+        <div onClick={onSidebarToggle} title={t('notes.sidebar.toggle')}>
           <HamburgerIcon />
         </div>
       </ButtonGroup>

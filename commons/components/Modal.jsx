@@ -1,6 +1,7 @@
 import { h, render } from '../../assets/preact.esm.js';
 import { CloseIcon } from './Icon.jsx';
 import './Modal.css';
+import { t } from "../i18n/index.js";
 
 export function closeModal(selector = '.modal-root') {
   render(null, document.querySelector(selector));

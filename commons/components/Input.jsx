@@ -1,5 +1,6 @@
 import { h } from '../../assets/preact.esm.js';
 import './Input.css';
+import { t } from "../i18n/index.js";
 
 export default function Input({ id, label, type, placeholder, value, hint, error, isDisabled, onChange }) {
   return (

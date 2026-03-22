@@ -1,5 +1,6 @@
 import { h, useEffect, useState } from "../../assets/preact.esm.js";
 import ApiClient from "../http/ApiClient.js";
+import { t } from "../i18n/index.js";
 
 export default function useAuth() {
   const [isLoading, setIsLoading] = useState(true);

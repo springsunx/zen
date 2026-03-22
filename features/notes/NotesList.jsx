@@ -13,6 +13,7 @@ import { NotesProvider } from "../../commons/contexts/NotesContext.jsx";
 import { AppProvider } from '../../commons/contexts/AppContext.jsx';
 import { openModal } from '../../commons/components/Modal.jsx';
 import "./NotesList.css";
+import { t } from "../../commons/i18n/index.js";
 
 export default function NotesList({ notes = [], total, isLoading, images = [], imagesTotal, isImagesLoading, view, onViewChange, onLoadMoreClick, onLoadMoreImagesClick, onSidebarToggle }) {
   let listClassName = "notes-list";
@@ -145,7 +146,7 @@ function LoadMoreButton({ items, total, onLoadMoreClick }) {
     return null;
   }
 
-  return <Button className="notes-list-load-more-button" onClick={onLoadMoreClick}>Load more</Button>
+  return <Button className="notes-list-load-more-button" onClick={onLoadMoreClick}>{t("common.loadMore")}</Button>
 }
 
 function EmptyList({ items, view }) {
@@ -153,6 +154,6 @@ function EmptyList({ items, view }) {
     return null;
   }
 
-  const message = view === "gallery" ? "No images found" : "No notes found";
+  const message = view === "gallery" ? t("notes.empty.images") : t("notes.empty.notes");
   return <div className="notes-list-empty-text">{message}</div>
 }

@@ -1,6 +1,7 @@
 import { h, useState, useEffect } from "../../assets/preact.esm.js";
 import "./OfflineIndicator.css";
 import BackendHealth from "../net/BackendHealth.js";
+import { t } from "../i18n/index.js";
 
 export default function OfflineIndicator() {
     const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -30,6 +31,6 @@ export default function OfflineIndicator() {
     }
 
     return (
-        <div className="offline-indicator">offline readonly view</div>
+        <div className="offline-indicator">{t("offline.banner")}</div>
     );
 }

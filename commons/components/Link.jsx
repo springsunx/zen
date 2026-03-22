@@ -1,5 +1,6 @@
 import { h } from '../../assets/preact.esm.js';
 import navigateTo from '../utils/navigateTo.js';
+import { t } from "../i18n/index.js";
 
 export default function Link({ to, shouldPreserveSearchParams, children, className = "", activeClassName = "", ...rest }) {
   function handleClick(event) {

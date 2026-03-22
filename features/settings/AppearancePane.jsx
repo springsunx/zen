@@ -1,26 +1,29 @@
 import { h, useState, useEffect } from "../../assets/preact.esm.js";
 import ThemePreferences from "../../commons/preferences/ThemePreferences.js";
+import { t, setLang, getPrefLang } from "../../commons/i18n/index.js";
 
 const themes = [
   {
     id: 'system',
-    name: 'Auto',
+    name: t('settings.appearance.theme.system'),
     preview: <SystemThemePreview />
   },
   {
     id: 'dark',
-    name: 'Dark',
+    name: t('settings.appearance.theme.dark'),
     preview: <DarkThemePreview />
   },
   {
     id: 'light',
-    name: 'Light',
+    name: t('settings.appearance.theme.light'),
     preview: <LightThemePreview />
   }
 ];
 
+// --- Main component ---
 export default function AppearancePane() {
-  const [selectedThemeId, setSelectedThemeId] = useState("system");
+  const [selectedThemeId, setSelectedThemeId] = useState('system');
+  const [lang, setLangState] = useState(getPrefLang());
 
   useEffect(() => {
     const savedThemeId = ThemePreferences.getPreference();
@@ -41,6 +44,12 @@ export default function AppearancePane() {
     setSelectedThemeId(themeId);
   }
 
+  function handleLangChange(e) {
+    const v = e.target.value;
+    setLang(v);
+    setLangState(v);
+  }
+
   const themeOptions = themes.map(theme => {
     const isSelected = selectedThemeId === theme.id;
     return (
@@ -57,13 +66,19 @@ export default function AppearancePane() {
 
   return (
     <div className="settings-tab-content">
-      <h3>Appearance</h3>
-      <p>Choose between light, dark, or system themes to match your preferences.</p>
-      <div className="theme-selector">
-        {themeOptions}
+      <h3>{t('settings.appearance.title')}</h3>
+      <p>{t('settings.appearance.desc')}</p>
+      <div className="theme-selector">{themeOptions}</div>
+      <div className="language-section" style="margin-top:16px">
+        <h3>{t('settings.language')}</h3>
+        <select value={lang} onChange={handleLangChange}>
+          <option value="auto">{t('settings.language.auto')}</option>
+          <option value="zh-CN">{t('settings.language.zh')}</option>
+          <option value="en">{t('settings.language.en')}</option>
+        </select>
       </div>
     </div>
-  ); 
+  );
 }
 
 function SystemThemePreview() {

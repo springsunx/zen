@@ -1,4 +1,4 @@
-import { h, useState } from "../../assets/preact.esm.js"
+import { h, useState, useEffect } from "../../assets/preact.esm.js"
 import { ModalBackdrop, ModalContainer, ModalHeader, closeModal } from "../../commons/components/Modal.jsx";
 import { UploadIcon, DownloadIcon, ThemeIcon, BrainCircuitIcon, SecurityIcon } from "../../commons/components/Icon.jsx";
 import ImportPane from "./ImportPane.jsx";
@@ -6,18 +6,25 @@ import ExportPane from "./ExportPane.jsx";
 import AppearancePane from "./AppearancePane.jsx";
 import McpPane from "./McpPane.jsx";
 import SecurityPane from "./SecurityPane.jsx";
+import { t } from "../../commons/i18n/index.js";
 import "./SettingsModal.css";
-
-const tabs = [
-  { id: "appearance", label: "Appearance", icon: <ThemeIcon className="settings-tab-icon" />, content: <AppearancePane /> },
-  { id: "account", label: "Security", icon: <SecurityIcon className="settings-tab-icon" />, content: <SecurityPane /> },
-  { id: "import", label: "Import", icon: <UploadIcon className="settings-tab-icon" />, content: <ImportPane /> },
-  { id: "export", label: "Export", icon: <DownloadIcon className="settings-tab-icon" />, content: <ExportPane /> },
-  { id: "mcp", label: "MCP", icon: <BrainCircuitIcon className="settings-tab-icon" />, content: <McpPane /> }
-];
 
 export default function SettingsModal() {
   const [activeTab, setActiveTab] = useState("appearance");
+  const [langVersion, setLangVersion] = useState(0);
+  useEffect(() => {
+    const onChange = () => setLangVersion(v => v + 1);
+    window.addEventListener("i18n:change", onChange);
+    return () => window.removeEventListener("i18n:change", onChange);
+  }, []);
+
+  const tabs = [
+    { id: "appearance", label: t("settings.tabs.appearance"), icon: <ThemeIcon className="settings-tab-icon" />, content: <AppearancePane /> },
+    { id: "account", label: t("settings.tabs.security"), icon: <SecurityIcon className="settings-tab-icon" />, content: <SecurityPane /> },
+    { id: "import", label: t("settings.tabs.import"), icon: <UploadIcon className="settings-tab-icon" />, content: <ImportPane /> },
+    { id: "export", label: t("settings.tabs.export"), icon: <DownloadIcon className="settings-tab-icon" />, content: <ExportPane /> },
+    { id: "mcp", label: t("settings.tabs.mcp"), icon: <BrainCircuitIcon className="settings-tab-icon" />, content: <McpPane /> }
+  ];
 
   function handleCloseModal() {
     closeModal();
@@ -39,7 +46,7 @@ export default function SettingsModal() {
   return (
     <ModalBackdrop onClose={handleCloseModal}>
       <ModalContainer className="settings-modal">
-        <ModalHeader title="Settings" onClose={handleCloseModal} />
+        <ModalHeader title={t("settings.title")} onClose={handleCloseModal} />
         <div className="settings-content">
           <div className="settings-sidebar">
             {sidebar}

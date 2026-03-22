@@ -6,13 +6,14 @@ import Button from "../../commons/components/Button.jsx";
 import navigateTo from "../../commons/utils/navigateTo.js";
 import useSearchParams from "../../commons/components/useSearchParams.jsx";
 import { useAppContext } from "../../commons/contexts/AppContext.jsx";
+import { t } from "../../commons/i18n/index.js";
 
 export default function FocusSwitcher() {
   const { focusModes, refreshFocusModes, refreshTags } = useAppContext();
 
   let currentFocusModes = focusModes;
   if (currentFocusModes.length === 0) {
-    currentFocusModes = [{ focusId: 0, name: "Everything" }];
+    currentFocusModes = [{ focusId: 0, name: t("focus.everything") }];
   }
 
   const [selectedFocusMode, setSelectedFocusMode] = useState(currentFocusModes[0]);
@@ -71,17 +72,17 @@ export default function FocusSwitcher() {
     }
     return (
       <li key={focusMode.focusId} className="dropdown-option" onClick={() => handleFocusModeClick(focusMode)}>
-        {focusMode.name}
+        {focusMode.focusId === 0 ? t("focus.everything") : focusMode.name}
         {editIcon}
       </li>
     )
   });
-  items.push(<li className="dropdown-option" onClick={handleAddNewClick}>Add new...</li>);
+  items.push(<li className="dropdown-option" onClick={handleAddNewClick}>{t("focus.addNew")}...</li>);
 
   return (
     <div ref={dropdownRef} className="sidebar-focus-switcher">
       <Button className="dropdown-button" onClick={handleDropdownClick}>
-        {selectedFocusMode.name}
+        {selectedFocusMode?.focusId === 0 ? t("focus.everything") : selectedFocusMode?.name}
         <ArrowDownIcon />
       </Button>
       <div className={`dropdown-container ${isDropdownOpen ? 'is-open' : ''}`}>
@@ -92,4 +93,3 @@ export default function FocusSwitcher() {
     </div>
   )
 }
-

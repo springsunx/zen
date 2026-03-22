@@ -1,6 +1,7 @@
 import { h } from '../../assets/preact.esm.js';
 import { BackIcon, TrashIcon, ZoomInIcon, ZoomOutIcon, SidebarOpenIcon, SidebarCloseIcon, AlignStartHorizontalIcon, AlignStartVerticalIcon, AlignCenterHorizontalIcon, AlignCenterVerticalIcon, AlignEndHorizontalIcon, AlignEndVerticalIcon, HandIcon, MousePointerIcon, StickyNoteIcon } from '../../commons/components/Icon.jsx';
 import './CanvasToolbar.css';
+import { t } from "../../commons/i18n/index.js";
 
 export default function CanvasToolbar({ onBack, onDelete, onZoom, zoomLevel, onToggleSidebar, isSidebarOpen, onTogglePanMode, isPanMode, onAlign, hasMultiSelection, onAddStickyNote }) {
   return (
@@ -9,7 +10,7 @@ export default function CanvasToolbar({ onBack, onDelete, onZoom, zoomLevel, onT
         <button className="canvas-toolbar-button" onClick={onBack}>
           <BackIcon />
         </button>
-        <h1 className="canvas-toolbar-title">Canvas</h1>
+        <h1 className="canvas-toolbar-title">{t('canvas.title')}</h1>
       </div>
       <div className="canvas-toolbar-right">
         <button className="canvas-toolbar-button" onClick={onDelete}>

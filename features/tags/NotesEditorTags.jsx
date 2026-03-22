@@ -2,6 +2,7 @@ import { h, Fragment, useState, useEffect, useRef } from "../../assets/preact.es
 import ApiClient from '../../commons/http/ApiClient.js';
 import { RemoveIcon } from "../../commons/components/Icon.jsx";
 import Link from "../../commons/components/Link.jsx";
+import { t } from "../../commons/i18n/index.js";
 
 export default function NotesEditorTags({ tags, isEditable, canCreateTag, onAddTag, onRemoveTag }) {
   const [query, setQuery] = useState("");
@@ -84,7 +85,7 @@ export default function NotesEditorTags({ tags, isEditable, canCreateTag, onAddT
 
         // Showing "Add" even if there are other suggestions since a new tag can be a substring of an existing tag
         if (canCreateTag && value.trim() !== "" && !hasExactInputInFilteredTags) {
-          filteredTags.push({ tagId: -1, name: `Add "${value}"` });
+          filteredTags.push({ tagId: -1, name: t("tags.add.suggest", {value}) });
         }
 
         setSuggestions(filteredTags);
@@ -127,7 +128,7 @@ export default function NotesEditorTags({ tags, isEditable, canCreateTag, onAddT
       <Fragment>
         <input
           className="notes-editor-tags-input"
-          placeholder="Add Tags..."
+          placeholder={t("tags.add.placeholder")}
           autoComplete="off"
           value={query}
           onKeyUp={handleKeyUp}

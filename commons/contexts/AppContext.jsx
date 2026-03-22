@@ -1,5 +1,6 @@
 import { h, createContext, useContext, useState, useCallback, useEffect } from '../../assets/preact.esm.js';
 import ApiClient from '../../commons/http/ApiClient.js';
+import { t } from "../i18n/index.js";
 
 const AppContext = createContext();
 

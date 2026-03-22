@@ -1,6 +1,7 @@
 import { h, render, useRef } from "../../assets/preact.esm.js"
 import { closeModal, openModal } from "../../commons/components/Modal.jsx";
 import "./TableOfContents.css";
+import { t } from "../../commons/i18n/index.js";
 
 export default function TableOfContents({ content, isExpanded, isEditable, isNewNote, visibleHeadings = [] }) {
   const headings = extractHeadings(content);

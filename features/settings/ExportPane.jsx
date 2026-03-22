@@ -3,6 +3,7 @@ import { DownloadIcon } from "../../commons/components/Icon.jsx";
 import { showToast } from "../../commons/components/Toast.jsx";
 import ApiClient from "../../commons/http/ApiClient.js";
 import Button from "../../commons/components/Button.jsx";
+import { t } from "../../commons/i18n/index.js";
 
 export default function ExportPane() {
   const [isExporting, setIsExporting] = useState(false);
@@ -16,10 +17,10 @@ export default function ExportPane() {
 
     try {
       await ApiClient.exportNotes();
-      showToast("Notes exported successfully!");
+      showToast(t('settings.export.toast.ok'));
     } catch (error) {
       console.error('Export error:', error);
-      showToast("Failed to export notes. Please try again.");
+      showToast(t('settings.export.toast.fail'));
     } finally {
       setIsExporting(false);
     }
@@ -27,18 +28,18 @@ export default function ExportPane() {
 
   return (
     <div className="settings-tab-content">
-      <h3>Export Notes</h3>
-      <p>Download all your notes as a zip file containing markdown files and metadata.</p>
+      <h3>{t('settings.export.title')}</h3>
+      <p>{t('settings.export.desc')}</p>
       
       <div className="export-section">
-        <h4>What's included:</h4>
+        <h4>{t('settings.export.included.title')}</h4>
         <ul className="export-info-list">
-          <li><strong>Markdown files:</strong> All notes as .md files with yaml frontmatter for tags</li>
-          <li><strong>Raw data:</strong> Complete json exports (notes.json, tags.json, metadata.json)</li>
-          <li><strong>Cross platform:</strong> Sanitized filenames compatible with windows/mac/linux</li>
+          <li><strong>{t('settings.export.included.md').split(": ")[0]}:</strong> {t('settings.export.included.md').split(": ")[1]}</li>
+          <li><strong>{t('settings.export.included.raw').split(": ")[0]}:</strong> {t('settings.export.included.raw').split(": ")[1]}</li>
+          <li><strong>{t('settings.export.included.cross').split(": ")[0]}:</strong> {t('settings.export.included.cross').split(": ")[1]}</li>
         </ul>
         
-        <h4>Export structure:</h4>
+        <h4>{t('settings.export.structure.title')}</h4>
         <pre className="export-tree">
 {`zen-export-2025-08-08.zip
 ├── my-note.md
@@ -59,7 +60,7 @@ export default function ExportPane() {
           onClick={handleExportClick}
           isDisabled={isExporting}
         >
-          {isExporting ? 'Exporting...' : 'Export'}
+          {isExporting ? t('settings.export.btn.exporting') : t('settings.export.btn.export')}
         </Button>
       </div>
     </div>

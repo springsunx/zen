@@ -3,6 +3,7 @@ import TemplatesListToolbar from './TemplatesListToolbar.jsx';
 import TemplateListItem from './TemplateListItem.jsx';
 import Spinner from '../../commons/components/Spinner.jsx';
 import "./TemplatesList.css";
+import { t } from "../../commons/i18n/index.js";
 
 export default function TemplatesList({ templates = [], isLoading, onNewTemplateClick }) {
   let content = <div className="templates-list-spinner"><Spinner /></div>;
@@ -32,6 +33,6 @@ function EmptyList({ templates }) {
   }
 
   return (
-    <div className="templates-list-empty-text">No templates found</div>
+    <div className="templates-list-empty-text">{t('templates.empty')}</div>
   );
 }

@@ -9,6 +9,7 @@ import { closeModal, openModal } from '../../commons/components/Modal.jsx';
 import navigateTo from '../../commons/utils/navigateTo.js';
 import TemplateDeleteModal from './TemplateDeleteModal.jsx';
 import "./TemplateEditor.css";
+import { t } from "../../commons/i18n/index.js";
 
 // https://go.dev/src/time/format.go
 const HELP = `
@@ -63,7 +64,7 @@ export default function TemplateEditor({ selectedTemplate, isNewTemplate, onChan
       promise = ApiClient.updateTemplate(selectedTemplate.templateId, template);
     } else {
       setIsSaveLoading(false);
-      showToast("Error: Template not found");
+      showToast(t('templates.error.notFound'));
       return;
     }
 
@@ -71,10 +72,10 @@ export default function TemplateEditor({ selectedTemplate, isNewTemplate, onChan
       .then(template => {
         if (isNewTemplate) {
           navigateTo(`/templates/${template.templateId}`);
-          showToast("Template created");
+          showToast(t('templates.toast.created'));
         } else {
           navigateTo("/templates/");
-          showToast("Template updated");
+          showToast(t('templates.toast.updated'));
         }
 
         onChange();
@@ -83,7 +84,7 @@ export default function TemplateEditor({ selectedTemplate, isNewTemplate, onChan
       .catch(error => {
         console.error('Error saving template:', error);
         if (error.code === "TEMPLATE_NAME_REQUIRED") {
-          setNameError("Template name is required");
+          setNameError(t('templates.form.err.nameRequired'));
         }
       })
       .finally(() => {
@@ -111,7 +112,7 @@ export default function TemplateEditor({ selectedTemplate, isNewTemplate, onChan
     ApiClient.deleteTemplate(selectedTemplate.templateId)
       .then(() => {
         handleDeleteCloseClick();
-        showToast("Template deleted");
+        showToast(t('templates.toast.deleted'));
         navigateTo("/templates/");
         onChange();
         onClose();
@@ -128,7 +129,7 @@ export default function TemplateEditor({ selectedTemplate, isNewTemplate, onChan
     }
 
     return [
-      <div onClick={handleDeleteClick}>Delete</div>
+      <div onClick={handleDeleteClick}>{t('common.delete')}</div>
     ];
   }
 
@@ -137,37 +138,37 @@ export default function TemplateEditor({ selectedTemplate, isNewTemplate, onChan
       <div className="templates-editor-header">
         <div className="templates-editor-header-left">
           <h2 className="templates-editor-title">
-            {isNewTemplate ? "New Template" : "Edit Template"}
+            {isNewTemplate ? t('templates.header.new') : t('templates.header.edit')}
           </h2>
         </div>
 
         <div className="templates-editor-header-right">
-          <Button variant="ghost" onClick={handleSaveClick}>{isSaveLoading ? "Saving..." : "Save"}</Button>
-          <Button variant="ghost" onClick={onClose}>Close</Button>
+          <Button variant="ghost" onClick={handleSaveClick}>{isSaveLoading ? t('common.saving') : t('common.save')}</Button>
+          <Button variant="ghost" onClick={onClose}>{t('common.close')}</Button>
           {!isNewTemplate && <DropdownMenu actions={getMenuActions()} />}
         </div>
       </div>
 
       <div className="templates-editor-content">
-        <Input id="template-name" label="Name" type="text" placeholder="Enter template name" value={name} hint="" error={nameError} isDisabled={false} onChange={e => setName(e.target.value)} />
+        <Input id="template-name" label={t('templates.form.name')} type="text" placeholder={t('templates.form.ph.name')} value={name} hint="" error={nameError} isDisabled={false} onChange={e => setName(e.target.value)} />
 
-        <Input id="template-title" label="Title" type="text" placeholder="Enter note title" value={title} hint="" error="" isDisabled={false} onChange={e => setTitle(e.target.value)} />
+        <Input id="template-title" label={t('templates.form.title')} type="text" placeholder={t('templates.form.ph.title')} value={title} hint="" error="" isDisabled={false} onChange={e => setTitle(e.target.value)} />
 
         <div className="form-field-container">
-          <label>Tags</label>
+          <label>{t('templates.form.tags')}</label>
           <br />
           <NotesEditorTags tags={tags} isEditable canCreateTag={false} onAddTag={handleAddTag} onRemoveTag={handleRemoveTag} />
         </div>
 
         <div className="input-container form-field-container">
-          <label htmlFor="template-content">Content</label>
+          <label htmlFor="template-content">{t('templates.form.content')}</label>
           <br />
-          <textarea id="template-content" className="templates-editor-textarea" value={content} onChange={handleContentChange} placeholder="Enter note content" required />
+          <textarea id="template-content" className="templates-editor-textarea" value={content} onChange={handleContentChange} placeholder={t('templates.form.ph.content')} required />
           <br />
         </div>
 
         <div className="templates-editor-help">
-          <h4>Placeholder Help</h4>
+          <h4>{t('templates.placeholder.help')}</h4>
           <pre>
             {HELP}
           </pre>

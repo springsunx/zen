@@ -7,6 +7,7 @@ import SettingsModal from "../../features/settings/SettingsModal.jsx";
 import { openModal } from "./Modal.jsx";
 import { NotesIcon, SearchIcon, NewIcon, ArchiveIcon, TrashIcon, BoardIcon, SettingsIcon, TemplatesIcon } from "./Icon.jsx";
 import { useAppContext } from "../../commons/contexts/AppContext.jsx";
+import { t } from "../../commons/i18n/index.js";
 import "./Sidebar.css";
 
 export default function Sidebar({ isOpen, onSidebarClose }) {
@@ -52,35 +53,35 @@ export default function Sidebar({ isOpen, onSidebarClose }) {
 
           <Link className="sidebar-button new" to="/notes/new" shouldPreserveSearchParams>
             <NewIcon />
-            New
+            {t("nav.new")}
           </Link>
           <div className="sidebar-button search" onClick={handleSearchClick}>
             <SearchIcon />
-            Search
+            {t("nav.search")}
           </div>
           <Link className="sidebar-button notes" to={notesLink}>
             <NotesIcon />
-            Notes
+            {t("nav.notes")}
           </Link>
           <Link className="sidebar-button canvas" to="/canvas">
             <BoardIcon />
-            Canvas
+            {t("nav.canvas")}
           </Link>
           <Link className="sidebar-button templates" activeClassName="is-active" to="/templates/">
             <TemplatesIcon />
-            Templates
+            {t("nav.templates")}
           </Link>
           <Link className="sidebar-button archives" activeClassName="is-active" to="/notes/?isArchived=true">
             <ArchiveIcon />
-            Archives
+            {t("nav.archives")}
           </Link>
           <Link className="sidebar-button trash" activeClassName="is-active" to="/notes/?isDeleted=true">
             <TrashIcon />
-            Trash
+            {t("nav.trash")}
           </Link>
           <div className="sidebar-button settings" onClick={handleSettingsClick}>
             <SettingsIcon />
-            Settings
+            {t("nav.settings")}
           </div>
         </div>
 

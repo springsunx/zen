@@ -10,6 +10,7 @@ import useSearchParams from "../../commons/components/useSearchParams.jsx";
 import { useAppContext } from "../../commons/contexts/AppContext.jsx";
 import { NotesProvider, useNotes } from "../../commons/contexts/NotesContext.jsx";
 import ViewPreferences from "../../commons/preferences/ViewPreferences.js";
+import { t } from "../../commons/i18n/index.js";
 
 export default function NotesPage({ noteId }) {
   return (

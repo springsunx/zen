@@ -7,19 +7,20 @@ import { ModalBackdrop, ModalContainer, ModalHeader, ModalContent, ModalFooter, 
 import ApiClient from "../../commons/http/ApiClient.js";
 import navigateTo from "../../commons/utils/navigateTo.js";
 import "./FocusDetailsModal.css";
+import { t } from "../../commons/i18n/index.js";
 
 export default function FocusDetailsModal({ mode, focusMode, refreshFocusModes, refreshTags }) {
   const [name, setName] = useState(focusMode ? focusMode.name : "");
   const [tags, setTags] = useState(focusMode ? focusMode.tags : []);
 
-  let title = "Create Focus";
-  let buttonName = "Create";
+  let title = t("focus.create.title");
+  let buttonName = t("common.create");
   let deleteButton = null;
 
   if (mode === "edit") {
-    title = "Edit Focus";
-    buttonName = "Update";
-    deleteButton = <Button variant="danger" onClick={handleDeleteClick}>Delete</Button>;
+    title = t("focus.edit.title");
+    buttonName = t("common.update");
+    deleteButton = <Button variant="danger" onClick={handleDeleteClick}>{t("common.delete")}</Button>;
   }
 
   function handleNameChange(e) {
@@ -79,17 +80,17 @@ export default function FocusDetailsModal({ mode, focusMode, refreshFocusModes, 
       <ModalContainer className="focus-dialog">
         <ModalHeader title={title} onClose={handleCancelClick} />
         <ModalContent>
-          <p className="modal-description">Define your Focus to concentrate on what matters most. Add tags to view only the relevant notes for this topic and work without distraction.</p>
-          <Input id="focus-name" label="Focus Name" type="text" placeholder="Name your Focus" value={name} hint="" error="" isDisabled={false} onChange={handleNameChange} />
+          <p className="modal-description">{t("focus.desc")}</p>
+          <Input id="focus-name" label={t("focus.form.name")} type="text" placeholder={t("focus.form.ph.name")} value={name} hint="" error="" isDisabled={false} onChange={handleNameChange} />
           <div className="form-field-container">
-            <label htmlFor="focus-tags">Tags</label>
+            <label htmlFor="focus-tags">{t('templates.form.tags')}</label>
             <NotesEditorTags tags={tags} isEditable canCreateTag={false} onAddTag={handleAddTag} onRemoveTag={handleRemoveTag} />
           </div>
         </ModalContent>
         <ModalFooter isRightAligned={mode === "create"}>
           {deleteButton}
           <ButtonGroup>
-            <Button onClick={handleCancelClick}>Cancel</Button>
+            <Button onClick={handleCancelClick}>{t("common.cancel")}</Button>
             <Button variant="primary" onClick={handleCreateClick}>{buttonName}</Button>
           </ButtonGroup>
         </ModalFooter>

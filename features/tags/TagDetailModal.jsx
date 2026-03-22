@@ -6,6 +6,7 @@ import { ModalBackdrop, ModalContainer, ModalHeader, ModalContent, ModalFooter, 
 import ApiClient from "../../commons/http/ApiClient.js";
 import navigateTo from "../../commons/utils/navigateTo.js";
 import "./TagDetailModal.css";
+import { t } from "../../commons/i18n/index.js";
 
 export default function TagDetailModal({ tag, refreshTags }) {
   const [name, setName] = useState(tag.name);
@@ -44,16 +45,16 @@ export default function TagDetailModal({ tag, refreshTags }) {
   return (
     <ModalBackdrop onClose={handleCancelClick} isCentered={true}>
       <ModalContainer className="tag-dialog">
-        <ModalHeader title="Manage Tag" onClose={handleCancelClick} />
+        <ModalHeader title={t('tags.detail.manage')} onClose={handleCancelClick} />
         <ModalContent>
-          <p className="modal-description">Edit the tag name or <b>permanently delete</b> this tag. Deleting the tag will remove it from all notes.</p>
-          <Input id="tag-name" label="Tag Name" type="text" placeholder="Name your Tag" value={name} hint="" error="" isDisabled={false} onChange={handleNameChange} />
+          <p className="modal-description">{t("tags.detail.desc")}</p>
+          <Input id="tag-name" label={t("tags.detail.name")} type="text" placeholder={t("tags.detail.ph.name")} value={name} hint="" error="" isDisabled={false} onChange={handleNameChange} />
         </ModalContent>
         <ModalFooter>
-          <Button variant="danger" onClick={handleDeleteClick}>Delete</Button>
+          <Button variant="danger" onClick={handleDeleteClick}>{t("common.delete")}</Button>
           <ButtonGroup>
-            <Button onClick={handleCancelClick}>Cancel</Button>
-            <Button variant="primary" onClick={handleUpdateClick}>Update</Button>
+            <Button onClick={handleCancelClick}>{t("common.cancel")}</Button>
+            <Button variant="primary" onClick={handleUpdateClick}>{t('common.update')}</Button>
           </ButtonGroup>
         </ModalFooter>
       </ModalContainer>

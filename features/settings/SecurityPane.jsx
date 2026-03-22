@@ -3,6 +3,7 @@ import Button from "../../commons/components/Button.jsx";
 import Input from "../../commons/components/Input.jsx";
 import ApiClient from "../../commons/http/ApiClient.js";
 import { showToast } from "../../commons/components/Toast.jsx";
+import { t } from "../../commons/i18n/index.js";
 
 export default function SecurityPane() {
   const [oldPassword, setOldPassword] = useState("");
@@ -22,22 +23,22 @@ export default function SecurityPane() {
     setConfirmPasswordError("");
 
     if (!oldPassword.trim()) {
-      setOldPasswordError("Current password is required");
+      setOldPasswordError(t('settings.security.err.currentRequired'));
       return;
     }
 
     if (!newPassword.trim()) {
-      setNewPasswordError("New password is required");
+      setNewPasswordError(t('settings.security.err.newRequired'));
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setConfirmPasswordError("Passwords do not match");
+      setConfirmPasswordError(t('settings.security.err.mismatch'));
       return;
     }
 
     if (oldPassword === newPassword) {
-      setNewPasswordError("New password must be different");
+      setNewPasswordError(t('settings.security.err.newDifferent'));
       return;
     }
 
@@ -48,18 +49,18 @@ export default function SecurityPane() {
       newPassword: newPassword
     })
       .then(() => {
-        showToast("Password updated successfully");
+        showToast(t('settings.security.toast.updated'));
         setOldPassword("");
         setNewPassword("");
         setConfirmPassword("");
       })
       .catch((error) => {
         if (error.code === "INCORRECT_OLD_PASSWORD") {
-          setOldPasswordError("Incorrect password");
+          setOldPasswordError(t('settings.security.err.currentRequired'));
         } else if (error.code === "INVALID_NEW_PASSWORD") {
-          setNewPasswordError("New password must be different");
+          setNewPasswordError(t('settings.security.err.newDifferent'));
         } else {
-          showToast("Failed to update password");
+          showToast(t('settings.security.toast.updateFailed'));
         }
       })
       .finally(() => {
@@ -72,11 +73,11 @@ export default function SecurityPane() {
 
     ApiClient.logout()
       .then(() => {
-        showToast("Logged out successfully");
+        showToast(t('settings.security.toast.logoutOk'));
         window.location.reload();
       })
       .catch(() => {
-        showToast("Failed to logout");
+        showToast(t('settings.security.toast.logoutFailed'));
       })
       .finally(() => {
         setIsLogoutLoading(false);
@@ -85,15 +86,15 @@ export default function SecurityPane() {
 
   return (
     <div className="settings-tab-content">
-      <h3>Change Password</h3>
-      <p>Update your account password. You'll need to provide your current password.</p>
+      <h3>{t('settings.security.title')}</h3>
+      <p>{t('settings.security.desc')}</p>
 
       <form className="settings-form" onSubmit={handlePasswordSubmit}>
         <Input
           id="current-password"
-          label="Current Password"
+          label={t('settings.security.current')}
           type="password"
-          placeholder="Enter current password"
+          placeholder={t('settings.security.ph.current')}
           value={oldPassword}
           error={oldPasswordError}
           isDisabled={isPasswordLoading}
@@ -102,9 +103,9 @@ export default function SecurityPane() {
 
         <Input
           id="new-password"
-          label="New Password"
+          label={t('settings.security.new')}
           type="password"
-          placeholder="Enter new password"
+          placeholder={t('settings.security.ph.new')}
           value={newPassword}
           error={newPasswordError}
           isDisabled={isPasswordLoading}
@@ -113,9 +114,9 @@ export default function SecurityPane() {
 
         <Input
           id="confirm-password"
-          label="Confirm New Password"
+          label={t('settings.security.confirm')}
           type="password"
-          placeholder="Confirm new password"
+          placeholder={t('settings.security.ph.confirm')}
           value={confirmPassword}
           error={confirmPasswordError}
           isDisabled={isPasswordLoading}
@@ -123,17 +124,17 @@ export default function SecurityPane() {
         />
 
         <Button type="submit" variant={`primary ${isPasswordLoading ? 'disabled' : ''}`} isDisabled={isPasswordLoading}>
-          {isPasswordLoading ? 'Updating...' : 'Update Password'}
+          {isPasswordLoading ? t('settings.security.btn.updating') : t('settings.security.btn.update')}
         </Button>
       </form>
 
       <hr/>
 
-      <h3>Session Management</h3>
-      <p>Log out of your account. You'll need to sign in again.</p>
+      <h3>{t('settings.security.session.title')}</h3>
+      <p>{t('settings.security.session.desc')}</p>
 
       <Button onClick={handleLogout} isDisabled={isLogoutLoading}>
-        {isLogoutLoading ? 'Logging out...' : 'Log out'}
+        {isLogoutLoading ? t('settings.security.btn.loggingOut') : t('settings.security.btn.logout')}
       </Button>
     </div>
   );

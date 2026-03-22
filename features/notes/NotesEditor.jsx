@@ -19,6 +19,7 @@ import useImageUpload from "./useImageUpload.js";
 import useMarkdownFormatter from "./useMarkdownFormatter.js";
 import "./NotesEditor.css";
 import { CloseIcon, SidebarCloseIcon, SidebarOpenIcon, BackIcon } from "../../commons/components/Icon.jsx";
+import { t } from "../../commons/i18n/index.js";
 
 export default function NotesEditor({ isNewNote, isFloating, onClose, onEditModeChange = () => {} }) {
   const { selectedNote, handleNoteChange, handlePinToggle } = useNotes();
@@ -289,7 +290,7 @@ export default function NotesEditor({ isNewNote, isFloating, onClose, onEditMode
     contentArea = (
       <textarea
         className="notes-editor-textarea"
-        placeholder="Write here..."
+        placeholder={t('notes.editor.placeholder')}
         spellCheck="false"
         ref={textareaRef}
         value={content}
@@ -299,7 +300,7 @@ export default function NotesEditor({ isNewNote, isFloating, onClose, onEditMode
     );
   } else if (title === "" && content === "") {
     contentArea = (
-      <div className="notes-editor-empty-text">Empty note</div>
+      <div className="notes-editor-empty-text">{t('notes.editor.empty')}</div>
     );
   } else {
     contentArea = (
@@ -346,7 +347,7 @@ export default function NotesEditor({ isNewNote, isFloating, onClose, onEditMode
       </div>
       <NotesEditorTags tags={tags} isEditable={isEditable} canCreateTag onAddTag={handleAddTag} onRemoveTag={handleRemoveTag} />
       <div className={`notes-editor-image-dropzone ${isDraggingOver ? "dragover" : ""}`} onDrop={handleImageDrop} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onClick={handleDropzoneClick}>
-        Click to upload or drag and drop images
+        {t('notes.editor.images.hint')}
         <input type="file" accept="image/*" multiple ref={fileInputRef} onChange={handleFileInputChange} style={{ display: "none" }} />
       </div>
       <div className="notes-editor-image-attachment-preview">{imagePreviewItems}</div>
@@ -361,7 +362,7 @@ export default function NotesEditor({ isNewNote, isFloating, onClose, onEditMode
 }
 
 function Toolbar({ note, isNewNote, isEditable, isFloating, isSaveLoading, isExpanded, onSaveClick, onEditClick, onEditCancelClick, onCloseClick, onDeleteClick, onArchiveClick, onUnarchiveClick, onRestoreClick, onExpandToggleClick, onPinClick, onUnpinClick }) {
-  const saveButtonText = isSaveLoading ? "Saving..." : "Save";
+  const saveButtonText = isSaveLoading ? t('common.saving') : t('common.save');
 
   function handleClick(e) {
     if (e.target.className !== "notes-editor-toolbar") {
@@ -401,12 +402,12 @@ function Toolbar({ note, isNewNote, isEditable, isFloating, isSaveLoading, isExp
       {
         key: 'cancel',
         condition: isEditable,
-        component: <Button variant="ghost" onClick={onEditCancelClick}>Cancel</Button>
+        component: <Button variant="ghost" onClick={onEditCancelClick}>{t('common.cancel')}</Button>
       },
       {
         key: 'edit',
         condition: !isEditable,
-        component: <Button variant="ghost" onClick={onEditClick}>Edit</Button>
+        component: <Button variant="ghost" onClick={onEditClick}>{t('common.edit')}</Button>
       }
     ],
     menu: [
@@ -414,25 +415,25 @@ function Toolbar({ note, isNewNote, isEditable, isFloating, isSaveLoading, isExp
         key: 'pin',
         condition: !isNewNote && !note?.isDeleted && !note?.isArchived,
         component: <div onClick={note?.isPinned ? onUnpinClick : onPinClick}>
-          {note?.isPinned ? 'Unpin' : 'Pin'}
+          {note?.isPinned ? t('notes.pin.unpin') : t('notes.pin.pin')}
         </div>
       },
       {
         key: 'archive',
         condition: !isNewNote && !note?.isDeleted,
         component: <div onClick={note?.isArchived ? onUnarchiveClick : onArchiveClick}>
-          {note?.isArchived ? 'Unarchive' : 'Archive'}
+          {note?.isArchived ? t('notes.archive.unarchive') : t('notes.archive.archive')}
         </div>
       },
       {
         key: 'restore',
         condition: !isNewNote && note?.isDeleted,
-        component: <div onClick={onRestoreClick}>Restore</div>
+        component: <div onClick={onRestoreClick}>{t('notes.restore')}</div>
       },
       {
         key: 'delete',
         condition: !isNewNote && !note?.isDeleted,
-        component: <div onClick={onDeleteClick}>Delete</div>
+        component: <div onClick={onDeleteClick}>{t('common.delete')}</div>
       }
     ]
   };
@@ -461,5 +462,4 @@ function Toolbar({ note, isNewNote, isEditable, isFloating, isSaveLoading, isExp
     </div>
   );
 }
-
 

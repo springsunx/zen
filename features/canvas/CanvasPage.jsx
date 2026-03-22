@@ -17,6 +17,7 @@ import { AppProvider } from '../../commons/contexts/AppContext.jsx';
 import { NotesProvider } from '../../commons/contexts/NotesContext.jsx';
 import { openModal, closeModal } from '../../commons/components/Modal.jsx';
 import './CanvasPage.css';
+import { t } from "../../commons/i18n/index.js";
 
 export default function CanvasPage() {
   const containerRef = useRef(null);
@@ -584,7 +585,7 @@ export default function CanvasPage() {
 
   let content;
   if (isKonvaReady !== true) {
-    content = <div className="canvas-loading">Loading...</div>;
+    content = <div className="canvas-loading">{t('common.loading')}</div>;
   } else {
     content = <div ref={containerRef} className="canvas-container" />;
   }

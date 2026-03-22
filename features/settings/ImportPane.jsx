@@ -2,6 +2,7 @@ import { h, useState } from "../../assets/preact.esm.js"
 import { UploadIcon, SuccessIcon, WarnIcon, ErrorIcon } from "../../commons/components/Icon.jsx";
 import { showToast } from "../../commons/components/Toast.jsx";
 import ApiClient from "../../commons/http/ApiClient.js";
+import { t } from "../../commons/i18n/index.js";
 
 export default function ImportPane() {
   const [isUploading, setIsUploading] = useState(false);
@@ -15,7 +16,7 @@ export default function ImportPane() {
     const files = Array.from(e.target.files);
 
     if (!files.length) {
-      showToast("No files selected. Please choose files to import.");
+      showToast("${t('settings.import.noFiles')}");
       return;
     }
 
@@ -30,7 +31,7 @@ export default function ImportPane() {
     });
 
     if (supportedFiles.length === 0) {
-      showToast("No supported files found. Only .md and .txt files are supported.");
+      showToast("${t('settings.import.noSupported')}");
       return;
     }
 
@@ -74,19 +75,19 @@ export default function ImportPane() {
 
       let message = ""
       if (uploadedCount > 0) {
-        message = `${uploadedCount} files imported.`;
+        message = t('settings.import.summary.msg.imported', {count: uploadedCount});
       }
 
       if (errorCount > 0) {
-        message += ` ${errorCount} errors.`;
+        message += ' ' + t('settings.import.summary.msg.errors', {count: errorCount});
       }
 
       if (unsupportedCount > 0) {
-        message += ` ${unsupportedCount} skipped.`;
+        message += ' ' + t('settings.import.summary.msg.skipped', {count: unsupportedCount});
       }
 
       if (message === "") {
-        message = "No files were imported.";
+        message = t('settings.import.summary.msg.none');
       }
       setSummaryMessage(message);
       e.target.value = '';
@@ -99,8 +100,8 @@ export default function ImportPane() {
 
   return (
     <div className="settings-tab-content">
-      <h3>Import Files</h3>
-      <p>Import .md or .txt files.</p>
+      <h3>{t('settings.import.title')}</h3>
+      <p>{t('settings.import.desc')}</p>
 
       <div className="file-upload-container">
         <input
@@ -114,7 +115,7 @@ export default function ImportPane() {
         />
         <label htmlFor="folder-upload" className={`file-upload-label ${isUploading ? 'disabled' : ''}`}>
           <UploadIcon />
-          {isUploading ? 'Importing...' : 'Choose folder'}
+          {isUploading ? t('settings.import.btn.importing') : t('settings.import.btn.chooseFolder')}
         </label>
 
         <UploadProgress isUploading={isUploading} uploadProgress={uploadProgress} />
@@ -137,7 +138,7 @@ function UploadProgress({ isUploading, uploadProgress }) {
   return (
     <div className="upload-progress">
       <div className="upload-progress-text">
-        Importing {uploadProgress.current} of {uploadProgress.total} files...
+        {t('settings.import.progress', {current: uploadProgress.current, total: uploadProgress.total})}
       </div>
       <div className="upload-progress-bar">
         <div className="upload-progress-fill" style={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }}></div>
@@ -161,7 +162,7 @@ function UploadSummary({ summaryMessage, uploadedFiles, skippedFiles, erroredFil
   if (summaryMessage) {
     messageSection = (
       <div className="upload-summary-message">
-        <p>{summaryMessage} <a href="#" onClick={() => window.location.reload()}>Refresh to see changes.</a></p>
+        <p>{summaryMessage} <a href="#" onClick={() => window.location.reload()}>{t('settings.import.summary.refresh')}</a></p>
       </div>
     );
   }
@@ -173,7 +174,7 @@ function UploadSummary({ summaryMessage, uploadedFiles, skippedFiles, erroredFil
 
     uploadedSection = (
       <div className="upload-summary-section uploaded">
-        <h5><SuccessIcon /> Imported ({uploadedFiles.length})</h5>
+        <h5><SuccessIcon /> {t('settings.import.summary.imported', {count: uploadedFiles.length})}</h5>
         <ul className="file-list">
           {uploadedFileItems}
         </ul>
@@ -188,7 +189,7 @@ function UploadSummary({ summaryMessage, uploadedFiles, skippedFiles, erroredFil
 
     skippedSection = (
       <div className="upload-summary-section skipped">
-        <h5><WarnIcon /> Skipped ({skippedFiles.length})</h5>
+        <h5><WarnIcon /> {t('settings.import.summary.skipped', {count: skippedFiles.length})}</h5>
         <ul className="file-list">
           {skippedFileItems}
         </ul>
@@ -203,7 +204,7 @@ function UploadSummary({ summaryMessage, uploadedFiles, skippedFiles, erroredFil
 
     erroredSection = (
       <div className="upload-summary-section errored">
-        <h5><ErrorIcon /> Errors ({erroredFiles.length})</h5>
+        <h5><ErrorIcon /> {t('settings.import.summary.errors', {count: erroredFiles.length})}</h5>
         <ul className="file-list">
           {erroredFileItems}
         </ul>
@@ -213,7 +214,7 @@ function UploadSummary({ summaryMessage, uploadedFiles, skippedFiles, erroredFil
 
   return (
     <div className="upload-summary">
-      <h4>Import Summary</h4>
+      <h4>{t('settings.import.summary.title')}</h4>
       {messageSection}
       {uploadedSection}
       {skippedSection}

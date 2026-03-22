@@ -17,3 +17,6 @@
         align-self: flex-start;
     }
 }
+.login-topbar{position:fixed; top:12px; right:12px; display:flex; align-items:center; gap:8px;}
+.login-topbar label{color:var(--text-secondary); font: var(--sm);}
+.login-topbar select{padding:4px 8px; font: var(--sm);}

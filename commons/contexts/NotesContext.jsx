@@ -2,6 +2,7 @@ import { h, createContext, useContext, useState, useCallback } from '../../asset
 import ApiClient from '../../commons/http/ApiClient.js';
 import useSearchParams from "../../commons/components/useSearchParams.jsx";
 import { useAppContext } from './AppContext.jsx';
+import { t } from "../i18n/index.js";
 
 const NotesContext = createContext();
 

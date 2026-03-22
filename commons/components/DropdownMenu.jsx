@@ -2,6 +2,7 @@ import { h, useState, useEffect, useRef } from "../../assets/preact.esm.js"
 import Button from "./Button.jsx";
 import { EllipsisIcon } from "../../commons/components/Icon.jsx";
 import "./DropdownMenu.css";
+import { t } from "../i18n/index.js";
 
 export default function DropdownMenu({ actions }) {
   if (actions.length === 0) {

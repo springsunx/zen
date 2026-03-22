@@ -2,6 +2,7 @@ import { h, useEffect, useState, useRef } from "../../assets/preact.esm.js"
 import ApiClient from "../../commons/http/ApiClient.js";
 import { SearchIcon } from "../../commons/components/Icon.jsx";
 import "./CanvasNotePicker.css";
+import { t } from "../../commons/i18n/index.js";
 
 export default function CanvasNotePicker({ onAddNote, addedItems }) {
   const [activeTab, setActiveTab] = useState("search");
@@ -100,7 +101,7 @@ export default function CanvasNotePicker({ onAddNote, addedItems }) {
 
       lexicalNotesSection = (
         <div className="canvas-note-picker-section">
-          <h4 className="canvas-note-picker-section-title">Notes</h4>
+          <h4 className="canvas-note-picker-section-title">{t('canvas.notes')}</h4>
           {noteItems}
         </div>
       );
@@ -119,7 +120,7 @@ export default function CanvasNotePicker({ onAddNote, addedItems }) {
 
       semanticNotesSection = (
         <div className="canvas-note-picker-section">
-          <h4 className="canvas-note-picker-section-title">Similar Notes</h4>
+          <h4 className="canvas-note-picker-section-title">{t('canvas.similar')}</h4>
           {noteItems}
         </div>
       );
@@ -155,7 +156,7 @@ export default function CanvasNotePicker({ onAddNote, addedItems }) {
           <SearchIcon />
           <input
             type="text"
-            placeholder="Search..."
+            placeholder={t('search.placeholder')}
             ref={inputRef}
             value={query}
             onInput={handleChange}
@@ -235,15 +236,11 @@ export default function CanvasNotePicker({ onAddNote, addedItems }) {
         <button
           className={activeTab === "search" ? "canvas-note-picker-tab active" : "canvas-note-picker-tab"}
           onClick={() => setActiveTab("search")}
-        >
-          Search
-        </button>
+        >{t('nav.search')}        </button>
         <button
           className={activeTab === "notes" ? "canvas-note-picker-tab active" : "canvas-note-picker-tab"}
           onClick={() => setActiveTab("notes")}
-        >
-          Notes
-        </button>
+        >{t('nav.notes')}        </button>
         <button
           className={activeTab === "images" ? "canvas-note-picker-tab active" : "canvas-note-picker-tab"}
           onClick={() => setActiveTab("images")}
@@ -295,4 +292,3 @@ function ImageCardGrid({ image, onClick }) {
     />
   );
 }
-

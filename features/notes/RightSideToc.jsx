@@ -1,4 +1,5 @@
 import { h, useEffect } from "../../assets/preact.esm.js";
+import { t } from "../../commons/i18n/index.js";
 import "./RightSideToc.css";
 
 export default function RightSideToc({ content, isEditable, isNewNote }) {
@@ -149,7 +150,7 @@ export default function RightSideToc({ content, isEditable, isNewNote }) {
   return (
     <div className="right-toc-container">
       <div className="right-toc-header">
-        <span className="right-toc-title">Contents</span>
+        <span className="right-toc-title">{t('notes.toc.title')}</span>
       </div>
       <div className="right-toc-content">
         {items}

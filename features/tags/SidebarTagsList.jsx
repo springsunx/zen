@@ -5,6 +5,7 @@ import { PencilIcon, ArrowUpIcon, ArrowDownIcon } from "../../commons/components
 import TagDetailModal from "./TagDetailModal.jsx";
 import { openModal } from "../../commons/components/Modal.jsx";
 import { useAppContext } from "../../commons/contexts/AppContext.jsx";
+import { t } from "../../commons/i18n/index.js";
 
 export default function SidebarTagsList() {
   const { tags, refreshTags } = useAppContext();
@@ -109,7 +110,7 @@ export default function SidebarTagsList() {
 
   return (
     <div>
-      <div className="sidebar-section-title">Tags</div>
+      <div className="sidebar-section-title">{t('templates.form.tags')}</div>
       {items}
     </div>
   );
