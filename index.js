@@ -11,7 +11,7 @@ import navigateTo from './commons/utils/navigateTo.js';
 import SearchMenu from './features/search/SearchMenu.jsx';
 import OfflineIndicator from './commons/components/OfflineIndicator.jsx';
 import Tooltip from './commons/components/Tooltip.js';
-import { initI18n } from './commons/i18n/index.js';
+//import { initI18n } from './commons/i18n/index.js';
 
 import { AppProvider } from './commons/contexts/AppContext.jsx';
 import ThemePreferences from './commons/preferences/ThemePreferences.js';
@@ -30,7 +30,7 @@ function Shell() {
 document.addEventListener('DOMContentLoaded', () => {
   ThemePreferences.applyTheme();
   Tooltip.init();
-  initI18n();
+  //initI18n();
   render(
     <Shell />,
     document.body
