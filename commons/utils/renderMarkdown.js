@@ -142,7 +142,26 @@ export default function renderMarkdown(text) {
   // 容器插件注册（支持：info, warning, danger, success, tip, note, details）
   if (plugins.container) {
     const container = plugins.container;
-    const types = ['info', 'warning', 'danger', 'success', 'tip', 'note'];
+        const types = ['note', 'tip', 'important', 'warning', 'caution'];
+    // Backward compatibility: map legacy container names to the new five
+    const legacyMap = { info: 'note', success: 'important', danger: 'caution' };
+    Object.entries(legacyMap).forEach(([legacy, target]) => {
+      try {
+        md.use(container, legacy, {
+          render(tokens, idx) {
+            const token = tokens[idx];
+            const info = token.info.trim().slice(legacy.length).trim();
+            if (token.nesting === 1) {
+              const title = info ? md.utils.escapeHtml(info) : legacy.toUpperCase();
+              return `<div class="md-container md-container-${target}"><div class="md-container-title">${title}</div><div class="md-container-body">`;
+            } else {
+              return `</div></div>`;
+            }
+          }
+        });
+      } catch (err) { console.warn(`Container type failed: ${legacy}`, err); }
+    });
+
     types.forEach(type => {
       try {
         md.use(container, type, {
