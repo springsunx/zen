@@ -166,7 +166,7 @@ const [isEditorEditable, setIsEditorEditable] = useState(false);
         <NotesEditor isNewNote={noteId === "new"} onEditModeChange={setIsEditorEditable} key={(selectedNote?.noteId || "n") + "-" + (selectedNote?.updatedAt || "") } />
       </div>
 
-      {selectedView !== "card" && (
+      {selectedView === "list" && (
         <RightSideToc
           content={selectedNote?.content || ""}
           isEditable={isEditorEditable}
