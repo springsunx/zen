@@ -21,7 +21,7 @@ import "./NotesEditor.css";
 import { CloseIcon, SidebarCloseIcon, SidebarOpenIcon, BackIcon } from "../../commons/components/Icon.jsx";
 import { t } from "../../commons/i18n/index.js";
 
-export default function NotesEditor({ isNewNote, isFloating, onClose, onEditModeChange = () => {} }) {
+export default function NotesEditor({ isNewNote, isFloating, onClose, onEditModeChange = () => {}, onContentChange = () => {}, onSaved = () => {} }) {
   const { selectedNote, handleNoteChange, handlePinToggle } = useNotes();
 
   if (!isNewNote && selectedNote === null) {
@@ -78,6 +78,15 @@ export default function NotesEditor({ isNewNote, isFloating, onClose, onEditMode
     handleTextAreaHeight();
   }, [content, isEditable]);
 
+  // Sync from selectedNote when viewing (not editing), so re-open/edit always uses latest
+  useEffect(() => {
+    if (!isEditable) {
+      setTitle(selectedNote?.title || "");
+      setContent(selectedNote?.content || "");
+      setTags(selectedNote?.tags || []);
+    }
+  }, [selectedNote?.noteId, selectedNote?.updatedAt, isEditable]);
+
   // Setup anchor links after markdown is rendered
   useEffect(() => {
     if (!isEditable && contentRef.current) {
@@ -102,6 +111,7 @@ export default function NotesEditor({ isNewNote, isFloating, onClose, onEditMode
 
     setTitle(currentTitle);
     setContent(currentContent);
+    onContentChange(currentContent);
 
     let promise = null;
     setIsSaveLoading(true);
@@ -122,6 +132,7 @@ export default function NotesEditor({ isNewNote, isFloating, onClose, onEditMode
         }
 
         handleNoteChange();
+        onSaved(note);
       })
       .finally(() => {
         setIsSaveLoading(false);
@@ -154,6 +165,10 @@ export default function NotesEditor({ isNewNote, isFloating, onClose, onEditMode
   }
 
   function handleEditClick() {
+    // Prefill with the freshest selectedNote before entering edit
+    setTitle(selectedNote?.title || "");
+    setContent(selectedNote?.content || "");
+    setTags(selectedNote?.tags || []);
     setIsEditable(true);
   }
 
@@ -168,6 +183,7 @@ export default function NotesEditor({ isNewNote, isFloating, onClose, onEditMode
       // Reset current edits
       setTitle(selectedNote?.title || "");
       setContent(selectedNote?.content || "");
+      onContentChange(selectedNote?.content || "");
       setTags(selectedNote?.tags || []);
       setIsEditable(false);
     }
@@ -272,6 +288,8 @@ export default function NotesEditor({ isNewNote, isFloating, onClose, onEditMode
 
     setContent(templateContent);
 
+    onContentChange(templateContent);
+
     if (templateTags && templateTags.length > 0) {
       setTags(templateTags);
     }
@@ -295,7 +313,7 @@ export default function NotesEditor({ isNewNote, isFloating, onClose, onEditMode
         ref={textareaRef}
         value={content}
         onInput={handleTextAreaHeight}
-        onBlur={e => setContent(e.target.value)}
+        onBlur={e => { const v = e.target.value; setContent(v); onContentChange(v); }}
       />
     );
   } else if (title === "" && content === "") {
@@ -304,7 +322,7 @@ export default function NotesEditor({ isNewNote, isFloating, onClose, onEditMode
     );
   } else {
     contentArea = (
-      <div className="notes-editor-rendered" ref={contentRef} dangerouslySetInnerHTML={{ __html: renderMarkdown(content) }} />
+      <div className="notes-editor-rendered" ref={contentRef} dangerouslySetInnerHTML={{ __html: renderMarkdown(content, { anchorPrefix: selectedNote ? `n${selectedNote.noteId}-` : '' }) }} />
     );
   }
 
@@ -356,7 +374,7 @@ export default function NotesEditor({ isNewNote, isFloating, onClose, onEditMode
         {contentArea}
       </div>
       {templatePicker}
-      <TableOfContents content={content} isExpanded={isExpanded} isEditable={isEditable} isNewNote={isNewNote} visibleHeadings={visibleHeadings} />
+      {!isFloating && (<TableOfContents content={content} isExpanded={isExpanded} isEditable={isEditable} isNewNote={isNewNote} visibleHeadings={visibleHeadings} />)}
     </div>
   );
 }

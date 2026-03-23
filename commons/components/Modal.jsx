@@ -11,10 +11,11 @@ export function openModal(component, selector = '.modal-root') {
   render(component, document.querySelector(selector));
 }
 
-export function ModalBackdrop({ children, onClose, isCentered = true }) {
+export function ModalBackdrop({ children, onClose, isCentered = true, closeOnBackdrop = true }) {
   function handleBackdropClick(e) {
+    if (!closeOnBackdrop) return;
     if (e.target.classList.contains("modal-backdrop-container")) {
-      onClose();
+      onClose?.();
     }
   }
 

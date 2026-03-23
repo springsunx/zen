@@ -13,6 +13,16 @@ function normalize(l) {
   return low.startsWith('zh') ? 'zh-CN' : 'en';
 }
 
+// Initialize language at module load so first render uses the right locale
+try {
+  const saved = localStorage.getItem('lang') || 'auto';
+  pref = saved;
+  current = saved === 'auto' ? normalize(navigator.language) : normalize(saved);
+} catch {
+  pref = 'auto';
+  current = normalize(navigator.language);
+}
+
 export function setLang(lang) {
   // lang can be 'auto', 'zh-CN', 'en'
   pref = lang === 'auto' ? 'auto' : normalize(lang);
@@ -32,16 +42,7 @@ export function t(key, params) {
   if (!params) return val;
   return val.replace(/\{(\w+)\}/g, (_, k) => params[k] ?? '');
 }
-// export function initI18n() {
-//   // DEBUG i18n
-//   try { console.log("[i18n] init start"); } catch {}
-//   try {
-//     const saved = localStorage.getItem('lang') || "auto";
-//     pref = saved;
-//     current = saved === "auto" ? normalize(navigator.language) : normalize(saved);
-//   try { console.log("[i18n] pref=", saved, " current=", current); console.log("[i18n] sample:", (locales[current]||{} )["nav.new"]); } catch {}
-//   } catch {
-//     pref = "auto"; current = normalize(navigator.language);
-//   try { console.log("[i18n] fallback current=", current); } catch {}
-//   }
-// }
+// Kept for compatibility; no-op now
+export function initI18n() {
+  // Already initialized at module load
+}

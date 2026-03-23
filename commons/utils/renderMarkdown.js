@@ -79,7 +79,7 @@ function createCopyHandler() {
     }
   }
 
-  window.copyCodeToClipboard = function(button) {
+  window.copyCodeToClipboard = function (button) {
     if (typeof document === 'undefined') return;
     const codeBlock = button.closest('.code-block-wrapper');
     const codeElement = codeBlock?.querySelector('.code-block-content');
@@ -89,7 +89,7 @@ function createCopyHandler() {
 }
 
 // 主函数：渲染Markdown
-export default function renderMarkdown(text) {
+export default function renderMarkdown(text, opts = {}) {
   // 确保复制处理器已初始化
   if (typeof window !== 'undefined') {
     createCopyHandler();
@@ -142,7 +142,7 @@ export default function renderMarkdown(text) {
   // 容器插件注册（支持：info, warning, danger, success, tip, note, details）
   if (plugins.container) {
     const container = plugins.container;
-        const types = ['note', 'tip', 'important', 'warning', 'caution'];
+    const types = ['note', 'tip', 'important', 'warning', 'caution'];
     // Backward compatibility: map legacy container names to the new five
     const legacyMap = { info: 'note', success: 'important', danger: 'caution' };
     Object.entries(legacyMap).forEach(([legacy, target]) => {
@@ -207,7 +207,7 @@ export default function renderMarkdown(text) {
   const originalFenceRender = md.renderer.rules.fence ||
     ((tokens, idx, options, env, self) => self.renderToken(tokens, idx, options));
 
-  md.renderer.rules.fence = function(tokens, idx, options, env, self) {
+  md.renderer.rules.fence = function (tokens, idx, options, env, self) {
     const token = tokens[idx];
     const lang = token.info?.trim() || '';
     const highlighted = originalFenceRender(tokens, idx, options, env, self);
@@ -225,7 +225,7 @@ export default function renderMarkdown(text) {
   const originalHeadingOpen = md.renderer.rules.heading_open ||
     ((tokens, idx, options, env, self) => self.renderToken(tokens, idx, options));
 
-  md.renderer.rules.heading_open = function(tokens, idx, options, env, self) {
+  md.renderer.rules.heading_open = function (tokens, idx, options, env, self) {
     const token = tokens[idx];
 
     // 查找标题内容
@@ -244,8 +244,16 @@ export default function renderMarkdown(text) {
       const { cleanedText, customId } = extractCustomId(headingText);
       const id = customId || generateId(headingText);
 
-      if (id && !token.attrs?.find(attr => attr[0] === 'id')) {
-        token.attrSet('id', id);
+      if (!opts.stripHeadingIds) {
+        if (id && !token.attrs?.find(attr => attr[0] === 'id')) {
+          token.attrSet('id', id);
+        }
+        if (opts.anchorPrefix) {
+          const idAttr = token.attrs?.find(a => a[0] === 'id');
+          if (idAttr && idAttr[1] && !idAttr[1].startsWith(opts.anchorPrefix)) {
+            idAttr[1] = opts.anchorPrefix + idAttr[1];
+          }
+        }
       }
 
       // 更新清理后的文本
@@ -276,7 +284,7 @@ export default function renderMarkdown(text) {
   const originalLinkOpen = md.renderer.rules.link_open ||
     ((tokens, idx, options, env, self) => self.renderToken(tokens, idx, options));
 
-  md.renderer.rules.link_open = function(tokens, idx, options, env, self) {
+  md.renderer.rules.link_open = function (tokens, idx, options, env, self) {
     const token = tokens[idx];
     const hrefAttr = token.attrs?.find(attr => attr[0] === 'href');
 
@@ -284,6 +292,10 @@ export default function renderMarkdown(text) {
       if (hrefAttr[1].startsWith('#')) {
         token.attrPush(['class', 'internal-anchor-link']);
         token.attrPush(['data-anchor-link', 'true']);
+        if (opts.anchorPrefix) {
+          const raw = hrefAttr[1].replace(/^#/, '');
+          token.attrSet('href', '#' + opts.anchorPrefix + raw);
+        }
       } else {
         token.attrSet('target', '_blank');
         token.attrSet('rel', 'noopener noreferrer');
@@ -362,7 +374,7 @@ if (typeof window !== 'undefined' && !window._zenAnchorInitialized) {
   }
 
   // 主函数：滚动到锚点
-  window.scrollToAnchor = function(hash, smooth = true) {
+  window.scrollToAnchor = function (hash, smooth = true) {
     if (!hash) return false;
 
     const id = hash.replace(/^#/, '');
@@ -396,14 +408,14 @@ if (typeof window !== 'undefined' && !window._zenAnchorInitialized) {
   };
 
   // 事件委托：处理内部锚链接点击
-  window.setupAnchorLinks = function(container = document) {
+  window.setupAnchorLinks = function (container = document) {
     // 移除现有监听器
     if (window._zenAnchorClickHandler) {
       container.removeEventListener('click', window._zenAnchorClickHandler);
     }
 
     // 创建新监听器
-    window._zenAnchorClickHandler = function(event) {
+    window._zenAnchorClickHandler = function (event) {
       let target = event.target;
 
       while (target && target !== container) {
@@ -412,7 +424,27 @@ if (typeof window !== 'undefined' && !window._zenAnchorInitialized) {
           if (href?.startsWith('#')) {
             event.preventDefault();
             event.stopPropagation();
-            window.scrollToAnchor(href);
+            const idRaw = href.replace(/^#/, '');
+            const uniq = (arr) => Array.from(new Set(arr.filter(Boolean)));
+            const candidates = (() => {
+              let arr = [idRaw];
+              try { arr.push(decodeURIComponent(idRaw)); } catch (e) { }
+              if (window.generateHeadingId) arr.push(window.generateHeadingId(idRaw));
+              return uniq(arr);
+            })();
+            const all = container.querySelectorAll('[id]');
+            const norm = (x) => String(x || '').trim().toLowerCase().replace(/[\s_]+/g, '-').replace(/[\.:]/g, '-').replace(/-+/g, '-').replace(/^-+|-+$/g, '');
+            let element = null;
+            for (const cid of candidates) {
+              // Precise match (escaped selector)
+              try { const esc = (window.CSS && CSS.escape) ? CSS.escape(cid) : cid.replace(/["'\\\[\]#.:]/g, '\\$&'); element = container.querySelector('[id=+esc+]'); } catch (e) { }
+              if (element) break;
+              // Normalized equality / prefix match
+              const c = norm(cid);
+              for (const el of all) { const e = norm(el.id); if (e === c || e.startsWith(c + '-')) { element = el; break; } }
+              if (element) break;
+            }
+            if (element) { element.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
             return false;
           }
         }

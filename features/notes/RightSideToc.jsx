@@ -2,7 +2,7 @@ import { h, useEffect } from "../../assets/preact.esm.js";
 import { t } from "../../commons/i18n/index.js";
 import "./RightSideToc.css";
 
-export default function RightSideToc({ content, isEditable, isNewNote }) {
+export default function RightSideToc({ content, isEditable, isNewNote, inModal = false }) {
   // 使用TableOfContents中的相同函数提取标题
   function extractHeadings(content) {
     if (!content) return [];
@@ -90,15 +90,15 @@ export default function RightSideToc({ content, isEditable, isNewNote }) {
   useEffect(() => {
     const shouldShowToc = !isEditable && !isNewNote && headings.length >= 2;
     
-    if (shouldShowToc) {
-      document.body.classList.add('has-right-toc');
-    } else {
-      document.body.classList.remove('has-right-toc');
+    if (!inModal) {
+      if (shouldShowToc) {
+        document.body.classList.add('has-right-toc');
+      } else {
+        document.body.classList.remove('has-right-toc');
+      }
+      return () => { document.body.classList.remove('has-right-toc'); }
     }
-    
-    return () => {
-      document.body.classList.remove('has-right-toc');
-    };
+    return () => {};
   }, [isEditable, isNewNote, headings.length, content]);
   
   // 如果不显示目录，返回null
@@ -107,7 +107,8 @@ export default function RightSideToc({ content, isEditable, isNewNote }) {
   }
   
   function handleHeadingClick(heading) {
-    const headingElements = document.querySelectorAll(`h${heading.level}`);
+    const container = inModal ? document.querySelector('.notes-editor-modal .notes-editor-rendered') : document.querySelector('.notes-editor-rendered');
+    const headingElements = container ? container.querySelectorAll(`h${heading.level}`) : document.querySelectorAll(`h${heading.level}`);
     let targetElement = null;
 
     for (const element of headingElements) {
@@ -148,7 +149,7 @@ export default function RightSideToc({ content, isEditable, isNewNote }) {
   });
   
   return (
-    <div className="right-toc-container">
+    <div className={`right-toc-container ${inModal ? "in-modal" : ""}`}>
       <div className="right-toc-header">
         <span className="right-toc-title">{t('notes.toc.title')}</span>
       </div>

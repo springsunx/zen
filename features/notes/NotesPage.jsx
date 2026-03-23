@@ -163,10 +163,16 @@ const [isEditorEditable, setIsEditorEditable] = useState(false);
       </div>
 
       <div className={editorClassName}>
-        <NotesEditor isNewNote={noteId === "new"} onEditModeChange={setIsEditorEditable} key={selectedNote?.noteId} />
+        <NotesEditor isNewNote={noteId === "new"} onEditModeChange={setIsEditorEditable} key={(selectedNote?.noteId || "n") + "-" + (selectedNote?.updatedAt || "") } />
       </div>
 
-      <RightSideToc content={selectedNote?.content || ""} isEditable={isEditorEditable} isNewNote={noteId === "new"} />
+      {selectedView !== "card" && (
+        <RightSideToc
+          content={selectedNote?.content || ""}
+          isEditable={isEditorEditable}
+          isNewNote={noteId === "new"}
+        />
+      )}
       <MobileNavbar />
 
       <div className="note-modal-root"></div>

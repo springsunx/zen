@@ -143,3 +143,12 @@
   color: var(--neutral-200);
   border-left-color: var(--neutral-500);
 }
+
+
+/* 在弹窗中使用时，定位到 ModalContent 内部右侧 */
+.right-toc-container.in-modal {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+}

@@ -117,7 +117,7 @@ function NotesGridItem({ note, index }) {
           className="notes-grid-item-pin"
         />
       </div>
-      <div className="notes-grid-item-content" dangerouslySetInnerHTML={{ __html: renderMarkdown(note.snippet) }} />
+      <div className="notes-grid-item-content" dangerouslySetInnerHTML={{ __html: renderMarkdown(note.snippet, { stripHeadingIds: true }) }} />
       <div className="notes-grid-item-tags">{tags}</div>
     </>
   );
