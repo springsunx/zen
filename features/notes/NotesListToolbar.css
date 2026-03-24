@@ -1,4 +1,5 @@
 .notes-list-toolbar {
+    align-items: center;
     display: flex;
     justify-content: space-between;
     padding: 14px 0 8px 0;
@@ -43,6 +44,7 @@
 
 @media screen and (max-width: 948px) {
     .notes-list-toolbar {
+    align-items: center;
         .is-mobile {
             display: flex;
         }
@@ -60,3 +62,26 @@
         }
     }
 }
+
+.card-size-control{ display:flex; align-items:center; gap:8px; margin-left:auto }
+.card-size-control .card-size-btn{ background:transparent; border:none; width:28px; height:28px; display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0 }
+.card-size-control .card-size-btn:hover{ background:transparent }
+.card-size-control input[type=range]{ width:160px }
+.card-size-control .icon-sm{ width:16px; height:16px }
+
+
+/* Align last button group to the far right */
+
+/* Card size control spacing and icon reset */
+.card-size-control { display:flex; align-items:center; gap:8px; margin-left:12px; }
+.card-size-control .card-size-btn { border:1px solid var(--neutral-200); background: var(--neutral-50); color: var(--text-primary); width:28px; height:28px; display:flex; align-items:center; justify-content:center; border-radius:4px; cursor:pointer; padding:0 }
+.card-size-control .card-size-btn:hover{ background:transparent }
+.card-size-control input[type=range]{ width:160px }
+.card-size-control svg.lucide { margin: 0 !important; width: 16px; height: 16px; }
+
+.notes-list-toolbar .button-group .card-size-control{ display:flex; align-items:center; gap:8px; margin-left:auto }
+
+.notes-list-toolbar .card-size-control{ margin-left:auto; display:flex; align-items:center; gap:8px }
+
+.card-size-control .card-size-icon{ display:flex; align-items:center; justify-content:center; width:28px; height:28px; cursor:pointer }
+.card-size-control .card-size-icon:hover{ background:transparent }

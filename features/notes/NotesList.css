@@ -103,7 +103,7 @@
 
     .notes-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(var(--card-min-width, 200px), 1fr));
         gap: 20px;
         padding: 20px;
         padding-top: 0;
@@ -119,7 +119,7 @@
 
         .notes-grid-item {
             position: relative;
-            height: 500px;
+            height: var(--card-height, 500px);
             overflow: hidden;
             transition-property: box-shadow;
             transition-duration: var(--transition-normal);
@@ -132,7 +132,6 @@
             text-decoration: none;
             color: inherit;
             cursor: pointer;
-            zoom: 0.6;
 
             &.reveal-animate {
                 opacity: 0;
@@ -307,3 +306,20 @@
         }
     }
 }
+
+    /* Card font scaling based on --card-font-scale */
+.card-size-control input[type=range] { width: 160px; }
+
+
+/* Fixed font sizes for card view (no proportional scaling) */
+.notes-grid .notes-grid-item { font-size: 14px; line-height: 1.4; }
+.notes-grid .notes-grid-item .notes-grid-item-title { font-size: 18px; }
+.notes-grid .notes-grid-item .notes-grid-item-content p { font-size: 14px; }
+.notes-grid .notes-grid-item .notes-grid-item-content h1 { font-size: 22px; }
+.notes-grid .notes-grid-item .notes-grid-item-content h2 { font-size: 20px; }
+.notes-grid .notes-grid-item .notes-grid-item .notes-grid-item-content h3 { font-size: 18px; }
+.notes-grid .notes-grid-item .notes-grid-item-content li { font-size: 14px; }
+.notes-grid .notes-grid-item .notes-grid-item-tags { font-size: 12px; }
+
+.card-size-control .card-size-btn svg{ width:16px; height:16px }
+.card-size-control .card-size-btn:hover{ background: var(--neutral-100) }

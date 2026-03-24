@@ -15,7 +15,7 @@ import { openModal } from '../../commons/components/Modal.jsx';
 import "./NotesList.css";
 import { t } from "../../commons/i18n/index.js";
 
-export default function NotesList({ notes = [], total, isLoading, images = [], imagesTotal, isImagesLoading, view, onViewChange, onLoadMoreClick, onLoadMoreImagesClick, onSidebarToggle }) {
+export default function NotesList({ notes = [], total, isLoading, images = [], imagesTotal, isImagesLoading, view, onViewChange, onLoadMoreClick, onLoadMoreImagesClick, onSidebarToggle, cardSize = 240, onCardSizeChange = () => {} }) {
   let listClassName = "notes-list";
   let items = notes.map(note => <NotesListItem note={note} key={note.noteId} />);
   let content = <div className="notes-list-spinner"><Spinner /></div>;
@@ -25,9 +25,9 @@ export default function NotesList({ notes = [], total, isLoading, images = [], i
 
   if (view === "card") {
     listClassName = "";
-    items = notes.map((note, index) => <NotesGridItem note={note} key={note.noteId} index={index} />);
+    items = notes.map((note, index) => <NotesGridItem note={note} key={note.noteId} index={index} cardHeight={Math.round((cardSize||200)*1.41421356)} />);
     items = (
-      <div className="notes-grid">
+      <div className="notes-grid" style={{ gridTemplateColumns: view==="card" ? `repeat(auto-fill, minmax(${cardSize}px, 1fr))` : undefined }} >
         {items}
       </div>
     );
@@ -41,7 +41,7 @@ export default function NotesList({ notes = [], total, isLoading, images = [], i
 
   if ((view === "gallery" && !isImagesLoading) || (view !== "gallery" && !isLoading)) {
     content = (
-      <div className={listClassName}>
+      <div className={listClassName} style={view==="card" ? {"--card-min-width": `${cardSize}px`, "--card-height": `${Math.round(cardSize*1.75)}px`, } : null}>
         {items}
         <LoadMoreButton items={currentItems} total={currentTotal} onLoadMoreClick={loadMoreHandler} />
         <EmptyList items={currentItems} view={view} />
@@ -51,7 +51,7 @@ export default function NotesList({ notes = [], total, isLoading, images = [], i
 
   return (
     <>
-      <NotesListToolbar onViewChange={onViewChange} onSidebarToggle={onSidebarToggle} />
+      <NotesListToolbar onViewChange={onViewChange} onSidebarToggle={onSidebarToggle} view={view} cardSize={cardSize} onCardSizeChange={onCardSizeChange} />
       {content}
     </>
   );
@@ -87,7 +87,7 @@ function NotesListItem({ note }) {
   );
 }
 
-function NotesGridItem({ note, index }) {
+function NotesGridItem({ note, index, cardHeight }) {
   const link = `/notes/${note.noteId}`;
   const tags = note.tags?.map(tag => (<Link className="tag" key={tag.tagId} to={`/notes/?tagId=${tag.tagId}`} shouldPreserveSearchParams>{tag.name}</Link>));
   let title = <div className="notes-grid-item-title">{note.title}</div>
@@ -131,7 +131,7 @@ function NotesGridItem({ note, index }) {
   }
 
   return (
-    <div className={`notes-grid-item ${note.isPinned ? 'pinned' : ''} reveal-animate`} onClick={handleClick} style={`--reveal-index: ${index + 1}`}>
+    <div className={`notes-grid-item ${note.isPinned ? 'pinned' : ''} reveal-animate`} onClick={handleClick} style={{"--reveal-index": `${index + 1}`, height: (cardHeight ? `${cardHeight}px` : undefined) }}>
       {content}
     </div>
   );

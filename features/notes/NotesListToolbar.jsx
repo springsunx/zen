@@ -1,5 +1,5 @@
 import { h } from "../../assets/preact.esm.js"
-import { ListViewIcon, CardViewIcon, GalleryViewIcon, BrushCleaningIcon } from "../../commons/components/Icon.jsx";
+import { ListViewIcon, CardViewIcon, GalleryViewIcon, BrushCleaningIcon, MinusIcon, PlusIcon } from "../../commons/components/Icon.jsx";
 import useSearchParams from "../../commons/components/useSearchParams.jsx";
 import { openModal } from "../../commons/components/Modal.jsx";
 import { AppProvider, useAppContext } from '../../commons/contexts/AppContext.jsx';
@@ -12,7 +12,7 @@ import TrashClearModal from "./TrashClearModal.jsx"
 import "./NotesListToolbar.css";
 import { t } from "../../commons/i18n/index.js";
 
-export default function NotesListToolbar({ onSidebarToggle, onViewChange }) {
+export default function NotesListToolbar({ onSidebarToggle, onViewChange, view, cardSize, onCardSizeChange }) {
   const searchParams = useSearchParams();
   const { refreshNotes } = useNotes();
   const { tags, focusModes } = useAppContext();
@@ -87,12 +87,12 @@ export default function NotesListToolbar({ onSidebarToggle, onViewChange }) {
     ];
   }
 
-  return (
-    <Toolbar actions={actions} onSidebarToggle={onSidebarToggle} listName={listName} className="notes-list-toolbar" />
+    return (
+    <Toolbar actions={actions} onSidebarToggle={onSidebarToggle} listName={listName} className="notes-list-toolbar" view={view} cardSize={cardSize} onCardSizeChange={onCardSizeChange} />
   );
 }
 
-function Toolbar({ actions, onSidebarToggle, listName, className }) {
+function Toolbar({ actions, onSidebarToggle, listName, className, view, cardSize = 240, onCardSizeChange = () => {} }) {
   const buttons = actions.map(action => (
     <div key={action.title} {...action}>
       <action.icon />
@@ -104,7 +104,16 @@ function Toolbar({ actions, onSidebarToggle, listName, className }) {
     title = <div className="notes-list-toolbar-name">{listName}</div>;
   }
 
-  return (
+  // Card size helpers
+  const MIN = 200, MAX = 360;
+  const MID = Math.round((MIN + MAX) / 2);
+  const B1 = (MIN + MID) / 2;
+  const B2 = (MID + MAX) / 2;
+  const getIdx = (v) => (v < B1 ? 0 : (v < B2 ? 1 : 2));
+  const inc = () => { const idx = getIdx(cardSize || MID); const presets = [MIN, MID, MAX]; onCardSizeChange(presets[Math.min(2, idx + 1)]); };
+  const dec = () => { const idx = getIdx(cardSize || MID); const presets = [MIN, MID, MAX]; onCardSizeChange(presets[Math.max(0, idx - 1)]); };
+
+    return (
     <div className={className}>
       <ButtonGroup isMobile={true}>
         <div onClick={onSidebarToggle} title={t('notes.sidebar.toggle')}>
@@ -115,6 +124,22 @@ function Toolbar({ actions, onSidebarToggle, listName, className }) {
       <ButtonGroup>
         {buttons}
       </ButtonGroup>
+      {(view === 'card' && isMobile() !== true) && (
+        <div className="card-size-control">
+          <span className="card-size-icon" role="button" title="减小卡片" aria-label="减小卡片" onClick={dec}><MinusIcon /></span>
+          <input
+            type="range"
+            min="200"
+            max="360"
+            step="1"
+            value={cardSize}
+            onInput={e => onCardSizeChange(parseInt(e.target.value, 10))}
+            aria-label="卡片大小调节"
+            title="卡片大小调节"
+          />
+          <span className="card-size-icon" role="button" title="加大卡片" aria-label="加大卡片" onClick={inc}><PlusIcon /></span>
+        </div>
+      )}
     </div>
   );
 }

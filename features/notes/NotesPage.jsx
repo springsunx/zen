@@ -55,6 +55,14 @@ const [isEditorEditable, setIsEditorEditable] = useState(false);
     return ViewPreferences.getPreference(selectedFocusId, selectedTagId, isArchivesPage, isTrashPage);
   });
 
+  const [cardSize, setCardSize] = useState(() => {
+    try {
+      const v = localStorage.getItem("zen.card.size");
+      const n = v ? parseInt(v, 10) : 280;
+      return isNaN(n) ? 240 : Math.min(360, Math.max(180, n));
+    } catch { return 240; }
+  });
+
   let listClassName = "notes-list-container";
   let editorClassName = "notes-editor-container";
 
@@ -147,7 +155,7 @@ const [isEditorEditable, setIsEditorEditable] = useState(false);
       <Sidebar isOpen={isSidebarOpen} onSidebarClose={() => setIsSidebarOpen(false)} />
 
       <div className={listClassName}>
-        <NotesList
+        <NotesList cardSize={cardSize} onCardSizeChange={(v) => { setCardSize(v); try { localStorage.setItem("zen.card.size", String(v)); } catch {} }}
           notes={notes}
           total={notesTotal}
           isLoading={isNotesLoading}
