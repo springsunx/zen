@@ -1,0 +1,13 @@
+.gallery-lightbox-overlay{position:fixed;inset:0;z-index:var(--z-modal);background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center}
+.gallery-lightbox-content{position:relative;max-width:95vw;max-height:95vh;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.gallery-lightbox-image{max-width:95vw;max-height:95vh;object-fit:contain;border-radius:4px;background:#000;pointer-events:auto}
+.gallery-lightbox-close{position:fixed;top:20px;right:20px;background:transparent;border:none;cursor:pointer}
+.gallery-lightbox-prev,.gallery-lightbox-next{position:fixed;top:50%;transform:translateY(-50%);background:#0008;border:none;color:#fff;width:44px;height:44px;border-radius:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:24px}
+.gallery-lightbox-prev{left:20px}
+.gallery-lightbox-next{right:20px}
+.gallery-lightbox-prev[disabled],.gallery-lightbox-next[disabled]{opacity:.4;cursor:not-allowed}
+
+.gallery-lightbox-prev,.gallery-lightbox-next{border-radius:50%; display:flex; align-items:center; justify-content:center;}
+.gallery-lightbox-prev svg,.gallery-lightbox-next svg{pointer-events:none}
+
+.gallery-lightbox-image{ -webkit-user-drag:none; user-select:none }

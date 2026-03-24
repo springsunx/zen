@@ -43,8 +43,8 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding-top: 18px;
-        padding-bottom: 18px;
+        padding-top: 10px;
+        padding-bottom: 10px;
         position: sticky;
         width: 100%;
         top: 0;
@@ -187,7 +187,8 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: var(--spacing-5);
+    padding-top: 10px;
+    padding-bottom: 10px;
 }
 
 .notes-editor-title {
