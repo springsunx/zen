@@ -48,8 +48,7 @@ async function request(method, url, payload) {
     const isJsonResponse = response.headers.get('content-type')?.includes('application/json');
     return isJsonResponse ? await response.json() : null;
   } catch (error) {
-    try { BackendHealth.markFailure(); } catch(_) {}
-    if (isApiGet) {
+        if (isApiGet) {
       try {
         const cached = await ApiCache.get(url);
         if (cached) {
@@ -57,6 +56,46 @@ async function request(method, url, payload) {
         }
       } catch (_) {}
     }
+    // Prefer handling HTTP Response errors first
+    if (error instanceof Response) {
+      const isJsonResponse = error.headers.get('content-type')?.includes('application/json');
+      if (isJsonResponse) {
+        const body = await error.json();
+        const err = new Error(body?.message || error.statusText);
+        err.code = body?.code;
+        try { err.body = body; } catch(_) {}
+        if (body && body.referencedBy) { try { err.referencedBy = body.referencedBy; } catch(_) {} }
+        const skipCodes = ['NO_USERS', 'NO_SESSION', 'INVALID_EMAIL', 'INVALID_PASSWORD', 'INCORRECT_EMAIL', 'INCORRECT_PASSWORD', 'IMAGE_IN_USE'];
+        if (!skipCodes.includes(body?.code)) {
+          const message = body?.message || 'An unexpected error occurred';
+          showToast(message);
+        }
+        if (body?.code !== 'IMAGE_IN_USE') console.error('API error:', body);
+        throw err;
+      }
+      showToast('An unexpected error occurred');
+      try { BackendHealth.clearFailure(); } catch(_) {}
+      throw new Error(error.statusText);
+    }
+
+    // Network/offline errors (TypeError or offline)
+    if (!navigator.onLine) {
+      showToast('No internet connection.');
+      try { BackendHealth.markFailure(); } catch(_) {}
+      console.error('Network error:', error);
+      throw error;
+    }
+    if (error instanceof TypeError && (
+      error.message.includes('fetch') ||
+      error.message.includes('Load failed') ||
+      error.message.includes('NetworkError')
+    )) {
+      showToast('Connection failed.');
+      try { BackendHealth.markFailure(); } catch(_) {}
+      console.error('Fetch error:', error);
+      throw error;
+    }
+
     // Extra fallback for note detail: try NotesCache and cached lists by ID
     try {
       const noteIdMatch = url.match(/\/api\/notes\/(\d+)\/?/);
@@ -69,47 +108,11 @@ async function request(method, url, payload) {
       }
     } catch (_) {}
 
-    if (!navigator.onLine) {
-      showToast("No internet connection.");
-      console.error("Network error:", error);
-      throw error;
-    }
-
-    if (error instanceof TypeError && (
-      error.message.includes('fetch') ||
-      error.message.includes('Load failed') ||
-      error.message.includes('NetworkError')
-    )) {
-      showToast("Connection failed.");
-      console.error("Fetch error:", error);
-      throw error;
-    }
-
-    if (error instanceof Response) {
-      const isJsonResponse = error.headers.get('content-type')?.includes('application/json');
-
-      if (isJsonResponse) {
-        const body = await error.json();
-        const err = new Error(error.statusText);
-        err.code = body?.code;
-
-        const skipCodes = ['NO_USERS', 'NO_SESSION', 'INVALID_EMAIL', 'INVALID_PASSWORD', 'INCORRECT_EMAIL', 'INCORRECT_PASSWORD'];
-        if (!skipCodes.includes(body?.code)) {
-          const message = body?.message || 'An unexpected error occurred';
-          showToast(message);
-        }
-        console.error('API error:', body);
-
-        throw err;
-      }
-
-      showToast('An unexpected error occurred');
-      throw new Error(error.statusText);
-    }
-
     throw error;
   }
+
 }
+
 
 // Users
 
@@ -432,11 +435,14 @@ export default {
   updateTag,
   deleteTag,
   getImages,
+  deleteImage,
+  forceDeleteImage,
   uploadImage,
   search,
   getSimilarImages,
   importFile,
   exportNotes,
+  cleanupImages,
   getTemplates,
   getTemplateById,
   createTemplate,
@@ -452,4 +458,16 @@ export default {
 
 async function reorderTags(order) {
   return await request('PUT', '/api/tags/reorder/', { order });
+}
+
+async function deleteImage(filename) {
+  return await request('DELETE', `/api/images/${encodeURIComponent(filename)}/`);
+}
+
+async function forceDeleteImage(filename) {
+  return await request('DELETE', `/api/images/${encodeURIComponent(filename)}/?force=true`);
+}
+
+async function cleanupImages() {
+  return await request('POST', '/api/images/cleanup');
 }

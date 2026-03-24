@@ -15,6 +15,7 @@ import (
 	"time"
 	"zen/commons/queue"
 	"zen/commons/utils"
+	"strings"
 )
 
 const IMAGES_LIMIT = 100
@@ -213,4 +214,101 @@ func getImageInfo(file io.Reader) (*ImageInfo, error) {
 	}
 
 	return info, nil
+}
+
+
+// HandleDeleteImage deletes an image file and its DB record.
+// URL format: DELETE /api/images/{filename}/
+func HandleDeleteImage(w http.ResponseWriter, r *http.Request) {
+    path := r.URL.Path
+    idx := strings.Index(path, "/api/images/")
+    if idx == -1 {
+        utils.SendErrorResponse(w, "INVALID_PATH", "Invalid image delete path", fmt.Errorf("invalid path"), http.StatusBadRequest)
+        return
+    }
+    rel := path[idx+len("/api/images/"):]
+    rel = strings.TrimSuffix(rel, "/")
+    if rel == "" {
+        utils.SendErrorResponse(w, "INVALID_FILENAME", "Missing image filename", fmt.Errorf("missing filename"), http.StatusBadRequest)
+        return
+    }
+
+    filename := rel
+
+    // pre-check references unless force=true
+    force := r.URL.Query().Get("force") == "true"
+    if !force {
+        if linked, err := GetLinkedNotesByImage(filename); err == nil && len(linked) > 0 {
+            w.Header().Set("Content-Type", "application/json")
+            w.WriteHeader(http.StatusConflict)
+            json.NewEncoder(w).Encode(map[string]any{"code": "IMAGE_IN_USE", "message": "Image is referenced by notes", "referencedBy": linked})
+            return
+        }
+    }
+
+    // Remove note_images links first (avoid FK or logic inconsistencies)
+    if err := DeleteImageLinks(filename); err != nil {
+        utils.SendErrorResponse(w, "IMAGE_DELETE_FAILED", "Error deleting image links", err, http.StatusInternalServerError)
+        return
+    }
+
+    // Delete physical file (if exists)
+    imgPath := filepath.Join("images", filename)
+    if err := os.Remove(imgPath); err != nil && !os.IsNotExist(err) {
+        utils.SendErrorResponse(w, "IMAGE_DELETE_FAILED", "Error deleting image file", err, http.StatusInternalServerError)
+        return
+    }
+
+    // Delete DB record
+    if err := DeleteImage(filename); err != nil {
+        utils.SendErrorResponse(w, "IMAGE_DELETE_FAILED", "Error deleting image record", err, http.StatusInternalServerError)
+        return
+    }
+
+    w.WriteHeader(http.StatusNoContent)
+}
+
+
+// HandleCleanupImages scans DB images and removes records whose files are missing
+// and removes orphaned images (no note_images link) by deleting both file and record.
+func HandleCleanupImages(w http.ResponseWriter, r *http.Request) {
+    type result struct {
+        RemovedMissing int      `json:"removedMissing"`
+        RemovedOrphans int      `json:"removedOrphans"`
+        MissingFiles   []string `json:"missingFiles"`
+        OrphanFiles    []string `json:"orphanFiles"`
+    }
+    res := result{}
+
+    // Remove DB records with missing files
+    for page := 1; ; page++ {
+        imgs, total, e := GetAllImages(NewImagesFilter(page, 0, 0))
+        if e != nil || len(imgs) == 0 { break }
+        _ = total
+        for _, im := range imgs {
+            path := filepath.Join("images", im.Filename)
+            if _, statErr := os.Stat(path); statErr != nil {
+                _ = DeleteImageLinks(im.Filename)
+                _ = DeleteImage(im.Filename)
+                res.RemovedMissing++
+                res.MissingFiles = append(res.MissingFiles, im.Filename)
+            }
+        }
+        if len(imgs) < IMAGES_LIMIT { break }
+    }
+
+    // Remove orphaned images (no links), delete file & record if file exists
+    if orphans, e := GetOrphanedImages(); e == nil {
+        for _, im := range orphans {
+            path := filepath.Join("images", im.Filename)
+            _ = os.Remove(path)
+            _ = DeleteImageLinks(im.Filename)
+            _ = DeleteImage(im.Filename)
+            res.RemovedOrphans++
+            res.OrphanFiles = append(res.OrphanFiles, im.Filename)
+        }
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(res)
 }

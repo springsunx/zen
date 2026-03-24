@@ -112,6 +112,8 @@ func newRouter() *http.ServeMux {
 
 	addPrivateRoute(mux, "POST /api/images/", images.HandleUploadImage)
 	addPrivateRoute(mux, "GET /api/images/", images.HandleGetImages)
+    addPrivateRoute(mux, "DELETE /api/images/{filename}/", images.HandleDeleteImage)
+    addPrivateRoute(mux, "POST /api/images/cleanup", images.HandleCleanupImages)
 
 	addPrivateRoute(mux, "POST /api/import/", settings.HandleImport)
 	addPrivateRoute(mux, "GET /api/export/", settings.HandleExport)

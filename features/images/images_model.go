@@ -368,3 +368,15 @@ func GetImagesCount() (int, error) {
 
 	return count, nil
 }
+
+
+// DeleteImageLinks removes any note_images links for the given filename.
+func DeleteImageLinks(filename string) error {
+    query := "DELETE FROM note_images WHERE filename = ?"
+    if _, err := sqlite.DB.Exec(query, filename); err != nil {
+        err = fmt.Errorf("error deleting note_images links: %w", err)
+        slog.Error(err.Error())
+        return err
+    }
+    return nil
+}

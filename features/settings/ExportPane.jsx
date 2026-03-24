@@ -54,7 +54,7 @@ export default function ExportPane() {
         </pre>
       </div>
 
-      <div className="export-actions">
+      <div className="export-actions" style={{ display: "flex", gap: "8px", alignItems: "center" }}>
         <Button 
           variant={`primary ${isExporting ? 'disabled' : ''}`}
           onClick={handleExportClick}
@@ -62,6 +62,15 @@ export default function ExportPane() {
         >
           {isExporting ? t('settings.export.btn.exporting') : t('settings.export.btn.export')}
         </Button>
+        <Button onClick={async () => {
+          try {
+            const res = await ApiClient.cleanupImages();
+            showToast(`清理完成：缺失文件 ${res?.RemovedMissing||0} 张，孤儿图片 ${res?.RemovedOrphans||0} 张`);
+          } catch (e) {
+            console.error('Cleanup images failed:', e);
+            showToast('清理失败');
+          }
+        }}>清理无效图片</Button>
       </div>
     </div>
   )
