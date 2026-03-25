@@ -65,12 +65,12 @@ export default function ExportPane() {
         <Button onClick={async () => {
           try {
             const res = await ApiClient.cleanupImages();
-            showToast(`清理完成：缺失文件 ${res?.RemovedMissing||0} 张，孤儿图片 ${res?.RemovedOrphans||0} 张`);
+            showToast(t('images.cleanup.toast', { missing: res?.RemovedMissing||0, orphans: res?.RemovedOrphans||0 }));
           } catch (e) {
             console.error('Cleanup images failed:', e);
-            showToast('清理失败');
+            showToast(t('images.cleanup.fail'));
           }
-        }}>清理无效图片</Button>
+        }}>{t('images.cleanup.button')}</Button>
       </div>
     </div>
   )

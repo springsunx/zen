@@ -46,3 +46,4 @@ export function t(key, params) {
 export function initI18n() {
   // Already initialized at module load
 }
+

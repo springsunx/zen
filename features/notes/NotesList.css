@@ -157,8 +157,8 @@
 
             .notes-grid-item-pin {
                 opacity: 0;
-                width: 24px;
-                height: 24px;
+                width: 20px;
+                height: 20px;
                 transform: translateY(-10px);
                 transition: opacity, transform 300ms;
 

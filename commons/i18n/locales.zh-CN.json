@@ -181,5 +181,19 @@
   "login.error.invalidPassword": "密码不正确",
   "login.error.incorrectEmail": "邮箱地址不正确",
   "login.error.incorrectPassword": "密码不正确",
-  "login.getStarted": "开始吧！"
+  "login.getStarted": "开始吧！",
+  "images.delete.confirm.title": "该图片仍被以下笔记引用",
+  "images.delete.confirm.file": "文件：{filename}",
+  "images.delete.confirm.desc": "继续删除将导致这些笔记中的图片断链。",
+  "images.delete.confirm.cancel": "取消",
+  "images.delete.confirm.ok": "仍要删除",
+  "images.cleanup.button": "清理无效图片",
+  "images.cleanup.toast": "清理完成：缺失文件 {missing} 张，孤儿图片 {orphans} 张",
+  "notes.cardSize.tooltip": "卡片大小调节",
+  "notes.cardSize.decrease": "减小卡片",
+  "notes.cardSize.increase": "加大卡片",
+  "images.cleanup.fail": "清理失败",
+  "images.delete.loading": "加载引用列表中...",
+  "images.delete.notes.loadFail": "无法加载笔记详情（仍可继续删除）。",
+  "images.delete.untitled": "无标题笔记 #{id}"
 }

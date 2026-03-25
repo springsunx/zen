@@ -181,5 +181,19 @@
   "login.error.invalidPassword": "Invalid password",
   "login.error.incorrectEmail": "Incorrect email address",
   "login.error.incorrectPassword": "Incorrect password",
-  "login.getStarted": "Let's get started!"
+  "login.getStarted": "Let's get started!",
+  "images.delete.confirm.title": "This image is still referenced by the following notes",
+  "images.delete.confirm.file": "File: {filename}",
+  "images.delete.confirm.desc": "Continuing will break image links in these notes.",
+  "images.delete.confirm.cancel": "Cancel",
+  "images.delete.confirm.ok": "Delete anyway",
+  "images.cleanup.button": "Clean up invalid images",
+  "images.cleanup.toast": "Cleanup done: missing files {missing} images, orphans {orphans} images",
+  "notes.cardSize.tooltip": "Adjust card size",
+  "notes.cardSize.decrease": "Smaller cards",
+  "notes.cardSize.increase": "Larger cards",
+  "images.cleanup.fail": "Cleanup failed",
+  "images.delete.loading": "Loading referenced notes...",
+  "images.delete.notes.loadFail": "Failed to load note details (you can still delete).",
+  "images.delete.untitled": "Untitled note #{id}"
 }

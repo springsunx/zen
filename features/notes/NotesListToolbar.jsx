@@ -12,7 +12,9 @@ import TrashClearModal from "./TrashClearModal.jsx"
 import "./NotesListToolbar.css";
 import { t } from "../../commons/i18n/index.js";
 
+
 export default function NotesListToolbar({ onSidebarToggle, onViewChange, view, cardSize, onCardSizeChange }) {
+
   const searchParams = useSearchParams();
   const { refreshNotes } = useNotes();
   const { tags, focusModes } = useAppContext();
@@ -126,7 +128,7 @@ function Toolbar({ actions, onSidebarToggle, listName, className, view, cardSize
       </ButtonGroup>
       {(view === 'card' && isMobile() !== true) && (
         <div className="card-size-control">
-          <span className="card-size-icon" role="button" title="减小卡片" aria-label="减小卡片" onClick={dec}><MinusIcon /></span>
+          <span className="card-size-icon" role="button" title={t('notes.cardSize.decrease')} aria-label={t('notes.cardSize.decrease')} data-tooltip={t('notes.cardSize.decrease')} onClick={dec}><MinusIcon /></span>
           <input
             type="range"
             min="200"
@@ -134,10 +136,11 @@ function Toolbar({ actions, onSidebarToggle, listName, className, view, cardSize
             step="1"
             value={cardSize}
             onInput={e => onCardSizeChange(parseInt(e.target.value, 10))}
-            aria-label="卡片大小调节"
-            title="卡片大小调节"
+            title={t('notes.cardSize.tooltip')}
+            aria-label={t('notes.cardSize.tooltip')}
+            data-tooltip={t('notes.cardSize.tooltip')}
           />
-          <span className="card-size-icon" role="button" title="加大卡片" aria-label="加大卡片" onClick={inc}><PlusIcon /></span>
+          <span className="card-size-icon" role="button" title={t('notes.cardSize.increase')} aria-label={t('notes.cardSize.increase')} data-tooltip={t('notes.cardSize.increase')} onClick={inc}><PlusIcon /></span>
         </div>
       )}
     </div>
