@@ -119,6 +119,7 @@ export default function renderMarkdown(text, opts = {}) {
     dl: window.mdItPluginDl?.dl,
     fullEmoji: window.mdItPluginEmoji?.fullEmoji,
     imgSize: window.mdItPluginImgSize?.imgSize,
+    imgLazyload: window.mdItPluginImgLazyload?.imgLazyload,
     ins: window.mdItPluginIns?.ins,
     mark: window.mdItPluginMark?.mark,
     sub: window.mdItPluginSub?.sub,

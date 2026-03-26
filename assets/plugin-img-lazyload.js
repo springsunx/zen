@@ -1,0 +1,2 @@
+(function(e,t){typeof exports==`object`&&typeof module<`u`?t(exports):typeof define==`function`&&define.amd?define([`exports`],t):(e=typeof globalThis<`u`?globalThis:e||self,t(e.mdItPluginImgLazyload={}))})(this,function(e){Object.defineProperty(e,Symbol.toStringTag,{value:`Module`}),e.imgLazyload=e=>{let t=e.renderer.rules.image;e.renderer.rules.image=(e,n,r,i,a)=>(e[n].attrSet(`loading`,`lazy`),t(e,n,r,i,a))}});
+//# sourceMappingURL=cdn.umd.js.map
