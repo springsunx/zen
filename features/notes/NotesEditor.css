@@ -594,7 +594,7 @@
 /* 内容区域滚动 */
 .notes-editor-content {
     overflow-y: auto;
-    max-height: calc(100vh - 200px); /* 动态高度，减去工具栏、标题等高度 */
+    /* max-height: calc(100vh - 200px); 动态高度，减去工具栏、标题等高度 */
     min-height: 200px;
 }
 
