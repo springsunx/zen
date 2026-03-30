@@ -125,7 +125,7 @@ export default function renderMarkdown(text, opts = {}) {
     sub: window.mdItPluginSub?.sub,
     sup: window.mdItPluginSup?.sup,
     tasklist: window.mdItPluginTasklist?.tasklist,
-    katex: window.mdItPluginKatex?.katex,
+    //katex: window.mdItPluginKatex?.katex,
     container: window.mdItPluginContainer?.container,
   };
 
@@ -409,17 +409,18 @@ if (typeof window !== 'undefined' && !window._zenAnchorInitialized) {
   };
 
   // 事件委托：处理内部锚链接点击
-  window.setupAnchorLinks = function (container = document) {
+  window.setupAnchorLinks = function (container) {
+    const root = (container && typeof container.addEventListener === 'function') ? container : document;
     // 移除现有监听器
     if (window._zenAnchorClickHandler) {
-      container.removeEventListener('click', window._zenAnchorClickHandler);
+      try { root.removeEventListener('click', window._zenAnchorClickHandler); } catch (e) {}
     }
 
     // 创建新监听器
     window._zenAnchorClickHandler = function (event) {
       let target = event.target;
 
-      while (target && target !== container) {
+      while (target && target !== root) {
         if (target.tagName === 'A' && target.classList.contains('internal-anchor-link')) {
           const href = target.getAttribute('href');
           if (href?.startsWith('#')) {
@@ -433,12 +434,12 @@ if (typeof window !== 'undefined' && !window._zenAnchorInitialized) {
               if (window.generateHeadingId) arr.push(window.generateHeadingId(idRaw));
               return uniq(arr);
             })();
-            const all = container.querySelectorAll('[id]');
+            const all = root.querySelectorAll('[id]');
             const norm = (x) => String(x || '').trim().toLowerCase().replace(/[\s_]+/g, '-').replace(/[\.:]/g, '-').replace(/-+/g, '-').replace(/^-+|-+$/g, '');
             let element = null;
             for (const cid of candidates) {
               // Precise match (escaped selector)
-              try { const esc = (window.CSS && CSS.escape) ? CSS.escape(cid) : cid.replace(/["'\\\[\]#.:]/g, '\\$&'); element = container.querySelector('[id=+esc+]'); } catch (e) { }
+              try { const esc = (window.CSS && CSS.escape) ? CSS.escape(cid) : cid.replace(/["'\\\[\]#.:]/g, '\\$&'); element = root.querySelector('[id=+esc+]'); } catch (e) { }
               if (element) break;
               // Normalized equality / prefix match
               const c = norm(cid);
@@ -453,7 +454,7 @@ if (typeof window !== 'undefined' && !window._zenAnchorInitialized) {
       }
     };
 
-    container.addEventListener('click', window._zenAnchorClickHandler);
+    root.addEventListener('click', window._zenAnchorClickHandler);
   };
 
   // 初始化和事件绑定

@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"zen/commons/queue"
 	"zen/features/notes"
 )
@@ -86,9 +87,9 @@ func scanImagesDirectory() (map[string]os.FileInfo, error) {
 }
 
 func isImageFile(filename string) bool {
-	ext := filepath.Ext(filename)
+	ext := strings.ToLower(filepath.Ext(filename))
 	switch ext {
-	case ".jpg", ".jpeg", ".png", ".gif":
+	case ".jpg", ".jpeg", ".png", ".gif", ".avif", ".webp":
 		return true
 	default:
 		return false
