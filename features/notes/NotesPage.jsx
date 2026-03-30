@@ -171,7 +171,7 @@ const [isEditorEditable, setIsEditorEditable] = useState(false);
       </div>
 
       <div className={editorClassName}>
-        <NotesEditor isNewNote={noteId === "new"} onEditModeChange={setIsEditorEditable} key={(selectedNote?.noteId || "n") + "-" + (selectedNote?.updatedAt || "") } />
+        <NotesEditor isNewNote={noteId === "new"} onEditModeChange={setIsEditorEditable} key={(selectedNote?.noteId || "n") } />
       </div>
 
       {selectedView === "list" && (

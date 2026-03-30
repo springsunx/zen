@@ -87,6 +87,44 @@ export default function NotesEditor({ isNewNote, isFloating, onClose, onEditMode
     }
   }, [selectedNote?.noteId, selectedNote?.updatedAt, isEditable]);
 
+  
+  // Auto focus editor textarea whenever entering edit mode (any entry path)
+  useEffect(() => {
+    if (isEditable) {
+      // wait for textarea to mount
+      setTimeout(() => {
+        const ta = textareaRef.current;
+        if (ta && typeof ta.focus === 'function') {
+          try {
+            ta.focus();
+            ta.selectionStart = 0;
+            ta.selectionEnd = 0;
+          } catch {}
+          return;
+        }
+        // fallback to title if textarea not present yet
+        const tt = titleRef.current;
+        if (tt && typeof tt.focus === 'function') {
+          try { tt.focus();
+            const sel = window.getSelection && window.getSelection();
+            if (sel && typeof sel.removeAllRanges === 'function') {
+              sel.removeAllRanges();
+              const range = document.createRange();
+              if (tt.firstChild) {
+                range.setStart(tt.firstChild, 0);
+              } else {
+                tt.appendChild(document.createTextNode(''));
+                range.setStart(tt.firstChild, 0);
+              }
+              range.collapse(true);
+              sel.addRange(range);
+            }
+          } catch {}
+        }
+      }, 0);
+    }
+  }, [isEditable]);
+
   // Setup anchor links after markdown is rendered
   useEffect(() => {
     if (!isEditable && contentRef.current) {
@@ -99,7 +137,7 @@ export default function NotesEditor({ isNewNote, isFloating, onClose, onEditMode
     }
   }, [content, isEditable]);
 
-  const handleSaveClick = useCallback(() => {
+  const handleSaveClick = useCallback((closeAfter = false) => {
     const currentTitle = titleRef.current?.textContent || "";
     const currentContent = textareaRef.current?.value || content;
 
@@ -124,14 +162,16 @@ export default function NotesEditor({ isNewNote, isFloating, onClose, onEditMode
 
     promise
       .then(note => {
-        setIsEditable(false);
+        if (closeAfter) {
+          setIsEditable(false);
+        }
         resetAttachments();
 
-        if (isNewNote && !onClose) {
+        if (closeAfter && isNewNote && !onClose) {
           navigateTo(`/notes/${note.noteId}`, true);
         }
 
-        handleNoteChange();
+        if (closeAfter) { handleNoteChange(); }
         onSaved(note);
       })
       .finally(() => {
@@ -139,12 +179,15 @@ export default function NotesEditor({ isNewNote, isFloating, onClose, onEditMode
       });
   }, [content, tags, isNewNote, selectedNote, handleNoteChange, resetAttachments]);
 
+  const handleSaveAndCloseClick = useCallback(() => handleSaveClick(true), [handleSaveClick]);
+
   const { handleKeyDown } = useEditorKeyboardShortcuts({
     isEditable,
     isFloating,
     isExpanded,
     textareaRef,
-    onSave: handleSaveClick,
+    onSave: () => handleSaveClick(false),
+    onSaveAndClose: () => handleSaveClick(true),
     onEdit: handleEditClick,
     onClose: handleCloseClick,
     onExpandToggle: handleExpandToggleClick,
@@ -179,6 +222,8 @@ export default function NotesEditor({ isNewNote, isFloating, onClose, onEditMode
       } else {
         navigateTo("/", true);
       }
+      // Ensure list reflects any in-edit saves
+      handleNoteChange();
     } else {
       // Reset current edits
       setTitle(selectedNote?.title || "");
@@ -186,6 +231,8 @@ export default function NotesEditor({ isNewNote, isFloating, onClose, onEditMode
       onContentChange(selectedNote?.content || "");
       setTags(selectedNote?.tags || []);
       setIsEditable(false);
+      // Refresh list on exit from edit mode
+      handleNoteChange();
     }
   }
 
@@ -209,6 +256,8 @@ export default function NotesEditor({ isNewNote, isFloating, onClose, onEditMode
     } else {
       navigateTo("/", true);
     }
+    // Exiting editor: refresh list in case of in-edit saves
+    handleNoteChange();
   }
 
   function handleDeleteClick() {
@@ -228,7 +277,7 @@ export default function NotesEditor({ isNewNote, isFloating, onClose, onEditMode
         } else {
           navigateTo("/", true);
         }
-        handleNoteChange();
+        if (closeAfter) { handleNoteChange(); }
       });
   }
 
@@ -240,7 +289,7 @@ export default function NotesEditor({ isNewNote, isFloating, onClose, onEditMode
     ApiClient.archiveNote(selectedNote.noteId)
       .then(() => {
         showToast("Note archived.");
-        handleNoteChange();
+        if (closeAfter) { handleNoteChange(); }
       });
   }
 
@@ -248,14 +297,14 @@ export default function NotesEditor({ isNewNote, isFloating, onClose, onEditMode
     ApiClient.unarchiveNote(selectedNote.noteId)
       .then(() => {
         showToast("Note unarchived.");
-        handleNoteChange();
+        if (closeAfter) { handleNoteChange(); }
       });
   }
 
   function handleRestoreClick() {
     ApiClient.restoreNote(selectedNote.noteId)
       .then(() => {
-        handleNoteChange();
+        if (closeAfter) { handleNoteChange(); }
       });
   }
 
@@ -349,6 +398,7 @@ export default function NotesEditor({ isNewNote, isFloating, onClose, onEditMode
         isSaveLoading={isSaveLoading}
         isExpanded={isExpanded}
         onSaveClick={handleSaveClick}
+        onSaveAndCloseClick={handleSaveAndCloseClick}
         onEditClick={handleEditClick}
         onEditCancelClick={handleEditCancelClick}
         onCloseClick={handleCloseClick}
@@ -379,8 +429,9 @@ export default function NotesEditor({ isNewNote, isFloating, onClose, onEditMode
   );
 }
 
-function Toolbar({ note, isNewNote, isEditable, isFloating, isSaveLoading, isExpanded, onSaveClick, onEditClick, onEditCancelClick, onCloseClick, onDeleteClick, onArchiveClick, onUnarchiveClick, onRestoreClick, onExpandToggleClick, onPinClick, onUnpinClick }) {
+function Toolbar({ note, isNewNote, isEditable, isFloating, isSaveLoading, isExpanded, onSaveClick, onSaveAndCloseClick, onEditClick, onEditCancelClick, onCloseClick, onDeleteClick, onArchiveClick, onUnarchiveClick, onRestoreClick, onExpandToggleClick, onPinClick, onUnpinClick }) {
   const saveButtonText = isSaveLoading ? t('common.saving') : t('common.save');
+  const saveAndCloseText = t('editor.saveAndClose');
 
   function handleClick(e) {
     if (e.target.className !== "notes-editor-toolbar") {
@@ -415,7 +466,12 @@ function Toolbar({ note, isNewNote, isEditable, isFloating, isSaveLoading, isExp
       {
         key: 'save',
         condition: isEditable,
-        component: <Button variant="ghost" isDisabled={isSaveLoading} onClick={onSaveClick}>{saveButtonText}</Button>
+        component: <Button variant="ghost" isDisabled={isSaveLoading} onClick={() => onSaveClick(false)}>{saveButtonText}</Button>
+      },
+      {
+        key: 'saveClose',
+        condition: isEditable,
+        component: <Button variant="ghost" isDisabled={isSaveLoading} onClick={onSaveAndCloseClick}>{saveAndCloseText}</Button>
       },
       {
         key: 'cancel',

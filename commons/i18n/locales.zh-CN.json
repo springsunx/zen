@@ -195,5 +195,6 @@
   "images.cleanup.fail": "清理失败",
   "images.delete.loading": "加载引用列表中...",
   "images.delete.notes.loadFail": "无法加载笔记详情（仍可继续删除）。",
-  "images.delete.untitled": "无标题笔记 #{id}"
+  "images.delete.untitled": "无标题笔记 #{id}",
+  "editor.saveAndClose": "保存并关闭"
 }

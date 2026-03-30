@@ -10,7 +10,8 @@ export default function useEditorKeyboardShortcuts({
   onClose,
   onExpandToggle,
   onInsertAtCursor,
-  onFormatText
+  onFormatText,
+  onSaveAndClose
 }) {
   const handleKeyDown = useCallback(e => {
     const isTextAreaFocused = document.activeElement.className == "notes-editor-textarea";
@@ -18,9 +19,16 @@ export default function useEditorKeyboardShortcuts({
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
       e.preventDefault();
       if (isEditable === true) {
-        onSave();
+        onSaveAndClose();
       } else {
         onEdit();
+      }
+    }
+
+    if ((e.metaKey || e.ctrlKey) && (e.key === 's' || e.key === 'S')) {
+      e.preventDefault();
+      if (isEditable === true) {
+        onSave();
       }
     }
 
@@ -93,7 +101,7 @@ export default function useEditorKeyboardShortcuts({
         }
       }
     }
-  }, [isEditable, isFloating, isExpanded, textareaRef, onSave, onEdit, onClose, onExpandToggle, onInsertAtCursor, onFormatText]);
+  }, [isEditable, isFloating, isExpanded, textareaRef, onSave, onEdit, onClose, onExpandToggle, onInsertAtCursor, onFormatText, onSaveAndClose]);
 
   useEffect(() => {
     document.addEventListener("keydown", handleKeyDown);
