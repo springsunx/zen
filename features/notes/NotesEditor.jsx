@@ -91,39 +91,44 @@ export default function NotesEditor({ isNewNote, isFloating, onClose, onEditMode
   // Auto focus editor textarea whenever entering edit mode (any entry path)
   useEffect(() => {
     if (isEditable) {
-      // wait for textarea to mount
       setTimeout(() => {
+        const container = document.querySelector('.notes-editor-container');
+        const savedTop = container ? container.scrollTop : null;
+        try { handleTextAreaHeight(); } catch {}
         const ta = textareaRef.current;
         if (ta && typeof ta.focus === 'function') {
           try {
-            ta.focus();
+            ta.focus({ preventScroll: true });
             ta.selectionStart = 0;
             ta.selectionEnd = 0;
           } catch {}
+          if (container != null && savedTop != null) {
+            try { container.scrollTop = savedTop; } catch {}
+          }
           return;
         }
-        // fallback to title if textarea not present yet
         const tt = titleRef.current;
         if (tt && typeof tt.focus === 'function') {
-          try { tt.focus();
+          try {
+            tt.focus({ preventScroll: true });
             const sel = window.getSelection && window.getSelection();
             if (sel && typeof sel.removeAllRanges === 'function') {
               sel.removeAllRanges();
               const range = document.createRange();
-              if (tt.firstChild) {
-                range.setStart(tt.firstChild, 0);
-              } else {
-                tt.appendChild(document.createTextNode(''));
-                range.setStart(tt.firstChild, 0);
-              }
+              if (!tt.firstChild) tt.appendChild(document.createTextNode(''));
+              range.setStart(tt.firstChild, 0);
               range.collapse(true);
               sel.addRange(range);
             }
           } catch {}
+          if (container != null && savedTop != null) {
+            try { container.scrollTop = savedTop; } catch {}
+          }
         }
       }, 0);
     }
   }, [isEditable]);
+
 
   // Setup anchor links after markdown is rendered
   useEffect(() => {

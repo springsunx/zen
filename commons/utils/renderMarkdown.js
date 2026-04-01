@@ -1,43 +1,4 @@
-// =============================================
-// Markdown渲染器 - 简洁重构版
-// 功能完整：标题ID生成、自定义ID提取、代码块复制、锚链接处理
-// =============================================
-
-// 辅助函数：生成标题ID
-function generateId(text) {
-  if (!text) return '';
-  return text.trim()
-    .toLowerCase()
-    .replace(/\s+/g, '-')
-    .replace(/^-+/, '')
-    .replace(/-+$/, '') || 'heading';
-}
-
-// 辅助函数：清理自定义ID
-function cleanCustomId(id) {
-  if (!id) return '';
-
-  return id.trim()
-    .replace(/[\s_]+/g, '-')
-    .replace(/[\x00-\x1F\x7F<>"']/g, '')  // 移除控制字符和HTML特殊字符
-    .replace(/^[-.]+/, '')
-    .replace(/[-.]+$/, '')
-    .replace(/-+/g, '-') || '';
-}
-
-// 辅助函数：从标题文本提取自定义ID（例如 "标题 {#custom-id}"）
-function extractCustomId(text) {
-  if (!text) return { cleanedText: text, customId: null };
-
-  const match = text.match(/\s*\{#([^}]+)\}\s*$/);
-  if (!match) return { cleanedText: text.trim(), customId: null };
-
-  const customId = cleanCustomId(match[1].trim());
-  if (!customId) return { cleanedText: text.trim(), customId: null };
-
-  const cleanedText = text.substring(0, match.index).trim();
-  return { cleanedText, customId };
-}
+import { generateId, cleanCustomId, extractCustomId, buildHeadingOpen, buildLinkOpen, findAnchor} from "./markdownToc.js";
 
 // 辅助函数：复制代码到剪贴板
 function createCopyHandler() {
@@ -223,88 +184,10 @@ export default function renderMarkdown(text, opts = {}) {
   };
 
   // 2. 标题：生成ID（支持自定义ID语法）
-  const originalHeadingOpen = md.renderer.rules.heading_open ||
-    ((tokens, idx, options, env, self) => self.renderToken(tokens, idx, options));
+  const originalHeadingOpen = md.renderer.rules.heading_open = buildHeadingOpen(opts || {});
 
-  md.renderer.rules.heading_open = function (tokens, idx, options, env, self) {
-    const token = tokens[idx];
-
-    // 查找标题内容
-    let headingText = '';
-    let inlineToken = null;
-
-    for (let i = idx + 1; i < tokens.length && tokens[i].type !== 'heading_close'; i++) {
-      if (tokens[i].type === 'inline') {
-        inlineToken = tokens[i];
-        headingText = inlineToken.content;
-        break;
-      }
-    }
-
-    if (headingText && inlineToken) {
-      const { cleanedText, customId } = extractCustomId(headingText);
-      const id = customId || generateId(headingText);
-
-      if (!opts.stripHeadingIds) {
-        if (id && !token.attrs?.find(attr => attr[0] === 'id')) {
-          token.attrSet('id', id);
-        }
-        if (opts.anchorPrefix) {
-          const idAttr = token.attrs?.find(a => a[0] === 'id');
-          if (idAttr && idAttr[1] && !idAttr[1].startsWith(opts.anchorPrefix)) {
-            idAttr[1] = opts.anchorPrefix + idAttr[1];
-          }
-        }
-      }
-
-      // 更新清理后的文本
-      if (cleanedText !== headingText) {
-        inlineToken.content = cleanedText;
-
-        // 清理子token中的自定义ID模式
-        if (inlineToken.children) {
-          inlineToken.children = inlineToken.children.filter(child => {
-            if (child.type !== 'text') return true;
-
-            const { cleanedText: childCleaned } = extractCustomId(child.content);
-            if (childCleaned) child.content = childCleaned;
-            return childCleaned !== '';
-          });
-
-          if (inlineToken.children.length === 0) {
-            inlineToken.children.push({ type: 'text', content: '' });
-          }
-        }
-      }
-    }
-
-    return originalHeadingOpen(tokens, idx, options, env, self);
-  };
-
-  // 3. 链接：内部锚链接特殊处理，外部链接在新标签页打开
-  const originalLinkOpen = md.renderer.rules.link_open ||
-    ((tokens, idx, options, env, self) => self.renderToken(tokens, idx, options));
-
-  md.renderer.rules.link_open = function (tokens, idx, options, env, self) {
-    const token = tokens[idx];
-    const hrefAttr = token.attrs?.find(attr => attr[0] === 'href');
-
-    if (hrefAttr) {
-      if (hrefAttr[1].startsWith('#')) {
-        token.attrPush(['class', 'internal-anchor-link']);
-        token.attrPush(['data-anchor-link', 'true']);
-        if (opts.anchorPrefix) {
-          const raw = hrefAttr[1].replace(/^#/, '');
-          token.attrSet('href', '#' + opts.anchorPrefix + raw);
-        }
-      } else {
-        token.attrSet('target', '_blank');
-        token.attrSet('rel', 'noopener noreferrer');
-      }
-    }
-
-    return originalLinkOpen(tokens, idx, options, env, self);
-  };
+  // 3.链接：内部锚链接特殊处理，外部链接在新标签页打开
+  const originalLinkOpen = md.renderer.rules.link_open = buildLinkOpen(opts || {});
 
   return md.render(text);
 }
@@ -318,62 +201,6 @@ if (typeof window !== 'undefined' && !window._zenAnchorInitialized) {
   window.cleanCustomId = cleanCustomId;
   window.extractCustomId = extractCustomId;
 
-  // 辅助函数：查找元素（支持大小写不敏感和URL解码）
-  function findElementById(id) {
-    if (!id) return null;
-
-    // 1. 精确匹配
-    let element = document.getElementById(id);
-    if (element) return element;
-
-    // 2. 大小写不敏感匹配
-    const allElements = document.querySelectorAll('[id]');
-    for (const elem of allElements) {
-      if (elem.id?.toLowerCase() === id.toLowerCase()) {
-        return elem;
-      }
-    }
-
-    // 3. 尝试URL解码
-    try {
-      const decoded = decodeURIComponent(id);
-      element = document.getElementById(decoded);
-      if (element) return element;
-
-      for (const elem of allElements) {
-        if (elem.id?.toLowerCase() === decoded.toLowerCase()) {
-          return elem;
-        }
-      }
-
-      // 4. 使用生成的ID匹配
-      const generatedId = generateId(decoded);
-      element = document.getElementById(generatedId);
-      if (element) return element;
-
-      for (const elem of allElements) {
-        if (elem.id?.toLowerCase() === generatedId.toLowerCase()) {
-          return elem;
-        }
-      }
-    } catch (e) {
-      // 解码失败，继续尝试
-    }
-
-    // 5. 使用原始文本生成ID匹配
-    const generatedId = generateId(id);
-    element = document.getElementById(generatedId);
-    if (element) return element;
-
-    for (const elem of allElements) {
-      if (elem.id?.toLowerCase() === generatedId.toLowerCase()) {
-        return elem;
-      }
-    }
-
-    return null;
-  }
-
   // 主函数：滚动到锚点
   window.scrollToAnchor = function (hash, smooth = true) {
     if (!hash) return false;
@@ -381,7 +208,7 @@ if (typeof window !== 'undefined' && !window._zenAnchorInitialized) {
     const id = hash.replace(/^#/, '');
     if (!id) return false;
 
-    const element = findElementById(id);
+    const element = findAnchor(document, id);
     if (!element) {
       console.warn('Anchor not found:', hash);
       return false;

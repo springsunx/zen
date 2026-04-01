@@ -196,5 +196,6 @@
   "images.delete.loading": "Loading referenced notes...",
   "images.delete.notes.loadFail": "Failed to load note details (you can still delete).",
   "images.delete.untitled": "Untitled note #{id}",
-  "editor.saveAndClose": "Save & Close"
+  "editor.saveAndClose": "Save & Close",
+  "notes.toc.insert": "Insert TOC into content"
 }

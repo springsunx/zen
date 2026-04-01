@@ -179,6 +179,7 @@ const [isEditorEditable, setIsEditorEditable] = useState(false);
           content={selectedNote?.content || ""}
           isEditable={isEditorEditable}
           isNewNote={noteId === "new"}
+          noteId={selectedNote?.noteId}
         />
       )}
       <MobileNavbar />

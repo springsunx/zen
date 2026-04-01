@@ -56,6 +56,8 @@ useEffect(() => {
             isEditable={isEditorEditable}
             isNewNote={false}
             inModal={true}
+            noteId={(selectedNote?.noteId || note?.noteId)}
+            onContentPatched={setCurrentContent}
           />
         </ModalContent>
       </ModalContainer>
