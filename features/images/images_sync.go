@@ -89,7 +89,7 @@ func scanImagesDirectory() (map[string]os.FileInfo, error) {
 func isImageFile(filename string) bool {
 	ext := strings.ToLower(filepath.Ext(filename))
 	switch ext {
-	case ".jpg", ".jpeg", ".png", ".gif", ".avif", ".webp":
+	case ".jpg", ".jpeg", ".png", ".gif":
 		return true
 	default:
 		return false
@@ -210,9 +210,7 @@ func createImageRecordFromFile(filename string, fileInfo os.FileInfo) error {
 
 	imageInfo, err := getImageInfo(file)
 	if err != nil {
-		err = fmt.Errorf("error getting image info: %w", err)
-		slog.Error(err.Error())
-		return err
+		return fmt.Errorf("error getting image info: %w", err)
 	}
 
 	imageRecord := ImageRecord{

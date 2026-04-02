@@ -63,6 +63,15 @@ function useMarkdownFormatter({ textareaRef, setContent }) {
         formattedText = `\`${selectedText || placeholder}\``;
         cursorOffset = selectedText ? formattedText.length : 1;
         break;
+      case "codeblock":
+        if (selectedText) {
+          formattedText = `\`\`\`\n${selectedText}\n\`\`\``;
+          cursorOffset = selectedText ? formattedText.length : 0;
+        } else {
+          formattedText = `\`\`\`\n\n\`\`\``;
+          cursorOffset = 4; // position cursor inside the empty block
+        }
+        break;
       case "h1":
         formattedText = `# ${selectedText || placeholder}`;
         cursorOffset = selectedText ? formattedText.length : 2;

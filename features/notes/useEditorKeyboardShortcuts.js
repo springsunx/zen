@@ -1,5 +1,7 @@
 import { useEffect, useCallback } from "../../assets/preact.esm.js";
 
+function min(a,b){return a<b?a:b;}
+
 export default function useEditorKeyboardShortcuts({
   isEditable,
   isFloating,
@@ -62,6 +64,39 @@ export default function useEditorKeyboardShortcuts({
     if (isTextAreaFocused && (e.metaKey || e.ctrlKey) && e.key === 'i') {
       e.preventDefault();
       onFormatText("italic");
+    }
+
+
+    // Duplicate current line: Ctrl/Cmd + D
+    if (isTextAreaFocused && (e.metaKey || e.ctrlKey) && (e.key === 'd' || e.key === 'D')) {
+      e.preventDefault();
+      const ta = textareaRef.current;
+      if (ta) {
+        const start = ta.selectionStart;
+        const end = ta.selectionEnd;
+        const value = ta.value;
+        // Determine current line bounds
+        const lineStart = value.lastIndexOf('\n', start - 1) + 1; // when not found -> 0
+        const lineEndIdx = value.indexOf('\n', end);
+        const effectiveLineEnd = lineEndIdx === -1 ? value.length : lineEndIdx;
+        const lineText = value.substring(lineStart, effectiveLineEnd);
+        // Place caret at end of current line, then insert duplicated line via state updater
+        try { ta.selectionStart = ta.selectionEnd = effectiveLineEnd; } catch {}
+        const insertion = '\n' + lineText;
+        onInsertAtCursor(insertion);
+        // Restore caret to same column on the duplicated line in next tick
+        const col = start - lineStart;
+        const targetCol = Math.min(col, lineText.length);
+        setTimeout(() => {
+          const t2 = textareaRef.current;
+          if (t2) {
+            const dupLineStart = effectiveLineEnd + 1; // after inserted '
+            const newPos = dupLineStart + targetCol;
+            try { t2.selectionStart = t2.selectionEnd = newPos; t2.focus(); } catch {}
+          }
+        }, 0);
+      }
+      return;
     }
 
     if (isTextAreaFocused && e.key === 'Enter' && !e.metaKey && !e.ctrlKey) {

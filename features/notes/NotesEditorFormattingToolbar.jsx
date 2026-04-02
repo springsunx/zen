@@ -1,5 +1,5 @@
 import { h } from "../../assets/preact.esm.js"
-import { BoldIcon, ItalicIcon, StrikethroughIcon, HighlightIcon, CodeIcon, Heading1Icon, Heading2Icon, Heading3Icon, ListIcon, ListOrderedIcon, ListTodoIcon, QuoteIcon, LinkIcon, SeparatorIcon } from '../../commons/components/Icon.jsx';
+import { BoldIcon, ItalicIcon, StrikethroughIcon, HighlightIcon, CodeIcon, CodeBlockIcon, Heading1Icon, Heading2Icon, Heading3Icon, ListIcon, ListOrderedIcon, ListTodoIcon, QuoteIcon, LinkIcon, SeparatorIcon } from '../../commons/components/Icon.jsx';
 import { t } from "../../commons/i18n/index.js";
 
 export default function NotesEditorFormattingToolbar({ isEditable, onFormat }) {
@@ -24,6 +24,9 @@ export default function NotesEditorFormattingToolbar({ isEditable, onFormat }) {
         </button>
         <button type="button" className="formatting-button" onClick={() => onFormat("code", "code")} title={t('notes.toolbar.inlineCode')}>
           <CodeIcon />
+        </button>
+        <button type="button" className="formatting-button" onClick={() => onFormat("codeblock")} title={t('notes.toolbar.codeblock')}>
+          <CodeBlockIcon />
         </button>
       </div>
 
