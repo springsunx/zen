@@ -78,6 +78,7 @@ export default function renderMarkdown(text, opts = {}) {
     alert: window.mdItPluginAlert?.alert,
     attrs: window.mdItPluginAttrs?.attrs,
     dl: window.mdItPluginDl?.dl,
+    footnote: window.mdItPluginFootnote?.footnote,
     fullEmoji: window.mdItPluginEmoji?.fullEmoji,
     imgSize: window.mdItPluginImgSize?.imgSize,
     imgLazyload: window.mdItPluginImgLazyload?.imgLazyload,
