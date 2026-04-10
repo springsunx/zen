@@ -3,7 +3,7 @@ import NotesListToolbar from './NotesListToolbar.jsx';
 import Link from '../../commons/components/Link.jsx';
 import Spinner from '../../commons/components/Spinner.jsx';
 import Button from '../../commons/components/Button.jsx';
-import { PinIcon, CheckboxUncheckedIcon, CheckboxCheckedIcon } from '../../commons/components/Icon.jsx';
+import { PinIcon, CheckboxUncheckedIcon, CheckboxCheckedIcon, NotesIcon, ImagesIcon } from '../../commons/components/Icon.jsx';
 import renderMarkdown from '../../commons/utils/renderMarkdown.js';
 import formatDate from '../../commons/utils/formatDate.js';
 import isMobile from "../../commons/utils/isMobile.js";
@@ -13,6 +13,7 @@ import NotesEditorModal from './NotesEditorModal.jsx';
 import { NotesProvider } from "../../commons/contexts/NotesContext.jsx";
 import { AppProvider } from '../../commons/contexts/AppContext.jsx';
 import { openModal } from '../../commons/components/Modal.jsx';
+import EmptyState from '../../commons/components/EmptyState.jsx';
 import "./NotesList.css";
 import { t } from "../../commons/i18n/index.js";
 
@@ -189,6 +190,9 @@ function EmptyList({ items, view }) {
     return null;
   }
 
-  const message = view === "gallery" ? t("notes.empty.images") : t("notes.empty.notes");
-  return <div className="notes-list-empty-text">{message}</div>
+  if (view === "gallery") {
+    return <EmptyState icon={<ImagesIcon />} title="No images" description="Upload images to your notes to see them here" />;
+  }
+
+  return <EmptyState icon={<NotesIcon />} title="No notes" description="Create a note to get started" />;
 }

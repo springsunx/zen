@@ -2,6 +2,8 @@ import { h, Fragment } from "../../assets/preact.esm.js"
 import TemplatesListToolbar from './TemplatesListToolbar.jsx';
 import TemplateListItem from './TemplateListItem.jsx';
 import Spinner from '../../commons/components/Spinner.jsx';
+import EmptyState from '../../commons/components/EmptyState.jsx';
+import { TemplatesIcon } from '../../commons/components/Icon.jsx';
 import "./TemplatesList.css";
 import { t } from "../../commons/i18n/index.js";
 
@@ -32,7 +34,5 @@ function EmptyList({ templates }) {
     return null;
   }
 
-  return (
-    <div className="templates-list-empty-text">{t('templates.empty')}</div>
-  );
+  return <EmptyState icon={<TemplatesIcon />} title={t('templates.empty')} description={t('templates.empty.desc')} />;
 }

@@ -145,7 +145,7 @@
   "notes.archive.archive": "归档",
   "notes.empty.images": "未找到图片",
   "notes.empty.notes": "未找到笔记",
-  "templates.empty": "未找到模板",
+  "templates.empty": "暂无模板",
   "notes.toc.title": "目录",
   "templates.form.tags": "标签",
   "templates.form.content": "内容",
@@ -198,5 +198,6 @@
   "images.delete.untitled": "无标题笔记 #{id}",
   "editor.saveAndClose": "保存并关闭",
   "notes.toc.insert": "插入目录到正文",
-  "notes.toolbar.codeblock": "代码块"
+  "notes.toolbar.codeblock": "代码块",
+  "templates.empty.desc": "创建一个模板以加速笔记创建"
 }

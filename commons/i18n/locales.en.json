@@ -145,7 +145,7 @@
   "notes.archive.archive": "Archive",
   "notes.empty.images": "No images found",
   "notes.empty.notes": "No notes found",
-  "templates.empty": "No templates found",
+  "templates.empty": "No templates",
   "notes.toc.title": "Contents",
   "templates.form.tags": "Tags",
   "templates.form.content": "Content",
@@ -198,5 +198,6 @@
   "images.delete.untitled": "Untitled note #{id}",
   "editor.saveAndClose": "Save & Close",
   "notes.toc.insert": "Insert TOC into content",
-  "notes.toolbar.codeblock": "Code block"
+  "notes.toolbar.codeblock": "Code block",
+  "templates.empty.desc": "Create a template to speed up note creation"
 }
