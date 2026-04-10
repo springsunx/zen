@@ -6,6 +6,7 @@ import { openModal, closeModal } from '../../commons/components/Modal.jsx';
 import { useNotes } from '../../commons/contexts/NotesContext.jsx';
 import BulkDeleteModal from './BulkDeleteModal.jsx';
 import pluralize from '../../commons/utils/pluralize.js';
+import { t, getLang } from '../../commons/i18n/index.js';
 import "./BulkActionsPanel.css";
 
 export default function BulkActionsPanel({ selectedIds, allIds, onClose, onSelectAll }) {
@@ -32,7 +33,7 @@ export default function BulkActionsPanel({ selectedIds, allIds, onClose, onSelec
         onClose();
       })
       .catch(() => {
-        showToast("Failed to move notes to trash");
+        showToast(t('bulk.toast.trashFailed'));
       });
   }
 
@@ -44,7 +45,7 @@ export default function BulkActionsPanel({ selectedIds, allIds, onClose, onSelec
         onClose();
       })
       .catch(() => {
-        showToast("Failed to archive notes");
+        showToast(t('bulk.toast.archiveFailed'));
       });
   }
 
@@ -55,7 +56,7 @@ export default function BulkActionsPanel({ selectedIds, allIds, onClose, onSelec
         <div className="bulk-actions-panel-row-icon">
           <FileCheckIcon />
         </div>
-        <span className="bulk-actions-panel-row-label">Select Everything</span>
+        <span className="bulk-actions-panel-row-label">{t('bulk.selectEverything')}</span>
       </div>
     );
   }
@@ -70,21 +71,21 @@ export default function BulkActionsPanel({ selectedIds, allIds, onClose, onSelec
         <div className="bulk-actions-panel-row-icon">
           <ArchiveIcon />
         </div>
-        <span className="bulk-actions-panel-row-label">Archive</span>
+        <span className="bulk-actions-panel-row-label">{t('bulk.archive')}</span>
       </div>
 
       <div className="bulk-actions-panel-row" onClick={handleTrashClick}>
         <div className="bulk-actions-panel-row-icon">
           <TrashIcon />
         </div>
-        <span className="bulk-actions-panel-row-label">Delete</span>
+        <span className="bulk-actions-panel-row-label">{t('bulk.delete')}</span>
       </div>
 
       <div className="bulk-actions-panel-row cancel" onClick={onClose}>
         <div className="bulk-actions-panel-row-icon">
           <CloseIcon />
         </div>
-        <span className="bulk-actions-panel-row-label">Cancel</span>
+        <span className="bulk-actions-panel-row-label">{t('bulk.cancel')}</span>
       </div>
     </div>
   );

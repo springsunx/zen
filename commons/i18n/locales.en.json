@@ -199,5 +199,15 @@
   "editor.saveAndClose": "Save & Close",
   "notes.toc.insert": "Insert TOC into content",
   "notes.toolbar.codeblock": "Code block",
-  "templates.empty.desc": "Create a template to speed up note creation"
+  "templates.empty.desc": "Create a template to speed up note creation",
+  "bulk.selectEverything": "Select Everything",
+  "bulk.selectAll": "Select All",
+  "bulk.archive": "Archive",
+  "bulk.delete": "Delete",
+  "bulk.cancel": "Cancel",
+  "bulk.countSelected": "{count} {noteNoun} selected",
+  "bulk.toast.archived": "{count} {noteNoun} archived",
+  "bulk.toast.trashed": "{count} {noteNoun} moved to trash",
+  "bulk.toast.archiveFailed": "Failed to archive notes",
+  "bulk.toast.trashFailed": "Failed to move notes to trash"
 }

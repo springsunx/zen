@@ -199,5 +199,15 @@
   "editor.saveAndClose": "保存并关闭",
   "notes.toc.insert": "插入目录到正文",
   "notes.toolbar.codeblock": "代码块",
-  "templates.empty.desc": "创建一个模板以加速笔记创建"
+  "templates.empty.desc": "创建一个模板以加速笔记创建",
+  "bulk.selectEverything": "选择全部",
+  "bulk.selectAll": "全选",
+  "bulk.archive": "归档",
+  "bulk.delete": "删除",
+  "bulk.cancel": "取消",
+  "bulk.countSelected": "已选择 {count} 条笔记",
+  "bulk.toast.archived": "已归档 {count} 条笔记",
+  "bulk.toast.trashed": "已移动 {count} 条笔记到回收站",
+  "bulk.toast.archiveFailed": "归档失败",
+  "bulk.toast.trashFailed": "移动到回收站失败"
 }

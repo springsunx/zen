@@ -6,6 +6,7 @@ import { openModal, closeModal } from '../../commons/components/Modal.jsx';
 import { useNotes } from '../../commons/contexts/NotesContext.jsx';
 import BulkDeleteModal from './BulkDeleteModal.jsx';
 import pluralize from '../../commons/utils/pluralize.js';
+import { t, getLang } from '../../commons/i18n/index.js';
 import "./BulkActionsToolbar.css";
 
 export default function BulkActionsToolbar({ selectedIds, allIds, onClose, onSelectAll }) {
@@ -15,7 +16,7 @@ export default function BulkActionsToolbar({ selectedIds, allIds, onClose, onSel
 
   let selectAllButton = null;
   if (isAllSelected !== true) {
-    selectAllButton = <div className="bulk-actions-toolbar-select-all" onClick={onSelectAll}>Select All</div>;
+    selectAllButton = <div className="bulk-actions-toolbar-select-all" onClick={onSelectAll}>{t('bulk.selectAll')}</div>;
   }
 
   function handleTrashClick() {
@@ -37,7 +38,7 @@ export default function BulkActionsToolbar({ selectedIds, allIds, onClose, onSel
         onClose();
       })
       .catch(() => {
-        showToast("Failed to move notes to trash");
+        showToast(t('bulk.toast.trashFailed'));
       });
   }
 
@@ -49,7 +50,7 @@ export default function BulkActionsToolbar({ selectedIds, allIds, onClose, onSel
         onClose();
       })
       .catch(() => {
-        showToast("Failed to archive notes");
+        showToast(t('bulk.toast.archiveFailed'));
       });
   }
 
