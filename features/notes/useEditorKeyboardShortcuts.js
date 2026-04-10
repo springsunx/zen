@@ -4,7 +4,7 @@ function min(a,b){return a<b?a:b;}
 
 export default function useEditorKeyboardShortcuts({
   isEditable,
-  isFloating,
+  isModal,
   isExpanded,
   textareaRef,
   onSave,
@@ -36,7 +36,7 @@ export default function useEditorKeyboardShortcuts({
 
     if (e.key === 'Escape') {
       e.preventDefault();
-      if (isFloating === true) {
+      if (isModal === true) {
         onClose();
       }
     }
@@ -151,7 +151,7 @@ export default function useEditorKeyboardShortcuts({
         }
       }
     }
-  }, [isEditable, isFloating, isExpanded, textareaRef, onSave, onEdit, onClose, onExpandToggle, onInsertAtCursor, onFormatText, onSaveAndClose]);
+  }, [isEditable, isModal, isExpanded, textareaRef, onSave, onEdit, onClose, onExpandToggle, onInsertAtCursor, onFormatText, onSaveAndClose]);
 
   useEffect(() => {
     document.addEventListener("keydown", handleKeyDown);

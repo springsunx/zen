@@ -12,6 +12,9 @@ import useSearchParams from "../../commons/components/useSearchParams.jsx";
 import { useAppContext } from "../../commons/contexts/AppContext.jsx";
 import { NotesProvider, useNotes } from "../../commons/contexts/NotesContext.jsx";
 import ViewPreferences from "../../commons/preferences/ViewPreferences.js";
+import NotesEditorModal from "./NotesEditorModal.jsx";
+import { AppProvider } from "../../commons/contexts/AppContext.jsx";
+import { openModal } from "../../commons/components/Modal.jsx";
 import { t } from "../../commons/i18n/index.js";
 
 export default function NotesPage({ noteId }) {
@@ -102,6 +105,18 @@ function NotesPageContent({ noteId }) {
   // TODO: Move this to NotesEditor
   useEffect(() => {
     if (noteId === "new") {
+      if (!isMobile() && (selectedView === "card" || selectedView === "gallery")) {
+        openModal(
+          <AppProvider>
+            <NotesProvider>
+              <NotesEditorModal isNewNote />
+            </NotesProvider>
+          </AppProvider>,
+          '.note-modal-root'
+        );
+        window.history.back();
+        return;
+      }
       setSelectedNote(null);
       return;
     }

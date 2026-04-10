@@ -6,7 +6,7 @@ import { useNotes } from "../../commons/contexts/NotesContext.jsx";
 import "./NotesEditorModal.css";
 import ApiClient from '../../commons/http/ApiClient.js';
 
-export default function NotesEditorModal({ note }) {
+export default function NotesEditorModal({ note, isNewNote }) {
   const { setSelectedNote, selectedNote } = useNotes();
   const [isEditorEditable, setIsEditorEditable] = useState(false);
   const [currentContent, setCurrentContent] = useState(note?.content || selectedNote?.content || "");
@@ -14,6 +14,11 @@ export default function NotesEditorModal({ note }) {
   function handleCloseModal() {
     document.title = "Zen";
     closeModal('.note-modal-root');
+  }
+
+  // Set the selected note when the modal opens
+  if (isNewNote !== true) {
+    setSelectedNote(note);
   }
 
 
@@ -43,8 +48,8 @@ useEffect(() => {
         <ModalContent className="notes-editor-container">
           <NotesEditor
             key={(selectedNote?.noteId || note?.noteId || "n") + "-" + (selectedNote?.updatedAt || note?.updatedAt || "") }
-            isNewNote={false}
-            isFloating={true}
+            isNewNote={isNewNote === true}
+            isModal={true}
             onClose={handleCloseModal}
             onEditModeChange={setIsEditorEditable}
             onContentChange={setCurrentContent}
