@@ -23,10 +23,6 @@ function useMarkdownFormatter({ textareaRef, setContent }) {
     }, 0);
   }
 
-  function formatSelectedText(format) {
-    applyMarkdownFormat(format);
-  }
-
   function applyMarkdownFormat(format, placeholder = "") {
     if (textareaRef.current === null) {
       return;
@@ -130,7 +126,6 @@ function useMarkdownFormatter({ textareaRef, setContent }) {
 
   return {
     insertAtCursor,
-    formatSelectedText,
     applyMarkdownFormat
   };
 }
