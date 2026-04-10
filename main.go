@@ -90,13 +90,15 @@ func newRouter() *http.ServeMux {
 
 	addPrivateRoute(mux, "GET /api/notes/", notes.HandleGetNotes)
 	addPrivateRoute(mux, "GET /api/notes/{noteId}/", notes.HandleGetNote)
-	addPrivateRoute(mux, "PUT /api/notes/{noteId}/", notes.HandleUpdateNote)
 	addPrivateRoute(mux, "POST /api/notes/", notes.HandleCreateNote)
+	addPrivateRoute(mux, "PUT /api/notes/{noteId}/", notes.HandleUpdateNote)
+	addPrivateRoute(mux, "DELETE /api/notes/bulk/", notes.HandleBulkSoftDeleteNotes)
 	addPrivateRoute(mux, "DELETE /api/notes/{noteId}/", notes.HandleSoftDeleteNote)
 	addPrivateRoute(mux, "DELETE /api/notes/", notes.HandleDeleteNotes)
-	addPrivateRoute(mux, "PUT /api/notes/{noteId}/restore/", notes.HandleRestoreDeletedNote)
+	addPrivateRoute(mux, "PUT /api/notes/bulk/archive/", notes.HandleBulkArchiveNotes)
 	addPrivateRoute(mux, "PUT /api/notes/{noteId}/archive/", notes.HandleArchiveNote)
 	addPrivateRoute(mux, "PUT /api/notes/{noteId}/unarchive/", notes.HandleUnarchiveNote)
+	addPrivateRoute(mux, "PUT /api/notes/{noteId}/restore/", notes.HandleRestoreDeletedNote)
 	addPrivateRoute(mux, "PUT /api/notes/{noteId}/pin/", notes.HandlePinNote)
 	addPrivateRoute(mux, "PUT /api/notes/{noteId}/unpin/", notes.HandleUnpinNote)
 
@@ -112,8 +114,8 @@ func newRouter() *http.ServeMux {
 
 	addPrivateRoute(mux, "POST /api/images/", images.HandleUploadImage)
 	addPrivateRoute(mux, "GET /api/images/", images.HandleGetImages)
-    addPrivateRoute(mux, "DELETE /api/images/{filename}/", images.HandleDeleteImage)
-    addPrivateRoute(mux, "POST /api/images/cleanup", images.HandleCleanupImages)
+        addPrivateRoute(mux, "DELETE /api/images/{filename}/", images.HandleDeleteImage)
+        addPrivateRoute(mux, "POST /api/images/cleanup", images.HandleCleanupImages)
 
 	addPrivateRoute(mux, "POST /api/import/", settings.HandleImport)
 	addPrivateRoute(mux, "GET /api/export/", settings.HandleExport)

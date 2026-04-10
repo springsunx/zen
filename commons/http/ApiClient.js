@@ -233,12 +233,20 @@ async function deleteNote(noteId) {
   return await request('DELETE', `/api/notes/${noteId}`);
 }
 
+async function bulkDeleteNotes(ids) {
+  return await request('DELETE', '/api/notes/bulk/', { ids });
+}
+
 async function restoreNote(noteId) {
   return await request('PUT', `/api/notes/${noteId}/restore/`);
 }
 
 async function archiveNote(noteId) {
   return await request('PUT', `/api/notes/${noteId}/archive/`);
+}
+
+async function bulkArchiveNotes(ids) {
+  return await request('PUT', '/api/notes/bulk/archive/', { ids });
 }
 
 async function unarchiveNote(noteId) {
@@ -424,8 +432,10 @@ export default {
   createNote,
   updateNote,
   deleteNote,
+  bulkDeleteNotes,
   restoreNote,
   archiveNote,
+  bulkArchiveNotes,
   unarchiveNote,
   pinNote,
   unpinNote,

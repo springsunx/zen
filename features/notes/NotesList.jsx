@@ -3,10 +3,11 @@ import NotesListToolbar from './NotesListToolbar.jsx';
 import Link from '../../commons/components/Link.jsx';
 import Spinner from '../../commons/components/Spinner.jsx';
 import Button from '../../commons/components/Button.jsx';
-import { PinIcon } from '../../commons/components/Icon.jsx';
+import { PinIcon, CheckboxUncheckedIcon, CheckboxCheckedIcon } from '../../commons/components/Icon.jsx';
 import renderMarkdown from '../../commons/utils/renderMarkdown.js';
 import formatDate from '../../commons/utils/formatDate.js';
 import isMobile from "../../commons/utils/isMobile.js";
+import useLongPress from "../../commons/utils/useLongPress.js";
 import ImageGallery from "./ImageGallery.jsx";
 import NotesEditorModal from './NotesEditorModal.jsx';
 import { NotesProvider } from "../../commons/contexts/NotesContext.jsx";
@@ -15,13 +16,14 @@ import { openModal } from '../../commons/components/Modal.jsx';
 import "./NotesList.css";
 import { t } from "../../commons/i18n/index.js";
 
-export default function NotesList({ notes = [], total, isLoading, images = [], imagesTotal, isImagesLoading, view, onViewChange, onLoadMoreClick, onLoadMoreImagesClick, onSidebarToggle, cardSize = 240, onCardSizeChange = () => {} }) {
+export default function NotesList({ notes = [], total, isLoading, images = [], imagesTotal, isImagesLoading, view, onViewChange, onLoadMoreClick, onLoadMoreImagesClick, onSidebarToggle, isMultiSelect, selectedIds, onMultiSelectStart, onToggleSelect, cardSize = 240, onCardSizeChange = () => {} }) {
   let listClassName = "notes-list";
-  let items = notes.map(note => <NotesListItem note={note} key={note.noteId} />);
   let content = <div className="notes-list-spinner"><Spinner /></div>;
   let loadMoreHandler = onLoadMoreClick;
   let currentTotal = total;
   let currentItems = notes;
+
+  let items = notes.map(note => <NotesListItem note={note} key={note.noteId} isMultiSelect={isMultiSelect} isSelected={selectedIds.includes(note.noteId)} onMultiSelectStart={onMultiSelectStart} onToggleSelect={onToggleSelect} />);
 
   if (view === "card") {
     listClassName = "";
@@ -57,12 +59,13 @@ export default function NotesList({ notes = [], total, isLoading, images = [], i
   );
 }
 
-function NotesListItem({ note }) {
+function NotesListItem({ note, isMultiSelect, isSelected, onMultiSelectStart, onToggleSelect }) {
   const link = `/notes/${note.noteId}`;
   const updatedAtDate = new Date(note.updatedAt);
   const shortUpdatedAt = formatDate(updatedAtDate);
   const fullUpdatedAt = updatedAtDate.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
   const tags = note.tags?.map(tag => <div className="notes-list-item-tag" key={tag.name}>{tag.name}</div>);
+  const longPress = useLongPress(() => onMultiSelectStart(note.noteId));
   let title = <div className="notes-list-item-title">{note.title}</div>
 
   if (note.title === "") {
@@ -73,17 +76,49 @@ function NotesListItem({ note }) {
     title = <div className="notes-list-item-title untitled">{preview}</div>
   }
 
+  if (isMultiSelect === true) {
+    const checkbox = (
+      <div className={`notes-list-item-checkbox ${isSelected ? 'is-checked' : ''}`}>
+        {isSelected === true ? <CheckboxCheckedIcon /> : <CheckboxUncheckedIcon />}
+      </div>
+    );
+
+    return (
+      <div {...longPress} className={`notes-list-item ${note.isPinned ? 'pinned' : ''} ${isSelected ? 'is-selected' : ''}`} onClick={() => onToggleSelect(note.noteId)}>
+        {checkbox}
+        <div className="notes-list-item-body">
+          <div className="notes-list-item-header">
+            {title}
+          </div>
+          <div className="notes-list-item-subcontainer">
+            <div className="notes-list-item-tags">{tags}</div>
+            <div className="notes-list-item-subtext" title={fullUpdatedAt}>{shortUpdatedAt}</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function handleCmdClick(e) {
+    if (e.metaKey === true || e.ctrlKey === true) {
+      e.preventDefault();
+      onMultiSelectStart(note.noteId);
+    }
+  }
+
   return (
-    <Link to={link} className={`notes-list-item ${note.isPinned ? 'pinned' : ''}`} activeClassName="is-active" shouldPreserveSearchParams>
-      <div className="notes-list-item-header">
-        {title}
-        <PinIcon isPinned={note.isPinned} className="notes-list-item-pin" />
-      </div>
-      <div className="notes-list-item-subcontainer">
-        <div className="notes-list-item-tags">{tags}</div>
-        <div className="notes-list-item-subtext" title={fullUpdatedAt}>{shortUpdatedAt}</div>
-      </div>
-    </Link>
+    <div {...longPress} onClickCapture={handleCmdClick}>
+      <Link to={link} className={`notes-list-item ${note.isPinned ? 'pinned' : ''}`} activeClassName="is-active" shouldPreserveSearchParams>
+        <div className="notes-list-item-header">
+          {title}
+          <PinIcon isPinned={note.isPinned} className="notes-list-item-pin" />
+        </div>
+        <div className="notes-list-item-subcontainer">
+          <div className="notes-list-item-tags">{tags}</div>
+          <div className="notes-list-item-subtext" title={fullUpdatedAt}>{shortUpdatedAt}</div>
+        </div>
+      </Link>
+    </div>
   );
 }
 
