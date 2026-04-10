@@ -2,7 +2,8 @@ import { h, useState } from "../../assets/preact.esm.js"
 import { UploadIcon, SuccessIcon, WarnIcon, ErrorIcon } from "../../commons/components/Icon.jsx";
 import { showToast } from "../../commons/components/Toast.jsx";
 import ApiClient from "../../commons/http/ApiClient.js";
-import { t } from "../../commons/i18n/index.js";
+import pluralize from "../../commons/utils/pluralize.js";
+import { t, getLang } from "../../commons/i18n/index.js";
 
 export default function ImportPane() {
   const [isUploading, setIsUploading] = useState(false);
@@ -16,7 +17,7 @@ export default function ImportPane() {
     const files = Array.from(e.target.files);
 
     if (!files.length) {
-      showToast("${t('settings.import.noFiles')}");
+      showToast(t('settings.import.noFiles'));
       return;
     }
 
@@ -31,7 +32,7 @@ export default function ImportPane() {
     });
 
     if (supportedFiles.length === 0) {
-      showToast("${t('settings.import.noSupported')}");
+      showToast(t('settings.import.noSupported'));
       return;
     }
 
@@ -73,22 +74,21 @@ export default function ImportPane() {
       const errorCount = newErroredFiles.length;
       const unsupportedCount = unsupportedFiles.length;
 
-      let message = ""
+      const lang = (typeof getLang === 'function' ? getLang() : 'en');
+      let parts = [];
       if (uploadedCount > 0) {
-        message = t('settings.import.summary.msg.imported', {count: uploadedCount});
+        parts.push(t('settings.import.summary.msg.imported', {count: uploadedCount, fileNoun: lang === 'en' ? pluralize(uploadedCount, 'file') : ''}));
       }
 
       if (errorCount > 0) {
-        message += ' ' + t('settings.import.summary.msg.errors', {count: errorCount});
+        parts.push(t('settings.import.summary.msg.errors', {count: errorCount, errorNoun: lang === 'en' ? pluralize(errorCount, 'error') : ''}));
       }
 
       if (unsupportedCount > 0) {
-        message += ' ' + t('settings.import.summary.msg.skipped', {count: unsupportedCount});
+        parts.push(t('settings.import.summary.msg.skipped', {count: unsupportedCount}));
       }
 
-      if (message === "") {
-        message = t('settings.import.summary.msg.none');
-      }
+      const message = parts.length ? parts.join(' ') : t('settings.import.summary.msg.none');
       setSummaryMessage(message);
       e.target.value = '';
     } catch (error) {
