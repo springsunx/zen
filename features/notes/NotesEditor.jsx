@@ -21,7 +21,7 @@ import "./NotesEditor.css";
 import { CloseIcon, SidebarCloseIcon, SidebarOpenIcon, BackIcon } from "../../commons/components/Icon.jsx";
 import { t } from "../../commons/i18n/index.js";
 
-export default function NotesEditor({ isNewNote, isModal, onClose, onEditModeChange = () => {}, onContentChange = () => {}, onSaved = () => {} }) {
+export default function NotesEditor({ isNewNote, isModal, isExpanded, onExpandToggle, onClose, onEditModeChange = () => {}, onContentChange = () => {}, onSaved = () => {} }) {
   const { selectedNote, handleNoteChange, handlePinToggle } = useNotes();
 
   if (!isNewNote && selectedNote === null) {
@@ -446,7 +446,7 @@ export default function NotesEditor({ isNewNote, isModal, onClose, onEditModeCha
         {contentArea}
       </div>
       {templatePicker}
-      {!isFloating && (<TableOfContents content={content} isExpanded={isExpanded} isEditable={isEditable} isNewNote={isNewNote} visibleHeadings={visibleHeadings} />)}
+      {isModal && (<TableOfContents content={content} isExpanded={isExpanded} isEditable={isEditable} isNewNote={isNewNote} visibleHeadings={visibleHeadings} />)}
     </div>
   );
 }
@@ -482,7 +482,7 @@ function Toolbar({ note, isNewNote, isEditable, isModal, isSaveLoading, isExpand
     right: [
       {
         key: 'close',
-        condition: isFloating,
+        condition: isModal,
         component: <Button variant="ghost" onClick={onCloseClick}><CloseIcon /></Button>
       },
       {
