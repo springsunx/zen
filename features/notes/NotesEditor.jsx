@@ -387,9 +387,34 @@ export default function NotesEditor({ isNewNote, isFloating, onClose, onEditMode
     templatePicker = <TemplatePicker onTemplateApply={handleTemplateApply} />;
   }
 
-  // TODO: remove "is-editable" CSS and use JS
+  let imageDropzone = null;
+  let imageAttachmentPreview = null;
+  if (isEditable === true) {
+    imageDropzone = (
+      <div
+        className={`notes-editor-image-dropzone ${isDraggingOver ? "dragover" : ""}`}
+        onDrop={handleImageDrop}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onClick={handleDropzoneClick}>
+        Click to upload or drag and drop images
+        <input
+          type="file"
+          accept="image/*"
+          multiple
+          ref={fileInputRef}
+          onChange={handleFileInputChange}
+          style={{ display: "none" }}
+        />
+      </div>
+    );
+    imageAttachmentPreview = (
+      <div className="notes-editor-image-attachment-preview">{imagePreviewItems}</div>
+    );
+  }
+
   return (
-    <div className={`notes-editor ${isEditable ? "is-editable" : ""}`} tabIndex="0" onPaste={handlePaste}>
+    <div className="notes-editor" tabIndex="0" onPaste={handlePaste}>
       <Toolbar
         note={selectedNote}
         isNewNote={isNewNote}
@@ -414,11 +439,8 @@ export default function NotesEditor({ isNewNote, isFloating, onClose, onEditMode
         <div className="notes-editor-title" contentEditable={isEditable} ref={titleRef} onBlur={handleTitleChange} dangerouslySetInnerHTML={{ __html: title }} />
       </div>
       <NotesEditorTags tags={tags} isEditable={isEditable} canCreateTag onAddTag={handleAddTag} onRemoveTag={handleRemoveTag} />
-      <div className={`notes-editor-image-dropzone ${isDraggingOver ? "dragover" : ""}`} onDrop={handleImageDrop} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onClick={handleDropzoneClick}>
-        {t('notes.editor.images.hint')}
-        <input type="file" accept="image/*" multiple ref={fileInputRef} onChange={handleFileInputChange} style={{ display: "none" }} />
-      </div>
-      <div className="notes-editor-image-attachment-preview">{imagePreviewItems}</div>
+      {imageDropzone}
+      {imageAttachmentPreview}
       <NotesEditorFormattingToolbar isEditable={isEditable} onFormat={applyMarkdownFormat} />
       <div className="notes-editor-content">
         {contentArea}
