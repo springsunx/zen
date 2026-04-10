@@ -36,7 +36,6 @@ export default function NotesEditor({ isNewNote, isFloating, onClose, onEditMode
   const [content, setContent] = useState(selectedNote?.content || "");
   const [tags, setTags] = useState(selectedNote?.tags || []);
   const [isSaveLoading, setIsSaveLoading] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
 
   const titleRef = useRef(null);
   const textareaRef = useRef(null);
@@ -314,12 +313,8 @@ export default function NotesEditor({ isNewNote, isFloating, onClose, onEditMode
   }
 
   function handleExpandToggleClick() {
-    setIsExpanded((prev) => !prev);
-    const editor = document.querySelector('.notes-editor-container');
-    if (isExpanded) {
-      editor.classList.remove('is-expanded');
-    } else {
-      editor.classList.add('is-expanded');
+    if (onExpandToggle) {
+      onExpandToggle();
     }
   }
 

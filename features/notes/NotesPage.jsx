@@ -26,6 +26,7 @@ function NotesPageContent({ noteId }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(isMobile() ? false : true);
   const [isMultiSelect, setIsMultiSelect] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const { refreshTags, refreshFocusModes } = useAppContext();
   const {
@@ -155,7 +156,7 @@ function NotesPageContent({ noteId }) {
     setSelectedIds([]);
   }
 
-  let editorContent = <NotesEditor isNewNote={noteId === "new"} key={selectedNote?.noteId} />;
+  let editorContent = <NotesEditor isNewNote={noteId === "new"} isExpanded={isExpanded} onExpandToggle={() => setIsExpanded(prev => !prev)} key={selectedNote?.noteId} />;
   if (isMultiSelect === true) {
     editorContent = <BulkActionsPanel selectedIds={selectedIds} allIds={notes.map(n => n.noteId)} onClose={handleClearSelection} onSelectAll={() => setSelectedIds(notes.map(n => n.noteId))} />;
   }
@@ -212,7 +213,7 @@ function NotesPageContent({ noteId }) {
           />
         </div>
 
-        <div className={editorClassName}>
+        <div className={`${editorClassName}${isExpanded ? " is-expanded" : ""}`}>
           {editorContent}
         </div>
 
