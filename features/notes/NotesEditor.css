@@ -210,6 +210,9 @@
 
 .notes-editor-tags {
     margin-bottom: var(--spacing-2);
+    .dropdown-container {
+        max-width: 200px;
+    }
 }
 
 .notes-editor-tags-input {
