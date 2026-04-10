@@ -57,6 +57,11 @@
             flex-direction: row-reverse;
         }
 
+        .right-toolbar .dropdown-menu {
+            left: auto;
+            right: 0;
+        }
+
         .left-toolbar {
             margin-left: -12px;
         }
