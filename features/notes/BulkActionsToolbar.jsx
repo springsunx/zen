@@ -33,7 +33,7 @@ export default function BulkActionsToolbar({ selectedIds, allIds, onClose, onSel
     ApiClient.bulkDeleteNotes(selectedIds)
       .then(() => {
         closeModal();
-        showToast(`${count} ${pluralize(count, 'note')} moved to trash`);
+        showToast(t('bulk.toast.trashed', {count, noteNoun: getLang()==='en'? pluralize(count,'note'): ''}));
         refreshNotes();
         onClose();
       })
@@ -45,7 +45,7 @@ export default function BulkActionsToolbar({ selectedIds, allIds, onClose, onSel
   function handleArchiveClick() {
     ApiClient.bulkArchiveNotes(selectedIds)
       .then(() => {
-        showToast(`${count} ${pluralize(count, 'note')} archived`);
+        showToast(t('bulk.toast.archived', {count, noteNoun: getLang()==='en'? pluralize(count,'note'): ''}));
         refreshNotes();
         onClose();
       })
@@ -60,7 +60,7 @@ export default function BulkActionsToolbar({ selectedIds, allIds, onClose, onSel
         <div className="bulk-actions-toolbar-close" onClick={onClose}>
           <CloseIcon />
         </div>
-        <span className="bulk-actions-toolbar-count">{count} {pluralize(count, 'note')} selected</span>
+        <span className="bulk-actions-toolbar-count">{t('bulk.countSelected', {count, noteNoun: getLang()==='en'? pluralize(count,'note'): ''})}</span>
         {selectAllButton}
       </div>
       <div className="bulk-actions-toolbar-right">

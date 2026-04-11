@@ -28,7 +28,7 @@ export default function BulkActionsPanel({ selectedIds, allIds, onClose, onSelec
     ApiClient.bulkDeleteNotes(selectedIds)
       .then(() => {
         closeModal();
-        showToast(`${count} ${pluralize(count, 'note')} moved to trash`);
+        showToast(t('bulk.toast.trashed', {count, noteNoun: getLang()==='en'? pluralize(count,'note'): ''}));
         refreshNotes();
         onClose();
       })
@@ -40,7 +40,7 @@ export default function BulkActionsPanel({ selectedIds, allIds, onClose, onSelec
   function handleArchiveClick() {
     ApiClient.bulkArchiveNotes(selectedIds)
       .then(() => {
-        showToast(`${count} ${pluralize(count, 'note')} archived`);
+        showToast(t('bulk.toast.archived', {count, noteNoun: getLang()==='en'? pluralize(count,'note'): ''}));
         refreshNotes();
         onClose();
       })
@@ -63,7 +63,7 @@ export default function BulkActionsPanel({ selectedIds, allIds, onClose, onSelec
 
   return (
     <div className="bulk-actions-panel">
-      <div className="bulk-actions-panel-count">{count} {pluralize(count, 'note')} selected</div>
+      <div className="bulk-actions-panel-count">{t('bulk.countSelected', {count, noteNoun: getLang()==='en'? pluralize(count,'note'): ''})}</div>
 
       {selectAllRow}
 
