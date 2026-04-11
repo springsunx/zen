@@ -71,7 +71,7 @@ function create(layer, item, x, y, onDragEnd, onClick, onDoubleClick, customWidt
   }
 
   if (note.tags && note.tags.length > 0) {
-    const tagsText = note.tags.map(tag => `#${tag}`).join(' ');
+    const tagsText = note.tags.map(tag => `#${tag.name}`).join(' ');
     tags = new window.Konva.Text({
       x: padding + 4,
       y: textYPosition,
