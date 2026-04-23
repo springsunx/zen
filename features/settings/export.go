@@ -337,21 +337,23 @@ func getAllImagesByPage(page int) ([]images.Image, int, error) {
 }
 
 func sanitizeFilename(title string, noteID int) string {
-	if title == "" {
-		return fmt.Sprintf("note-%d", noteID)
-	}
-
-	safe := regexp.MustCompile(`[^\w\-_\.]`).ReplaceAllString(title, "-")
-	safe = strings.Trim(safe, "- ")
-	safe = regexp.MustCompile(`-+`).ReplaceAllString(safe, "-")
-
-	if len(safe) > 100 {
-		safe = safe[:100]
-	}
-
-	if safe == "" || safe == "-" {
-		safe = fmt.Sprintf("note-%d", noteID)
-	}
-
-	return safe
+    if title == "" {
+        return fmt.Sprintf("note-%d", noteID)
+    }
+    // Keep Unicode letters and numbers, spaces, dot, underscore, dash; drop other punctuation and separators
+    safe := regexp.MustCompile(`[^\p{L}\p{N}\s._-]`).ReplaceAllString(title, "")
+    // Collapse whitespace to single hyphen
+    safe = regexp.MustCompile(`\s+`).ReplaceAllString(safe, " ")
+    // Trim leading/trailing hyphens and spaces
+    safe = strings.TrimSpace(safe)
+    // Collapse multiple hyphens
+    safe = regexp.MustCompile(`-+`).ReplaceAllString(safe, "-")
+    // Limit length
+    if len(safe) > 100 {
+        safe = safe[:100]
+    }
+    if safe == "" || safe == "-" {
+        safe = fmt.Sprintf("note-%d", noteID)
+    }
+    return safe
 }

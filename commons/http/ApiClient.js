@@ -353,10 +353,6 @@ async function exportNotes() {
   });
 
   if (!response.ok) {
-      if (isApiGet) {
-        const cached = await ApiCache.get(url);
-        if (cached) return cached;
-      }
     throw new Error('Export failed');
   }
 
