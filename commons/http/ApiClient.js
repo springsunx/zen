@@ -226,7 +226,7 @@ async function createNote(note) {
 }
 
 async function updateNote(noteId, note) {
-  return await request('PUT', `/api/notes/${noteId}`, note);
+  return await request('PUT', `/api/notes/${noteId}/`, note);
 }
 
 async function deleteNote(noteId) {
