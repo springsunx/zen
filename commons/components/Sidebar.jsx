@@ -63,7 +63,7 @@ export default function Sidebar({ isOpen, onSidebarClose }) {
             <NotesIcon />
             {t("nav.notes")}
           </Link>
-          <Link className="sidebar-button canvas" to="/canvas">
+          <Link className="sidebar-button canvas" activeClassName="is-active" to="/canvases/">
             <BoardIcon />
             {t("nav.canvas")}
           </Link>

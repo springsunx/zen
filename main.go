@@ -13,6 +13,7 @@ import (
 	"zen/commons/auth"
 	"zen/commons/session"
 	"zen/commons/sqlite"
+	"zen/features/canvas"
 	"zen/features/focus"
 	"zen/features/images"
 	"zen/features/intelligence"
@@ -139,6 +140,12 @@ func newRouter() *http.ServeMux {
 	addPrivateRoute(mux, "DELETE /api/templates/{templateId}/", templates.HandleDeleteTemplate)
 	addPrivateRoute(mux, "GET /api/templates/recommended/", templates.HandleGetRecommendedTemplates)
 	addPrivateRoute(mux, "PUT /api/templates/{templateId}/usage/", templates.HandleIncrementTemplateUsage)
+
+	addPrivateRoute(mux, "GET /api/canvases/", canvas.HandleGetCanvases)
+	addPrivateRoute(mux, "GET /api/canvases/{canvasId}/", canvas.HandleGetCanvas)
+	addPrivateRoute(mux, "POST /api/canvases/", canvas.HandleCreateCanvas)
+	addPrivateRoute(mux, "PUT /api/canvases/{canvasId}/", canvas.HandleUpdateCanvas)
+	addPrivateRoute(mux, "DELETE /api/canvases/{canvasId}/", canvas.HandleDeleteCanvas)
 
 	mux.HandleFunc("POST /mcp", mcp.HandleMCP)
 	mux.HandleFunc("OPTIONS /mcp", mcp.HandleMCP)

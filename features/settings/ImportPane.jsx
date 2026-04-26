@@ -21,6 +21,14 @@ export default function ImportPane() {
       return;
     }
 
+    const isZip = files.length === 1 && files[0].name.toLowerCase().endsWith('.zip');
+
+    if (isZip) {
+      await handleZipUpload(files[0]);
+      e.target.value = '';
+      return;
+    }
+
     const supportedFiles = files.filter(file => {
       const ext = file.name.toLowerCase().split('.').pop();
       return ext === 'md' || ext === 'txt';
@@ -98,12 +106,77 @@ export default function ImportPane() {
     }
   }
 
+  async function handleZipUpload(file) {
+    setUploadedFiles([]);
+    setSkippedFiles([]);
+    setErroredFiles([]);
+    setSummaryMessage("");
+
+    setIsUploading(true);
+    setUploadProgress({ current: 0, total: 1 });
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('path', file.name);
+
+      let result;
+      try {
+        result = await ApiClient.importFile(formData);
+      } catch (error) {
+        showToast(t('settings.import.noSupported'));
+        setIsUploading(false);
+        setUploadProgress({ current: 0, total: 0 });
+        return;
+      }
+
+      if (result && result.importedMd) {
+        setUploadedFiles(result.importedMd);
+      }
+      if (result && result.errorFiles) {
+        setErroredFiles(result.errorFiles);
+      }
+      if (result && result.skippedFiles) {
+        setSkippedFiles(result.skippedFiles);
+      }
+
+      setIsUploading(false);
+      setUploadProgress({ current: 0, total: 0 });
+
+      const importedCount = result?.imported || 0;
+      const errorCount = result?.errors || 0;
+      const skippedCount = result?.skipped || 0;
+
+      const lang = (typeof getLang === 'function' ? getLang() : 'en');
+      let parts = [];
+      if (importedCount > 0) {
+        parts.push(t('settings.import.summary.msg.imported', {count: importedCount, fileNoun: lang === 'en' ? pluralize(importedCount, 'file') : ''}));
+      }
+
+      if (errorCount > 0) {
+        parts.push(t('settings.import.summary.msg.errors', {count: errorCount, errorNoun: lang === 'en' ? pluralize(errorCount, 'error') : ''}));
+      }
+
+      if (skippedCount > 0) {
+        parts.push(t('settings.import.summary.msg.skipped', {count: skippedCount}));
+      }
+
+      const message = parts.length ? parts.join(' ') : t('settings.import.summary.msg.none');
+      setSummaryMessage(message);
+    } catch (error) {
+      setIsUploading(false);
+      setUploadProgress({ current: 0, total: 0 });
+      console.error('Import error:', error);
+    }
+  }
+
   return (
     <div className="settings-tab-content">
       <h3>{t('settings.import.title')}</h3>
       <p>{t('settings.import.desc')}</p>
 
       <div className="file-upload-container">
+        <p className="file-upload-label-text">{t('settings.import.chooseFolder')}</p>
         <input
           type="file"
           id="folder-upload"
@@ -116,6 +189,19 @@ export default function ImportPane() {
         <label htmlFor="folder-upload" className={`file-upload-label ${isUploading ? 'disabled' : ''}`}>
           <UploadIcon />
           {isUploading ? t('settings.import.btn.importing') : t('settings.import.btn.chooseFolder')}
+        </label>
+
+        <p className="file-upload-label-text" style={{ marginTop: '16px' }}>{t('settings.import.orImportZip')}</p>
+        <input
+          type="file"
+          id="zip-upload"
+          accept=".zip"
+          onChange={handleFileUpload}
+          disabled={isUploading}
+        />
+        <label htmlFor="zip-upload" className={`file-upload-label ${isUploading ? 'disabled' : ''}`}>
+          <UploadIcon />
+          {isUploading ? t('settings.import.btn.importing') : t('settings.import.chooseZip')}
         </label>
 
         <UploadProgress isUploading={isUploading} uploadProgress={uploadProgress} />

@@ -191,8 +191,8 @@ function EmptyList({ items, view }) {
   }
 
   if (view === "gallery") {
-    return <EmptyState icon={<ImagesIcon />} title="No images" description="Upload images to your notes to see them here" />;
+    return <EmptyState icon={<ImagesIcon />} title={t('notes.empty.images.title')} description={t('notes.empty.images.desc')} />;
   }
 
-  return <EmptyState icon={<NotesIcon />} title="No notes" description="Create a note to get started" />;
+  return <EmptyState icon={<NotesIcon />} title={t('notes.empty.notes.title')} description={t('notes.empty.notes.desc')} />;
 }
