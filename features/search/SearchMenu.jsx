@@ -5,6 +5,7 @@ import { SearchIcon, NoteIcon, ArchiveIcon, TrashIcon, TagIcon } from "../../com
 import { ModalBackdrop, ModalContainer, closeModal, openModal } from "../../commons/components/Modal.jsx";
 import Lightbox from "../../commons/components/Lightbox.jsx";
 import SearchHistory from "../../commons/preferences/SearchHistory.js";
+import Tabs from "../../commons/components/Tabs.jsx";
 import "./SearchMenu.css";
 import { t } from "../../commons/i18n/index.js";
 
@@ -13,6 +14,7 @@ export default function SearchMenu() {
   const [results, setResults] = useState({ lexical_notes: [], semantic_notes: [], semantic_images: [], tags: [] });
   const [selectedItem, setSelectedItem] = useState(null);
   const [searchHistory, setSearchHistory] = useState([]);
+  const [activeTab, setActiveTab] = useState("all");
 
   const inputRef = useRef(null);
   const debounceTimerRef = useRef(null);
@@ -54,12 +56,31 @@ export default function SearchMenu() {
     }, 200);
   }
 
+  function handleKeyDown(e) {
+    if (e.key === "Tab") {
+      e.preventDefault();
+      setActiveTab(prev => {
+        if (prev === "all") return "notes";
+        if (prev === "notes") return "tags";
+        return "all";
+      });
+    }
+  }
+
   function handleKeyUp(e) {
+    if (e.key === "Tab") {
+      return;
+    }
+
     let allItems = [];
     if (query.trim() === "") {
       allItems = searchHistory;
-    } else {
+    } else if (activeTab === "all") {
       allItems = [...results.lexical_notes, ...results.semantic_notes, ...results.semantic_images, ...results.tags];
+    } else if (activeTab === "notes") {
+      allItems = [...results.lexical_notes, ...results.semantic_notes, ...results.semantic_images];
+    } else {
+      allItems = results.tags;
     }
 
     if (e.key === "ArrowDown") {
@@ -135,62 +156,84 @@ export default function SearchMenu() {
       </div>
     );
   } else {
-    if (results.lexical_notes.length > 0) {
-      const noteItems = results.lexical_notes.map((item, index) => {
-        const isSelected = item.noteId === selectedItem?.noteId;
-        return (
-          <SearchResultItem key={`lexical-note-${index}`} item={item} isSelected={isSelected} onClick={() => handleResultClick(item)} />
-        )
-      });
+    const showNotes = activeTab === "all" || activeTab === "notes";
+    const showTags = activeTab === "all" || activeTab === "tags";
 
-      lexicalNotesSection = (
-        <div className="search-section">
-          <h4 className="search-section-title">{t('search.notes')}</h4>
-          {noteItems}
-        </div>
-      );
+    if (showNotes === true) {
+      if (results.lexical_notes.length > 0) {
+        const noteItems = results.lexical_notes.map((item, index) => {
+          const isSelected = item.noteId === selectedItem?.noteId;
+          return (
+            <SearchResultItem key={`lexical-note-${index}`} item={item} isSelected={isSelected} onClick={() => handleResultClick(item)} />
+          )
+        });
+
+        lexicalNotesSection = (
+          <div className="search-section">
+            <h4 className="search-section-title">{t('search.notes')}</h4>
+            {noteItems}
+          </div>
+        );
+      }
+
+      if (results.semantic_notes.length > 0) {
+        const noteItems = results.semantic_notes.map((item, index) => {
+          const isSelected = item.noteId === selectedItem?.noteId;
+          return (
+            <SearchResultItem key={`semantic-note-${index}`} item={item} isSelected={isSelected} onClick={() => handleResultClick(item)} />
+          )
+        });
+
+        semanticNotesSection = (
+          <div className="search-section">
+            <h4 className="search-section-title">{t('search.similar')}</h4>
+            {noteItems}
+          </div>
+        );
+      }
+
+      if (results.semantic_images.length > 0) {
+        semanticImagesSection = (
+          <div className="search-section">
+            <h4 className="search-section-title">{t('search.similarImages')}</h4>
+            <SearchResultImages items={results.semantic_images} onClick={handleResultClick} />
+          </div>
+        );
+      }
     }
 
-    if (results.semantic_notes.length > 0) {
-      const noteItems = results.semantic_notes.map((item, index) => {
-        const isSelected = item.noteId === selectedItem?.noteId;
-        return (
-          <SearchResultItem key={`semantic-note-${index}`} item={item} isSelected={isSelected} onClick={() => handleResultClick(item)} />
-        )
-      });
+    if (showTags === true) {
+      if (results.tags.length > 0) {
+        const tagItems = results.tags.map((item, index) => {
+          const isSelected = item.tagId === selectedItem?.tagId;
+          return (
+            <SearchResultItem key={`tag-${index}`} item={item} isSelected={isSelected} onClick={() => handleResultClick(item)} />
+          )
+        });
 
-      semanticNotesSection = (
-        <div className="search-section">
-          <h4 className="search-section-title">{t('search.similar')}</h4>
-          {noteItems}
-        </div>
-      );
+        tagsSection = (
+          <div className="search-section">
+            <h4 className="search-section-title">{t('search.tags')}</h4>
+            {tagItems}
+          </div>
+        );
+      }
     }
+  }
 
-    if (results.semantic_images.length > 0) {
-      semanticImagesSection = (
-        <div className="search-section">
-          <h4 className="search-section-title">Similar Images</h4>
-          <SearchResultImages items={results.semantic_images} onClick={handleResultClick} />
-        </div>
-      );
-    }
+  const showTabs = query.trim() !== "";
 
-    if (results.tags.length > 0) {
-      const tagItems = results.tags.map((item, index) => {
-        const isSelected = item.tagId === selectedItem?.tagId;
-        return (
-          <SearchResultItem key={`tag-${index}`} item={item} isSelected={isSelected} onClick={() => handleResultClick(item)} />
-        )
-      });
-
-      tagsSection = (
-        <div className="search-section">
-          <h4 className="search-section-title">Tags</h4>
-          {tagItems}
-        </div>
-      );
-    }
+  let tabsSection = null;
+  if (showTabs === true) {
+    tabsSection = (
+      <div className="search-tabs">
+        <Tabs
+          tabs={[{ value: "all", label: t('search.all') }, { value: "notes", label: t('search.notes') }, { value: "tags", label: t('search.tags') }]}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+        />
+      </div>
+    );
   }
 
   return (
@@ -204,9 +247,11 @@ export default function SearchMenu() {
             ref={inputRef}
             value={query}
             onInput={handleChange}
+            onKeyDown={handleKeyDown}
             onKeyUp={handleKeyUp}
           />
         </div>
+        {tabsSection}
         <div className="search-results-container">
           {historySection}
           {lexicalNotesSection}

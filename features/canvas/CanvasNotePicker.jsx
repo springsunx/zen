@@ -1,6 +1,7 @@
 import { h, useEffect, useState, useRef } from "../../assets/preact.esm.js"
 import ApiClient from "../../commons/http/ApiClient.js";
 import { SearchIcon } from "../../commons/components/Icon.jsx";
+import Tabs from "../../commons/components/Tabs.jsx";
 import "./CanvasNotePicker.css";
 import { t } from "../../commons/i18n/index.js";
 
@@ -233,20 +234,11 @@ export default function CanvasNotePicker({ onAddNote, addedItems }) {
   return (
     <div className="canvas-note-picker">
       <div className="canvas-note-picker-tabs">
-        <button
-          className={activeTab === "search" ? "canvas-note-picker-tab active" : "canvas-note-picker-tab"}
-          onClick={() => setActiveTab("search")}
-        >{t('nav.search')}        </button>
-        <button
-          className={activeTab === "notes" ? "canvas-note-picker-tab active" : "canvas-note-picker-tab"}
-          onClick={() => setActiveTab("notes")}
-        >{t('nav.notes')}        </button>
-        <button
-          className={activeTab === "images" ? "canvas-note-picker-tab active" : "canvas-note-picker-tab"}
-          onClick={() => setActiveTab("images")}
-        >
-          Images
-        </button>
+        <Tabs
+          tabs={[{ value: "search", label: t('nav.search') }, { value: "notes", label: t('nav.notes') }, { value: "images", label: t('canvas.images') }]}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+        />
       </div>
       {tabContent}
     </div>

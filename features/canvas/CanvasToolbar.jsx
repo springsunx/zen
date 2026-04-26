@@ -67,14 +67,14 @@ export default function CanvasToolbar({ onBack, title, onTitleChange, onDelete, 
         {titleElement}
       </div>
       <div className="canvas-toolbar-right">
-        <button className="canvas-toolbar-button" onClick={onDelete} title="Delete">
+        <button className="canvas-toolbar-button" onClick={onDelete} title={t('common.delete')}>
           <TrashIcon />
         </button>
-        <button className="canvas-toolbar-button" onClick={onDuplicate} title="Duplicate">
+        <button className="canvas-toolbar-button" onClick={onDuplicate} title={t('canvas.duplicate')}>
           <CopyIcon />
         </button>
         <div className="canvas-toolbar-divider"></div>
-        <button className="canvas-toolbar-button" onClick={onAddStickyNote} title="Add Sticky Note">
+        <button className="canvas-toolbar-button" onClick={onAddStickyNote} title={t('canvas.addStickyNote')}>
           <StickyNoteIcon />
         </button>
         <div className="canvas-toolbar-divider"></div>
@@ -83,38 +83,38 @@ export default function CanvasToolbar({ onBack, title, onTitleChange, onDelete, 
         </button>
         <div className="canvas-toolbar-divider"></div>
         <div className="canvas-toolbar-alignment-group">
-          <button className="canvas-toolbar-button" onClick={() => onAlign('left')} disabled={hasMultiSelection !== true} title="Align Left">
+          <button className="canvas-toolbar-button" onClick={() => onAlign('left')} disabled={hasMultiSelection !== true} title={t('canvas.alignLeft')}>
             <AlignStartVerticalIcon />
           </button>
-          <button className="canvas-toolbar-button" onClick={() => onAlign('top')} disabled={hasMultiSelection !== true} title="Align Top">
+          <button className="canvas-toolbar-button" onClick={() => onAlign('top')} disabled={hasMultiSelection !== true} title={t('canvas.alignTop')}>
             <AlignStartHorizontalIcon />
           </button>
-          <button className="canvas-toolbar-button" onClick={() => onAlign('bottom')} disabled={hasMultiSelection !== true} title="Align Bottom">
+          <button className="canvas-toolbar-button" onClick={() => onAlign('bottom')} disabled={hasMultiSelection !== true} title={t('canvas.alignBottom')}>
             <AlignEndHorizontalIcon />
           </button>
-          <button className="canvas-toolbar-button" onClick={() => onAlign('right')} disabled={hasMultiSelection !== true} title="Align Right">
+          <button className="canvas-toolbar-button" onClick={() => onAlign('right')} disabled={hasMultiSelection !== true} title={t('canvas.alignRight')}>
             <AlignEndVerticalIcon />
           </button>
-          <button className="canvas-toolbar-button" onClick={() => onAlign('center-horizontal')} disabled={hasMultiSelection !== true} title="Align Center Horizontal">
+          <button className="canvas-toolbar-button" onClick={() => onAlign('center-horizontal')} disabled={hasMultiSelection !== true} title={t('canvas.alignCenterH')}>
             <AlignCenterHorizontalIcon />
           </button>
-          <button className="canvas-toolbar-button" onClick={() => onAlign('center-vertical')} disabled={hasMultiSelection !== true} title="Align Center Vertical">
+          <button className="canvas-toolbar-button" onClick={() => onAlign('center-vertical')} disabled={hasMultiSelection !== true} title={t('canvas.alignCenterV')}>
             <AlignCenterVerticalIcon />
           </button>
         </div>
         <div className="canvas-toolbar-divider"></div>
-        <button className="canvas-toolbar-button" onClick={() => onZoom('in')} title="Zoom In">
+        <button className="canvas-toolbar-button" onClick={() => onZoom('in')} title={t('canvas.zoomIn')}>
           <ZoomInIcon />
         </button>
-        <button className="canvas-toolbar-button canvas-toolbar-zoom-level" onClick={() => onZoom('reset')} title="Reset Zoom">
+        <button className="canvas-toolbar-button canvas-toolbar-zoom-level" onClick={() => onZoom('reset')} title={t('canvas.zoomReset')}>
           {Math.round(zoomLevel * 100)}%
         </button>
-        <button className="canvas-toolbar-button" onClick={() => onZoom('out')} title="Zoom Out">
+        <button className="canvas-toolbar-button" onClick={() => onZoom('out')} title={t('canvas.zoomOut')}>
           <ZoomOutIcon />
         </button>
 
         <div className="canvas-toolbar-divider"></div>
-        <button className={`canvas-toolbar-button ${isSidebarOpen ? 'active' : ''}`} onClick={onToggleSidebar} title="Sidebar">
+        <button className={`canvas-toolbar-button ${isSidebarOpen ? 'active' : ''}`} onClick={onToggleSidebar} title={t('notes.sidebar.toggle')}>
           {isSidebarOpen ? <SidebarCloseIcon /> : <SidebarOpenIcon />}
         </button>
       </div>
