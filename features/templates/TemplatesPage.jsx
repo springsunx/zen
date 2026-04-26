@@ -5,6 +5,7 @@ import TemplateEditor from './TemplateEditor.jsx';
 import ApiClient from "../../commons/http/ApiClient.js";
 import navigateTo from "../../commons/utils/navigateTo.js";
 import { useAppContext } from "../../commons/contexts/AppContext.jsx";
+import { LayoutProvider } from '../../commons/contexts/LayoutContext.jsx';
 import { t } from "../../commons/i18n/index.js";
 
 export default function TemplatesPage({ templateId }) {
@@ -72,19 +73,21 @@ export default function TemplatesPage({ templateId }) {
   }
 
   return (
-    <div className="page-container">
-      <Sidebar isOpen={true} onSidebarClose={() => { }} />
+    <LayoutProvider>
+      <div className="page-container">
+        <Sidebar />
 
-      <div className="templates-list-container">
-        <TemplatesList templates={templates} isLoading={isTemplatesLoading} onNewTemplateClick={handleNewTemplateClick} />
+        <div className="templates-list-container">
+          <TemplatesList templates={templates} isLoading={isTemplatesLoading} onNewTemplateClick={handleNewTemplateClick} />
+        </div>
+
+        <div className="templates-editor-container">
+          <TemplateEditor selectedTemplate={selectedTemplate} isNewTemplate={templateId === "new"} key={selectedTemplate?.templateId || "new"} onChange={handleTemplateChange} onClose={handleCloseEditor} />
+        </div>
+
+        <div className="modal-root"></div>
+        <div className="toast-root"></div>
       </div>
-
-      <div className="templates-editor-container">
-        <TemplateEditor selectedTemplate={selectedTemplate} isNewTemplate={templateId === "new"} key={selectedTemplate?.templateId || "new"} onChange={handleTemplateChange} onClose={handleCloseEditor} />
-      </div>
-
-      <div className="modal-root"></div>
-      <div className="toast-root"></div>
-    </div>
+    </LayoutProvider>
   );
 }

@@ -16,6 +16,7 @@ import { useNotes } from "../../commons/contexts/NotesContext.jsx";
 import { AppProvider } from '../../commons/contexts/AppContext.jsx';
 import { NotesProvider } from "../../commons/contexts/NotesContext.jsx";
 import NotesEditorModal from './NotesEditorModal.jsx';
+import { useLayout } from '../../commons/contexts/LayoutContext.jsx';
 import { useVisibleHeadings } from "./useVisibleHeadings.js";
 import useEditorKeyboardShortcuts from "./useEditorKeyboardShortcuts.js";
 import useImageUpload from "./useImageUpload.js";
@@ -24,8 +25,9 @@ import "./NotesEditor.css";
 import { CloseIcon, SidebarCloseIcon, SidebarOpenIcon, BackIcon } from "../../commons/components/Icon.jsx";
 import { t } from "../../commons/i18n/index.js";
 
-export default function NotesEditor({ isNewNote, isModal, isExpanded, onExpandToggle, onClose, onEditModeChange = () => {}, onContentChange = () => {}, onSaved = () => {} }) {
+export default function NotesEditor({ isNewNote, isModal, isExpandable = false, onClose, onEditModeChange = () => {}, onContentChange = () => {}, onSaved = () => {} }) {
   const { selectedNote, handleNoteChange, handlePinToggle } = useNotes();
+  const { isEditorExpanded, toggleEditorExpanded } = useLayout();
 
   if (!isNewNote && selectedNote === null) {
     return null;
@@ -44,7 +46,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpanded, onExpandTo
   const textareaRef = useRef(null);
   const contentRef = useRef(null);
 
-  const visibleHeadings = useVisibleHeadings(contentRef, content, isEditable, isExpanded);
+  const visibleHeadings = useVisibleHeadings(contentRef, content, isEditable, isEditorExpanded);
 
   const { insertAtCursor, applyMarkdownFormat } = useMarkdownFormatter({
     textareaRef,
@@ -191,7 +193,8 @@ export default function NotesEditor({ isNewNote, isModal, isExpanded, onExpandTo
   const { handleKeyDown } = useEditorKeyboardShortcuts({
     isEditable,
     isModal,
-    isExpanded,
+    isExpanded: isEditorExpanded,
+    isExpandable,
     textareaRef,
     onSave: () => handleSaveClick(false),
     onSaveAndClose: () => handleSaveClick(true),
@@ -316,9 +319,10 @@ export default function NotesEditor({ isNewNote, isModal, isExpanded, onExpandTo
   }
 
   function handleExpandToggleClick() {
-    if (onExpandToggle) {
-      onExpandToggle();
+    if (isExpandable !== true) {
+      return;
     }
+    toggleEditorExpanded();
   }
 
   function handleInternalNoteLinkClick(e) {
@@ -445,7 +449,8 @@ export default function NotesEditor({ isNewNote, isModal, isExpanded, onExpandTo
         isEditable={isEditable}
         isModal={isModal}
         isSaveLoading={isSaveLoading}
-        isExpanded={isExpanded}
+        isExpanded={isEditorExpanded}
+        isExpandable={isExpandable}
         onSaveClick={handleSaveClick}
         onSaveAndCloseClick={handleSaveAndCloseClick}
         onEditClick={handleEditClick}
@@ -470,12 +475,12 @@ export default function NotesEditor({ isNewNote, isModal, isExpanded, onExpandTo
         {contentArea}
       </div>
       {templatePicker}
-      {isModal && (<TableOfContents content={content} isExpanded={isExpanded} isEditable={isEditable} isNewNote={isNewNote} visibleHeadings={visibleHeadings} />)}
+      {isModal && (<TableOfContents content={content} isExpanded={isEditorExpanded} isEditable={isEditable} isNewNote={isNewNote} visibleHeadings={visibleHeadings} />)}
     </div>
   );
 }
 
-function Toolbar({ note, isNewNote, isEditable, isModal, isSaveLoading, isExpanded, onSaveClick, onSaveAndCloseClick, onEditClick, onEditCancelClick, onCloseClick, onDeleteClick, onArchiveClick, onUnarchiveClick, onRestoreClick, onExpandToggleClick, onPinClick, onUnpinClick }) {
+function Toolbar({ note, isNewNote, isEditable, isModal, isSaveLoading, isExpanded, isExpandable, onSaveClick, onSaveAndCloseClick, onEditClick, onEditCancelClick, onCloseClick, onDeleteClick, onArchiveClick, onUnarchiveClick, onRestoreClick, onExpandToggleClick, onPinClick, onUnpinClick }) {
   const saveButtonText = isSaveLoading ? t('common.saving') : t('common.save');
   const saveAndCloseText = t('editor.saveAndClose');
 
@@ -492,7 +497,7 @@ function Toolbar({ note, isNewNote, isEditable, isModal, isSaveLoading, isExpand
     left: [
       {
         key: 'expand',
-        condition: !isModal && !isMobile(),
+        condition: isExpandable === true && !isMobile(),
         component: <Button variant="ghost" onClick={onExpandToggleClick}>
           {isExpanded ? <SidebarCloseIcon /> : <SidebarOpenIcon />}
         </Button>

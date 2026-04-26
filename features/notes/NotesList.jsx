@@ -17,7 +17,7 @@ import EmptyState from '../../commons/components/EmptyState.jsx';
 import "./NotesList.css";
 import { t } from "../../commons/i18n/index.js";
 
-export default function NotesList({ notes = [], total, isLoading, images = [], imagesTotal, isImagesLoading, view, onViewChange, onLoadMoreClick, onLoadMoreImagesClick, onSidebarToggle, isMultiSelect, selectedIds, onMultiSelectStart, onToggleSelect, cardSize = 240, onCardSizeChange = () => {} }) {
+export default function NotesList({ notes = [], total, isLoading, images = [], imagesTotal, isImagesLoading, view, onViewChange, onLoadMoreClick, onLoadMoreImagesClick, isMultiSelect, selectedIds, onMultiSelectStart, onToggleSelect, cardSize = 240, onCardSizeChange = () => {} }) {
   let listClassName = "notes-list";
   let content = <div className="notes-list-spinner"><Spinner /></div>;
   let loadMoreHandler = onLoadMoreClick;
@@ -54,7 +54,7 @@ export default function NotesList({ notes = [], total, isLoading, images = [], i
 
   return (
     <>
-      <NotesListToolbar onViewChange={onViewChange} onSidebarToggle={onSidebarToggle} view={view} cardSize={cardSize} onCardSizeChange={onCardSizeChange} />
+      <NotesListToolbar onViewChange={onViewChange} view={view} cardSize={cardSize} onCardSizeChange={onCardSizeChange} />
       {content}
     </>
   );

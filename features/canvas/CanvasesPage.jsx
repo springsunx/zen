@@ -11,6 +11,7 @@ import formatDate from "../../commons/utils/formatDate.js";
 import { openModal, closeModal } from "../../commons/components/Modal.jsx";
 import { showToast } from "../../commons/components/Toast.jsx";
 import { t } from "../../commons/i18n/index.js";
+import { LayoutProvider } from '../../commons/contexts/LayoutContext.jsx';
 import "./CanvasesPage.css";
 
 export default function CanvasesPage() {
@@ -93,17 +94,19 @@ export default function CanvasesPage() {
   }
 
   return (
-    <div className="page-container">
-      <Sidebar isOpen={true} onSidebarClose={() => { }} />
+    <LayoutProvider>
+      <div className="page-container">
+        <Sidebar />
 
-      <div className="canvases-page-content">
-        <CanvasesToolbar onNewCanvasClick={handleNewCanvasClick} />
-        {content}
+        <div className="canvases-page-content">
+          <CanvasesToolbar onNewCanvasClick={handleNewCanvasClick} />
+          {content}
+        </div>
+
+        <div className="modal-root"></div>
+        <div className="toast-root"></div>
       </div>
-
-      <div className="modal-root"></div>
-      <div className="toast-root"></div>
-    </div>
+    </LayoutProvider>
   );
 }
 

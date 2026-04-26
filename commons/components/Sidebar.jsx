@@ -1,4 +1,4 @@
-import { h, useEffect, Fragment } from "../../assets/preact.esm.js"
+import { h, Fragment } from "../../assets/preact.esm.js"
 import Link from './Link.jsx';
 import SidebarTagsList from "../../features/tags/SidebarTagsList.jsx";
 import FocusSwitcher from "../../features/focus/FocusSwitcher.jsx";
@@ -7,24 +7,13 @@ import SettingsModal from "../../features/settings/SettingsModal.jsx";
 import { openModal } from "./Modal.jsx";
 import { NotesIcon, SearchIcon, NewIcon, ArchiveIcon, TrashIcon, BoardIcon, SettingsIcon, TemplatesIcon } from "./Icon.jsx";
 import { useAppContext } from "../../commons/contexts/AppContext.jsx";
+import { useLayout } from "../../commons/contexts/LayoutContext.jsx";
 import { t } from "../../commons/i18n/index.js";
 import "./Sidebar.css";
 
-export default function Sidebar({ isOpen, onSidebarClose }) {
+export default function Sidebar() {
+  const { isSidebarOpen, closeSidebar } = useLayout();
   const { focusModes, tags } = useAppContext();
-  useEffect(() => {
-    function handleNavigationChange() {
-      if (isOpen) {
-        onSidebarClose();
-      }
-    }
-
-    window.addEventListener('navigate', handleNavigationChange);
-
-    return () => {
-      window.removeEventListener('navigate', handleNavigationChange);
-    };
-  }, [isOpen, onSidebarClose]);
 
   function handleSearchClick() {
     openModal(<SearchMenu />);
@@ -35,8 +24,8 @@ export default function Sidebar({ isOpen, onSidebarClose }) {
   }
 
   function handleBackdropClick() {
-    if (isOpen) {
-      onSidebarClose();
+    if (isSidebarOpen) {
+      closeSidebar();
     }
   }
 
@@ -46,8 +35,8 @@ export default function Sidebar({ isOpen, onSidebarClose }) {
 
   return (
     <>
-      <div className={`sidebar-backdrop-container ${isOpen ? 'is-open' : ''}`} onClick={handleBackdropClick}>&nbsp;</div>
-      <div className={`sidebar-container ${isOpen ? 'is-open' : ''}`}>
+      <div className={`sidebar-backdrop-container ${isSidebarOpen ? 'is-open' : ''}`} onClick={handleBackdropClick}>&nbsp;</div>
+      <div className={`sidebar-container ${isSidebarOpen ? 'is-open' : ''}`}>
         <div className="sidebar-fixed">
           <FocusSwitcher focusModes={focusModes} />
 

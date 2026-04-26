@@ -11,9 +11,10 @@ import isMobile from "../../commons/utils/isMobile.js";
 import TrashClearModal from "./TrashClearModal.jsx"
 import "./NotesListToolbar.css";
 import { t } from "../../commons/i18n/index.js";
+import { useLayout } from "../../commons/contexts/LayoutContext.jsx";
 
 
-export default function NotesListToolbar({ onSidebarToggle, onViewChange, view, cardSize, onCardSizeChange }) {
+export default function NotesListToolbar({ onViewChange, view, cardSize, onCardSizeChange }) {
 
   const searchParams = useSearchParams();
   const { refreshNotes } = useNotes();
@@ -90,11 +91,12 @@ export default function NotesListToolbar({ onSidebarToggle, onViewChange, view, 
   }
 
     return (
-    <Toolbar actions={actions} onSidebarToggle={onSidebarToggle} listName={listName} className="notes-list-toolbar" view={view} cardSize={cardSize} onCardSizeChange={onCardSizeChange} />
+    <Toolbar actions={actions} listName={listName} className="notes-list-toolbar" view={view} cardSize={cardSize} onCardSizeChange={onCardSizeChange} />
   );
 }
 
-function Toolbar({ actions, onSidebarToggle, listName, className, view, cardSize = 240, onCardSizeChange = () => {} }) {
+function Toolbar({ actions, listName, className, view, cardSize = 240, onCardSizeChange = () => {} }) {
+  const { toggleSidebar } = useLayout();
   const buttons = actions.map(action => (
     <div key={action.title} {...action}>
       <action.icon />
@@ -118,7 +120,7 @@ function Toolbar({ actions, onSidebarToggle, listName, className, view, cardSize
     return (
     <div className={className}>
       <ButtonGroup isMobile={true}>
-        <div onClick={onSidebarToggle} title={t('notes.sidebar.toggle')}>
+        <div onClick={toggleSidebar} title={t('notes.sidebar.toggle')}>
           <HamburgerIcon />
         </div>
       </ButtonGroup>
