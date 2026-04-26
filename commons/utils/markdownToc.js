@@ -196,8 +196,13 @@ export function buildLinkOpen(opts = {}) {
           token.attrSet('href', '#' + opts.anchorPrefix + raw);
         }
       } else {
-        token.attrSet('target', '_blank');
-        token.attrSet('rel', 'noopener noreferrer');
+        const match = hrefAttr[1].match(/^\/notes\/(\d+)$/);
+        if (match) {
+          token.attrSet('data-note-id', match[1]);
+        } else {
+          token.attrSet('target', '_blank');
+          token.attrSet('rel', 'noopener noreferrer');
+        }
       }
     }
     return self.renderToken(tokens, idx, options);
