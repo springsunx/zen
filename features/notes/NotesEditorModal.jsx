@@ -50,7 +50,7 @@ useEffect(() => {
       <ModalContainer className="notes-editor-modal">
         <ModalContent className="notes-editor-container">
           <NotesEditor
-            key={(selectedNote?.noteId || note?.noteId || "n") + "-" + (selectedNote?.updatedAt || note?.updatedAt || "") }
+            key={selectedNote?.noteId || note?.noteId || "n"}
             isNewNote={isNewNote === true}
             isModal={true}
             onClose={handleCloseModal}

@@ -45,6 +45,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   const titleRef = useRef(null);
   const textareaRef = useRef(null);
   const contentRef = useRef(null);
+  const savedNoteRef = useRef(null);
 
   const visibleHeadings = useVisibleHeadings(contentRef, content, isEditable, isEditorExpanded);
 
@@ -82,14 +83,14 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
     handleTextAreaHeight();
   }, [content, isEditable]);
 
-  // Sync from selectedNote when viewing (not editing), so re-open/edit always uses latest
+  // Sync from selectedNote when switching to a different note
   useEffect(() => {
-    if (!isEditable) {
-      setTitle(selectedNote?.title || "");
-      setContent(selectedNote?.content || "");
-      setTags(selectedNote?.tags || []);
+    if (selectedNote) {
+      setTitle(selectedNote.title || "");
+      setContent(selectedNote.content || "");
+      setTags(selectedNote.tags || []);
     }
-  }, [selectedNote?.noteId, selectedNote?.updatedAt, isEditable]);
+  }, [selectedNote?.noteId]);
 
   
   // Auto focus editor textarea whenever entering edit mode (any entry path)
@@ -171,6 +172,10 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
 
     promise
       .then(note => {
+        // Save the saved note to a ref so handleEditClick/Cancel always has the latest
+        savedNoteRef.current = note;
+        setContent(note.content || "");
+        setTitle(note.title || "");
         if (closeAfter) {
           setIsEditable(false);
         }
@@ -186,7 +191,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
       .finally(() => {
         setIsSaveLoading(false);
       });
-  }, [content, tags, isNewNote, selectedNote, handleNoteChange, resetAttachments]);
+  }, [tags, isNewNote, selectedNote, handleNoteChange, resetAttachments]);
 
   const handleSaveAndCloseClick = useCallback(() => handleSaveClick(true), [handleSaveClick]);
 
@@ -218,10 +223,11 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   }
 
   function handleEditClick() {
-    // Prefill with the freshest selectedNote before entering edit
-    setTitle(selectedNote?.title || "");
-    setContent(selectedNote?.content || "");
-    setTags(selectedNote?.tags || []);
+    // Use savedNoteRef (API response) if available, fall back to selectedNote
+    const latest = savedNoteRef.current || selectedNote;
+    setTitle(latest?.title || "");
+    setContent(latest?.content || "");
+    setTags(latest?.tags || []);
     setIsEditable(true);
   }
 
@@ -235,11 +241,12 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
       // Ensure list reflects any in-edit saves
       handleNoteChange();
     } else {
-      // Reset current edits
-      setTitle(selectedNote?.title || "");
-      setContent(selectedNote?.content || "");
-      onContentChange(selectedNote?.content || "");
-      setTags(selectedNote?.tags || []);
+      // Reset current edits using the last saved note
+      const latest = savedNoteRef.current || selectedNote;
+      setTitle(latest?.title || "");
+      setContent(latest?.content || "");
+      onContentChange(latest?.content || "");
+      setTags(latest?.tags || []);
       setIsEditable(false);
       // Refresh list on exit from edit mode
       handleNoteChange();
