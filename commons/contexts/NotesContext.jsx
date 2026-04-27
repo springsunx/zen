@@ -21,10 +21,10 @@ export function NotesProvider({ children }) {
 
   const searchParams = useSearchParams();
 
-  const refreshNotes = useCallback((tagId, focusId, isArchived, isDeleted, pageNumber = 1) => {
+  const refreshNotes = useCallback((tagId, focusId, isArchived, isDeleted, pageNumber = 1, isUntagged = false) => {
     setIsNotesLoading(true);
 
-    return ApiClient.getNotes(tagId, focusId, isArchived, isDeleted, pageNumber)
+    return ApiClient.getNotes(tagId, focusId, isArchived, isDeleted, pageNumber, isUntagged)
       .then(res => {
         if (pageNumber > 1) {
           setNotes(prevNotes => [...prevNotes, ...res.notes]);
@@ -66,8 +66,9 @@ export function NotesProvider({ children }) {
     const selectedFocusId = searchParams.get("focusId");
     const isArchivesPage = searchParams.get("isArchived") === "true";
     const isTrashPage = searchParams.get("isDeleted") === "true";
+    const isUntagged = searchParams.get("isUntagged") === "true";
 
-    refreshNotes(selectedTagId, selectedFocusId, isArchivesPage, isTrashPage);
+    refreshNotes(selectedTagId, selectedFocusId, isArchivesPage, isTrashPage, 1, isUntagged);
     refreshImages(selectedTagId, selectedFocusId);
     refreshTags(selectedFocusId);
     refreshFocusModes();

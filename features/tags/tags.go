@@ -2,15 +2,21 @@ package tags
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"zen/commons/utils"
 )
 
 type Tag struct {
-	TagID int    `json:"tagId"`
-	Name  string `json:"name"`
-	NoteCount int `json:"noteCount"`
+	TagID     int    `json:"tagId"`
+	Name      string `json:"name"`
+	NoteCount int    `json:"noteCount"`
+}
+
+type TagsResponse struct {
+	Tags          []Tag `json:"tags"`
+	UntaggedCount int   `json:"untaggedCount"`
 }
 
 func HandleGetTags(w http.ResponseWriter, r *http.Request) {
@@ -42,8 +48,18 @@ func HandleGetTags(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	untaggedCount, err := GetUntaggedCount()
+	if err != nil {
+		slog.Error("error fetching untagged count", "error", err)
+	}
+
+	response := TagsResponse{
+		Tags:          tags,
+		UntaggedCount: untaggedCount,
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(tags)
+	json.NewEncoder(w).Encode(response)
 }
 
 func HandleUpdateTag(w http.ResponseWriter, r *http.Request) {

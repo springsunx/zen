@@ -60,6 +60,7 @@ function NotesPageContent({ noteId }) {
   const selectedFocusId = searchParams.get("focusId");
   const isArchivesPage = searchParams.get("isArchived") === "true";
   const isTrashPage = searchParams.get("isDeleted") === "true";
+  const isUntaggedPage = searchParams.get("isUntagged") === "true";
 
   const [selectedView, setSelectedView] = useState(() => {
     return ViewPreferences.getPreference(selectedFocusId, selectedTagId, isArchivesPage, isTrashPage);
@@ -77,7 +78,7 @@ function NotesPageContent({ noteId }) {
   let editorClassName = "notes-editor-container";
 
   useEffect(() => {
-    refreshNotes(selectedTagId, selectedFocusId, isArchivesPage, isTrashPage);
+    refreshNotes(selectedTagId, selectedFocusId, isArchivesPage, isTrashPage, 1, isUntaggedPage);
     refreshImages(selectedTagId, selectedFocusId);
     refreshTags(selectedFocusId);
     refreshFocusModes();
@@ -87,18 +88,18 @@ function NotesPageContent({ noteId }) {
     // Reset to avoid showing incorrect notes
     resetPagination();
 
-    refreshNotes(selectedTagId, selectedFocusId, isArchivesPage, isTrashPage);
+    refreshNotes(selectedTagId, selectedFocusId, isArchivesPage, isTrashPage, 1, isUntaggedPage);
     refreshImages(selectedTagId, selectedFocusId);
     refreshTags(selectedFocusId);
 
     // Reload preference
     const savedView = ViewPreferences.getPreference(selectedFocusId, selectedTagId, isArchivesPage, isTrashPage);
     setSelectedView(savedView);
-  }, [selectedTagId, selectedFocusId, isArchivesPage, isTrashPage, resetPagination, refreshNotes, refreshImages, refreshTags]);
+  }, [selectedTagId, selectedFocusId, isArchivesPage, isTrashPage, isUntaggedPage, resetPagination, refreshNotes, refreshImages, refreshTags]);
 
   useEffect(() => {
-    refreshNotes(selectedTagId, selectedFocusId, isArchivesPage, isTrashPage, notesPageNumber);
-  }, [notesPageNumber, selectedTagId, selectedFocusId, isArchivesPage, isTrashPage, refreshNotes]);
+    refreshNotes(selectedTagId, selectedFocusId, isArchivesPage, isTrashPage, notesPageNumber, isUntaggedPage);
+  }, [notesPageNumber, selectedTagId, selectedFocusId, isArchivesPage, isTrashPage, isUntaggedPage, refreshNotes]);
 
   useEffect(() => {
     refreshImages(selectedTagId, selectedFocusId, imagesPageNumber);

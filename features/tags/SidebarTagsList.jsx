@@ -10,6 +10,15 @@ import { t } from "../../commons/i18n/index.js";
 export default function SidebarTagsList() {
   const { tags, refreshTags } = useAppContext();
   const [orderedTags, setOrderedTags] = useState([]);
+  const [untaggedCount, setUntaggedCount] = useState(0);
+
+  useEffect(() => {
+    setUntaggedCount(window.__untaggedCount || 0);
+    // Listen for updates
+    function handleUpdate() { setUntaggedCount(window.__untaggedCount || 0); }
+    window.addEventListener('tags:updated', handleUpdate);
+    return () => window.removeEventListener('tags:updated', handleUpdate);
+  }, []);
   const [dragIndex, setDragIndex] = useState(null);
 
   useEffect(() => {
@@ -28,8 +37,19 @@ export default function SidebarTagsList() {
     }
   }, [tags]);
 
-  if (orderedTags.length === 0) {
-    return null;
+  if (orderedTags.length === 0 && tags.length === 0) {
+    return (
+      <div>
+        <div className="sidebar-section-title">{t('templates.form.tags')}</div>
+        <Link
+          to="/notes/?isUntagged=true"
+          className="sidebar-tag-link"
+          activeClassName="is-active"
+        >
+          {t('tags.untagged')}{untaggedCount > 0 ? ` (${untaggedCount})` : ""}
+        </Link>
+      </div>
+    );
   }
 
   const items = orderedTags.map((tag, idx) => (
@@ -111,6 +131,13 @@ export default function SidebarTagsList() {
   return (
     <div>
       <div className="sidebar-section-title">{t('templates.form.tags')}</div>
+      <Link
+        to="/notes/?isUntagged=true"
+        className="sidebar-tag-link"
+        activeClassName="is-active"
+      >
+        {t('tags.untagged')}{untaggedCount > 0 ? ` (${untaggedCount})` : ""}
+      </Link>
       {items}
     </div>
   );

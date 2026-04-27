@@ -159,6 +159,7 @@
   "focus.form.ph.name": "为专注命名",
   "focus.addNew": "新建",
   "tags.detail.desc": "可修改标签名或永久删除该标签。删除后将从所有笔记移除。",
+  "tags.untagged": "无标签",
   "tags.detail.name": "标签名称",
   "tags.detail.ph.name": "为标签命名",
   "tags.add.placeholder": "添加标签...",

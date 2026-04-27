@@ -157,7 +157,7 @@ async function deleteFocusMode(focusId) {
 
 // Notes
 
-async function getNotes(tagId, focusId, isArchived, isDeleted, page) {
+async function getNotes(tagId, focusId, isArchived, isDeleted, page, isUntagged) {
   let url = "/api/notes/";
   const params = new URLSearchParams();
 
@@ -165,6 +165,10 @@ async function getNotes(tagId, focusId, isArchived, isDeleted, page) {
     params.append('tagId', tagId);
   } else if (focusId) {
     params.append('focusId', focusId);
+  }
+
+  if (isUntagged === true) {
+    params.append('isUntagged', "true");
   }
 
   if (page) {
@@ -276,15 +280,21 @@ async function getTags(focusId) {
   }
 
   const resp = await request('GET', url);
-  try {
-    const arr = Array.isArray(resp?.notes) ? resp.notes : (Array.isArray(resp) ? resp : []);
-    for (const n of arr) { await NotesCache.set(n); }
-  } catch (_) {}
+  // Handle TagsResponse envelope { tags: [...], untaggedCount: N }
+  if (resp && resp.tags && Array.isArray(resp.tags)) {
+    // Store untaggedCount globally for sidebar use
+    window.__untaggedCount = resp.untaggedCount;
+    return resp.tags;
+  }
   return resp;
 }
 
 async function searchTags(query) {
-  return await request('GET', `/api/tags?query=${query}`);
+  const resp = await request('GET', `/api/tags?query=${query}`);
+  if (resp && resp.tags && Array.isArray(resp.tags)) {
+    return resp.tags;
+  }
+  return resp;
 }
 
 async function updateTag(tag) {

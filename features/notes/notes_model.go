@@ -64,6 +64,46 @@ func GetAllNotes(filter NotesFilter) ([]Note, int, error) {
 				?
 		`
 		queryArgs = []interface{}{filter.tagID, NOTES_LIMIT, offset}
+	} else if filter.isUntagged {
+		whereCondition := ""
+		if filter.isDeleted {
+			whereCondition = "WHERE n.deleted_at IS NOT NULL"
+		} else if filter.isArchived {
+			whereCondition = "WHERE n.archived_at IS NOT NULL"
+		} else {
+			whereCondition = "WHERE n.deleted_at IS NULL AND n.archived_at IS NULL"
+		}
+
+		query = fmt.Sprintf(`
+			SELECT
+				n.note_id,
+				n.title,
+				n.content,
+				SUBSTR(n.content, 0, 500) AS snippet,
+				n.updated_at,
+				'[]' as tags_json,
+				n.archived_at,
+				n.deleted_at,
+				n.pinned_at,
+				COUNT(*) OVER() as total_count
+			FROM
+				notes n
+			%s
+				AND NOT EXISTS (
+					SELECT 1 FROM note_tags nt WHERE nt.note_id = n.note_id
+				)
+			ORDER BY
+				CASE 
+					WHEN n.pinned_at IS NOT NULL THEN 1 
+					ELSE 2 
+				END,
+				COALESCE(n.pinned_at, n.updated_at) DESC
+			LIMIT
+				?
+			OFFSET
+				?
+		`, whereCondition)
+		queryArgs = []interface{}{NOTES_LIMIT, offset}
 	} else if filter.focusModeID != 0 {
 		query = `
 			SELECT

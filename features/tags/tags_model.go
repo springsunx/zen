@@ -206,3 +206,17 @@ func UpdateTagOrder(tagIDs []int) error {
     }
     return nil
 }
+
+func GetUntaggedCount() (int, error) {
+	var count int
+	query := `
+		SELECT COUNT(*) FROM notes n
+		WHERE n.deleted_at IS NULL AND n.archived_at IS NULL
+		AND NOT EXISTS (SELECT 1 FROM note_tags nt WHERE nt.note_id = n.note_id)
+	`
+	err := sqlite.DB.QueryRow(query).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("error counting untagged notes: %w", err)
+	}
+	return count, nil
+}

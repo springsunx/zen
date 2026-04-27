@@ -12,6 +12,7 @@ export function AppProvider({ children }) {
     return ApiClient.getTags(focusId)
       .then(newTags => {
         setTags(newTags);
+        try { window.dispatchEvent(new CustomEvent('tags:updated')); } catch(_) {}
       })
       .catch(error => {
         console.error('Error loading tags:', error);
