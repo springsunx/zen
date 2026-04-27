@@ -28,7 +28,7 @@ export default function TrashClearModal({ onTrashCleared }) {
       <ModalContainer className="note-clear-trash-modal">
         <ModalHeader title={t('notes.trash.clearTitle')} onClose={handleCancel} />
         <ModalContent>
-          <p className="modal-description">Are you sure you want to <b>permanently delete</b> all notes in the trash? This action cannot be undone.</p>
+          <p className="modal-description" dangerouslySetInnerHTML={{ __html: t('notes.trash.clearDesc') }}></p>
         </ModalContent>
         <ModalFooter isRightAligned>
           <Button onClick={handleCancel}>{t('common.cancel')}</Button>

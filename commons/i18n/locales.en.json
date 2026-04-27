@@ -146,6 +146,7 @@
   "notes.delete.title": "Delete Note",
   "notes.delete.desc": "This note will be moved to the Trash and permanently deleted after 30 days.",
   "notes.trash.clearTitle": "Clear Trash",
+  "notes.trash.clearDesc": "Are you sure you want to <b>permanently delete</b> all notes in the trash? This action cannot be undone.",
   "notes.editor.empty": "Empty note",
   "common.edit": "Edit",
   "notes.pin.unpin": "Unpin",

@@ -145,6 +145,7 @@
   "notes.delete.title": "删除笔记",
   "notes.delete.desc": "该笔记将被移至回收站，并在 30 天后永久删除。",
   "notes.trash.clearTitle": "清空回收站",
+  "notes.trash.clearDesc": "确定要<b>永久删除</b>回收站中的所有笔记吗？此操作不可撤销。",
   "notes.editor.empty": "空白笔记",
   "common.edit": "编辑",
   "notes.pin.unpin": "取消置顶",
