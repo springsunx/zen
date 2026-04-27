@@ -76,6 +76,7 @@ export default function renderMarkdown(text, opts = {}) {
   // 加载可用插件
   const plugins = {
     alert: window.mdItPluginAlert?.alert,
+    align: window.mdItPluginAlign?.align,
     attrs: window.mdItPluginAttrs?.attrs,
     dl: window.mdItPluginDl?.dl,
     footnote: window.mdItPluginFootnote?.footnote,
