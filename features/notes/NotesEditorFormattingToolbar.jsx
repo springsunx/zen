@@ -1,8 +1,8 @@
 import { h } from "../../assets/preact.esm.js"
-import { BoldIcon, ItalicIcon, StrikethroughIcon, HighlightIcon, CodeIcon, CodeBlockIcon, Heading1Icon, Heading2Icon, Heading3Icon, ListIcon, ListOrderedIcon, ListTodoIcon, QuoteIcon, LinkIcon, SeparatorIcon } from '../../commons/components/Icon.jsx';
+import { BoldIcon, ItalicIcon, StrikethroughIcon, HighlightIcon, CodeIcon, CodeBlockIcon, Heading1Icon, Heading2Icon, Heading3Icon, ListIcon, ListOrderedIcon, ListTodoIcon, QuoteIcon, LinkIcon, NoteIcon, SeparatorIcon } from '../../commons/components/Icon.jsx';
 import { t } from "../../commons/i18n/index.js";
 
-export default function NotesEditorFormattingToolbar({ isEditable, onFormat }) {
+export default function NotesEditorFormattingToolbar({ isEditable, onFormat, onInsertInternalLink }) {
   if (!isEditable) {
     return null;
   }
@@ -60,6 +60,9 @@ export default function NotesEditorFormattingToolbar({ isEditable, onFormat }) {
         </button>
         <button type="button" className="formatting-button" onClick={() => onFormat("link", "link text")} title={t('notes.toolbar.link')}>
           <LinkIcon />
+        </button>
+        <button type="button" className="formatting-button" onClick={() => onInsertInternalLink()} title={t('notes.toolbar.internalLink')}>
+          <NoteIcon />
         </button>
         <button type="button" className="formatting-button" onClick={() => onFormat("hr")} title={t('notes.toolbar.hr')}>
           <SeparatorIcon />

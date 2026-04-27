@@ -2,6 +2,7 @@ import { h, useState, useRef, useEffect, useCallback } from "../../assets/preact
 import ApiClient from '../../commons/http/ApiClient.js';
 import NotesEditorTags from "../tags/NotesEditorTags.jsx";
 import NotesEditorFormattingToolbar from './NotesEditorFormattingToolbar.jsx';
+import NoteLinkPicker from './NoteLinkPicker.jsx';
 import TableOfContents from './TableOfContents.jsx';
 import TemplatePicker from '../templates/TemplatePicker.jsx';
 import renderMarkdown from '../../commons/utils/renderMarkdown.js';
@@ -41,6 +42,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   const [content, setContent] = useState(selectedNote?.content || "");
   const [tags, setTags] = useState(selectedNote?.tags || []);
   const [isSaveLoading, setIsSaveLoading] = useState(false);
+  const [showLinkPicker, setShowLinkPicker] = useState(false);
 
   const titleRef = useRef(null);
   const textareaRef = useRef(null);
@@ -147,6 +149,45 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
     }
   }, [content, isEditable]);
 
+  function handleShowLinkPicker() {
+    // Sync content from textarea before showing picker to prevent losing edits on re-render
+    if (textareaRef.current) {
+      const v = textareaRef.current.value;
+      setContent(v);
+      onContentChange(v);
+    }
+    setShowLinkPicker(true);
+  }
+
+  function handleInsertInternalLink(link) {
+    if (textareaRef.current) {
+      const textarea = textareaRef.current;
+      const editorContainer = document.querySelector('.notes-editor-container');
+      const savedScrollTop = editorContainer ? editorContainer.scrollTop : null;
+
+      const startPos = textarea.selectionStart;
+      const endPos = textarea.selectionEnd;
+      const beforeText = textarea.value.substring(0, startPos);
+      const afterText = textarea.value.substring(endPos);
+      setContent(beforeText + link + afterText);
+      onContentChange(beforeText + link + afterText);
+
+      // Focus without scrolling, set cursor, then restore scroll after height recalculation
+      requestAnimationFrame(() => {
+        textarea.focus({ preventScroll: true });
+        const newPos = startPos + link.length;
+        textarea.selectionStart = newPos;
+        textarea.selectionEnd = newPos;
+        requestAnimationFrame(() => {
+          if (editorContainer && savedScrollTop !== null) {
+            editorContainer.scrollTop = savedScrollTop;
+          }
+        });
+      });
+    }
+    setShowLinkPicker(false);
+  }
+
   const handleSaveClick = useCallback((closeAfter = false) => {
     const currentTitle = titleRef.current?.textContent || "";
     const currentContent = textareaRef.current?.value || content;
@@ -207,7 +248,8 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
     onClose: handleCloseClick,
     onExpandToggle: handleExpandToggleClick,
     onInsertAtCursor: insertAtCursor,
-    onFormatText: applyMarkdownFormat
+    onFormatText: applyMarkdownFormat,
+    onInsertInternalLink: handleShowLinkPicker
   });
 
   function handleTextAreaHeight() {
@@ -477,7 +519,17 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
       <NotesEditorTags tags={tags} isEditable={isEditable} canCreateTag onAddTag={handleAddTag} onRemoveTag={handleRemoveTag} />
       {imageDropzone}
       {imageAttachmentPreview}
-      <NotesEditorFormattingToolbar isEditable={isEditable} onFormat={applyMarkdownFormat} />
+      <NotesEditorFormattingToolbar isEditable={isEditable} onFormat={applyMarkdownFormat} onInsertInternalLink={handleShowLinkPicker} />
+      {showLinkPicker && (
+        <div style={{ position: 'relative' }}>
+          <div style={{ position: 'absolute', top: '0', left: '0', zIndex: 100 }}>
+            <NoteLinkPicker
+              onInsertLink={handleInsertInternalLink}
+              onClose={() => setShowLinkPicker(false)}
+            />
+          </div>
+        </div>
+      )}
       <div className="notes-editor-content">
         {contentArea}
       </div>

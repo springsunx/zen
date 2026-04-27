@@ -14,7 +14,8 @@ export default function useEditorKeyboardShortcuts({
   onExpandToggle,
   onInsertAtCursor,
   onFormatText,
-  onSaveAndClose
+  onSaveAndClose,
+  onInsertInternalLink
 }) {
   const handleKeyDown = useCallback(e => {
     const isTextAreaFocused = document.activeElement.className == "notes-editor-textarea";
@@ -47,6 +48,11 @@ export default function useEditorKeyboardShortcuts({
         e.preventDefault();
         onExpandToggle();
       }
+    }
+
+    if ((e.metaKey || e.ctrlKey) && (e.key === 'l' || e.key === 'L')) {
+      e.preventDefault();
+      onInsertInternalLink();
     }
 
     if (isTextAreaFocused && e.key === 'Tab' && !e.shiftKey) {
