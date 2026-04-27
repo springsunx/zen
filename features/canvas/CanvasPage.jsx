@@ -81,7 +81,8 @@ export default function CanvasPage({ canvasId }) {
       }
 
       const isShiftPressed = e.evt.shiftKey;
-      const shouldPan = isPanModeRef.current || isShiftPressed;
+      const isMiddleButton = e.evt.button === 1;
+      const shouldPan = isPanModeRef.current || isShiftPressed || isMiddleButton;
 
       if (shouldPan) {
         viewportManager.startPan();
