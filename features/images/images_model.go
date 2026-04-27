@@ -355,6 +355,29 @@ func GetImageByFilename(filename string) (Image, error) {
 	return image, nil
 }
 
+type NoteContent struct {
+	NoteID  int
+	Content string
+}
+
+func GetAllNoteContents() ([]NoteContent, error) {
+	var notes []NoteContent
+	query := "SELECT note_id, content FROM notes WHERE deleted_at IS NULL"
+	rows, err := sqlite.DB.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("error querying note contents: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var nc NoteContent
+		if err := rows.Scan(&nc.NoteID, &nc.Content); err != nil {
+			return nil, fmt.Errorf("error scanning note content: %w", err)
+		}
+		notes = append(notes, nc)
+	}
+	return notes, nil
+}
+
 func GetImagesCount() (int, error) {
 	var count int
 	query := "SELECT COUNT(*) FROM images"

@@ -216,7 +216,7 @@
   "images.delete.confirm.cancel": "Cancel",
   "images.delete.confirm.ok": "Delete anyway",
   "images.cleanup.button": "Clean up invalid images",
-  "images.cleanup.toast": "Cleanup done: missing files {missing} images, orphans {orphans} images",
+  "images.cleanup.toast": "Cleanup: {registered} registered, {linksRebuilt} links rebuilt, {missing} missing removed, {orphans} orphans removed",
   "notes.cardSize.tooltip": "Adjust card size",
   "notes.cardSize.decrease": "Smaller cards",
   "notes.cardSize.increase": "Larger cards",

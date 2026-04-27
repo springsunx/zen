@@ -219,7 +219,7 @@
   "images.delete.confirm.cancel": "取消",
   "images.delete.confirm.ok": "仍要删除",
   "images.cleanup.button": "清理无效图片",
-  "images.cleanup.toast": "清理完成：缺失文件 {missing} 张，孤儿图片 {orphans} 张",
+  "images.cleanup.toast": "清理完成：注册 {registered} 个文件，重建 {linksRebuilt} 个链接，移除 {missing} 个缺失记录，删除 {orphans} 个孤立图片",
   "notes.cardSize.tooltip": "卡片大小调节",
   "notes.cardSize.decrease": "减小卡片",
   "notes.cardSize.increase": "加大卡片",

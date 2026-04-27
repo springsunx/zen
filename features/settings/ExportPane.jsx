@@ -65,7 +65,7 @@ export default function ExportPane() {
         <Button onClick={async () => {
           try {
             const res = await ApiClient.cleanupImages();
-            showToast(t('images.cleanup.toast', { missing: res?.RemovedMissing||0, orphans: res?.RemovedOrphans||0 }));
+            showToast(t('images.cleanup.toast', { missing: res?.RemovedMissing||0, orphans: res?.RemovedOrphans||0, registered: res?.Registered||0, linksRebuilt: res?.LinksRebuilt||0 }));
           } catch (e) {
             console.error('Cleanup images failed:', e);
             showToast(t('images.cleanup.fail'));

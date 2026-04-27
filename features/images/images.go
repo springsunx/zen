@@ -11,11 +11,12 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
+	"strings"
 	"time"
 	"zen/commons/queue"
 	"zen/commons/utils"
-	"strings"
 )
 
 const IMAGES_LIMIT = 100
@@ -271,16 +272,113 @@ func HandleDeleteImage(w http.ResponseWriter, r *http.Request) {
 
 // HandleCleanupImages scans DB images and removes records whose files are missing
 // and removes orphaned images (no note_images link) by deleting both file and record.
+// Also registers image files on disk that have no DB record, and rebuilds note_images links
+// from note content.
 func HandleCleanupImages(w http.ResponseWriter, r *http.Request) {
     type result struct {
         RemovedMissing int      `json:"removedMissing"`
         RemovedOrphans int      `json:"removedOrphans"`
+        Registered     int      `json:"registered"`
+        LinksRebuilt   int      `json:"linksRebuilt"`
         MissingFiles   []string `json:"missingFiles"`
         OrphanFiles    []string `json:"orphanFiles"`
+        RegisteredFiles []string `json:"registeredFiles"`
     }
     res := result{}
 
-    // Remove DB records with missing files
+    // ── Step 1: Register files on disk that have no DB record ──
+    dbFilenames := make(map[string]bool)
+    for page := 1; ; page++ {
+        imgs, total, e := GetAllImages(NewImagesFilter(page, 0, 0))
+        if e != nil || len(imgs) == 0 { break }
+        _ = total
+        for _, im := range imgs {
+            dbFilenames[im.Filename] = true
+        }
+        if len(imgs) < IMAGES_LIMIT { break }
+    }
+
+    entries, err := os.ReadDir("images")
+    if err == nil {
+        for _, entry := range entries {
+            if entry.IsDir() { continue }
+            fname := entry.Name()
+            if dbFilenames[fname] { continue }
+
+            // New file — register it
+            fullPath := filepath.Join("images", fname)
+            f, openErr := os.Open(fullPath)
+            if openErr != nil { continue }
+
+            info, imgErr := getImageInfo(f)
+            f.Close()
+            if imgErr != nil { continue }
+
+            fi, statErr := entry.Info()
+            if statErr != nil { continue }
+
+            ext := strings.ToLower(filepath.Ext(fname))
+            format := strings.TrimPrefix(ext, ".")
+
+            imageRecord := ImageRecord{
+                Filename:    fname,
+                Width:       info.Width,
+                Height:      info.Height,
+                Format:      format,
+                AspectRatio: info.AspectRatio,
+                FileSize:    fi.Size(),
+                Caption:     nil,
+            }
+            _, createErr := CreateImage(imageRecord)
+            if createErr == nil {
+                res.Registered++
+                res.RegisteredFiles = append(res.RegisteredFiles, fname)
+            }
+        }
+    }
+
+    // ── Step 2: Rebuild note_images links from note content ──
+    imageRegex := regexp.MustCompile(`!\[.*?\]\(/images/([^)]+)\)`)
+    allNotes, noteErr := GetAllNoteContents()
+    if noteErr == nil {
+        // Collect existing links to avoid double-counting rebuilds
+        existingLinks := make(map[string]map[int]bool) // filename -> set of noteIDs
+        for page := 1; ; page++ {
+            imgs, total, e := GetAllImages(NewImagesFilter(page, 0, 0))
+            if e != nil || len(imgs) == 0 { break }
+            _ = total
+            for _, im := range imgs {
+                noteIDs, linkErr := GetLinkedNotesByImage(im.Filename)
+                if linkErr == nil {
+                    for _, nid := range noteIDs {
+                        if existingLinks[im.Filename] == nil {
+                            existingLinks[im.Filename] = make(map[int]bool)
+                        }
+                        existingLinks[im.Filename][nid] = true
+                    }
+                }
+            }
+            if len(imgs) < IMAGES_LIMIT { break }
+        }
+
+        for _, note := range allNotes {
+            matches := imageRegex.FindAllStringSubmatch(note.Content, -1)
+            for _, m := range matches {
+                if len(m) > 1 {
+                    filename := m[1]
+                    // Only count as rebuilt if not already linked
+                    if existingLinks[filename] != nil && existingLinks[filename][note.NoteID] {
+                        continue
+                    }
+                    if LinkImageToNote(note.NoteID, filename) == nil {
+                        res.LinksRebuilt++
+                    }
+                }
+            }
+        }
+    }
+
+    // ── Step 3: Remove DB records with missing files ──
     for page := 1; ; page++ {
         imgs, total, e := GetAllImages(NewImagesFilter(page, 0, 0))
         if e != nil || len(imgs) == 0 { break }
@@ -297,9 +395,24 @@ func HandleCleanupImages(w http.ResponseWriter, r *http.Request) {
         if len(imgs) < IMAGES_LIMIT { break }
     }
 
-    // Remove orphaned images (no links), delete file & record if file exists
+    // ── Step 4: Remove orphaned images (no links, no reference in note content) ──
     if orphans, e := GetOrphanedImages(); e == nil {
+        // Collect all filenames referenced in note content
+        referencedInContent := make(map[string]bool)
+        for _, note := range allNotes {
+            matches := imageRegex.FindAllStringSubmatch(note.Content, -1)
+            for _, m := range matches {
+                if len(m) > 1 {
+                    referencedInContent[m[1]] = true
+                }
+            }
+        }
+
         for _, im := range orphans {
+            // Only delete if also not referenced in note content
+            if referencedInContent[im.Filename] {
+                continue
+            }
             path := filepath.Join("images", im.Filename)
             _ = os.Remove(path)
             _ = DeleteImageLinks(im.Filename)

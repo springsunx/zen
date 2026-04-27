@@ -204,7 +204,7 @@ export default function CanvasNotePicker({ onAddNote, addedItems }) {
 
     let imagesContent;
     if (filteredImages.length === 0) {
-      imagesContent = <div className="canvas-note-picker-empty">No images available</div>;
+      imagesContent = <div className="canvas-note-picker-empty">{t('notes.empty.images')}</div>;
     } else {
       const imageItems = filteredImages.map((item, index) => {
         return (
