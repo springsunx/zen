@@ -10,7 +10,7 @@ import isMobile from "../../commons/utils/isMobile.js";
 import useLongPress from "../../commons/utils/useLongPress.js";
 import ImageGallery from "./ImageGallery.jsx";
 import NotesEditorModal from './NotesEditorModal.jsx';
-import { NotesProvider } from "../../commons/contexts/NotesContext.jsx";
+import { NotesProvider, useNotes } from "../../commons/contexts/NotesContext.jsx";
 import { AppProvider } from '../../commons/contexts/AppContext.jsx';
 import { openModal } from '../../commons/components/Modal.jsx';
 import EmptyState from '../../commons/components/EmptyState.jsx';
@@ -132,11 +132,13 @@ function NotesGridItem({ note, index, cardHeight }) {
     title = null;
   }
 
+  const { patchNote } = useNotes();
+
   function handleClick() {
     openModal(
       <AppProvider>
         <NotesProvider>
-          <NotesEditorModal note={note} />
+          <NotesEditorModal note={note} onModalClose={(savedNote) => { if (savedNote) patchNote(note.noteId, savedNote); }} />
         </NotesProvider>
       </AppProvider>,
       '.note-modal-root'

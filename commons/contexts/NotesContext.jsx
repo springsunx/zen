@@ -98,6 +98,14 @@ export function NotesProvider({ children }) {
     setImagesPageNumber(prev => prev + 1);
   }, []);
 
+  const patchNote = useCallback((noteId, updates) => {
+    setNotes(prevNotes =>
+      prevNotes.map(note =>
+        note.noteId === noteId ? { ...note, ...updates } : note
+      )
+    );
+  }, []);
+
   const resetPagination = useCallback(() => {
     setNotesPageNumber(1);
     setNotes([]);
@@ -131,6 +139,7 @@ export function NotesProvider({ children }) {
       handlePinToggle,
       handleLoadMoreNotes,
       handleLoadMoreImages,
+      patchNote,
       resetPagination
     }}>
       {children}

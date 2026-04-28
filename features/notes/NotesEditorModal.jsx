@@ -1,4 +1,4 @@
-import { h, useState, useEffect } from "../../assets/preact.esm.js"
+import { h, useState, useEffect, useRef } from "../../assets/preact.esm.js"
 import NotesEditor from './NotesEditor.jsx';
 import RightSideToc from "./RightSideToc.jsx";
 import { ModalBackdrop, ModalContainer, ModalContent, closeModal } from "../../commons/components/Modal.jsx";
@@ -10,12 +10,13 @@ export default function NotesEditorModal({ note, isNewNote, onModalClose }) {
   const { setSelectedNote, selectedNote } = useNotes();
   const [isEditorEditable, setIsEditorEditable] = useState(false);
   const [currentContent, setCurrentContent] = useState(note?.content || selectedNote?.content || "");
+  const savedNoteRef = useRef(null);
 
   function handleCloseModal() {
     document.title = "Zen";
     closeModal('.note-modal-root');
     if (onModalClose) {
-      onModalClose();
+      onModalClose(savedNoteRef.current);
     }
   }
 
@@ -56,7 +57,7 @@ useEffect(() => {
             onClose={handleCloseModal}
             onEditModeChange={setIsEditorEditable}
             onContentChange={setCurrentContent}
-            onSaved={(n) => { setSelectedNote(n); setCurrentContent(n?.content || ""); }}
+            onSaved={(n) => { savedNoteRef.current = n; setSelectedNote(n); setCurrentContent(n?.content || ""); }}
           />
           {/* 在弹窗右侧显示 TOC（仅在非编辑状态且有足够标题时生效） */}
           <RightSideToc
