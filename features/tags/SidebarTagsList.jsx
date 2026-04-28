@@ -37,12 +37,21 @@ export default function SidebarTagsList() {
     }
   }, [tags]);
 
+  function buildUntaggedUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const focusId = params.get("focusId");
+    if (focusId) {
+      return `/notes/?isUntagged=true&focusId=${focusId}`;
+    }
+    return "/notes/?isUntagged=true";
+  }
+
   if (orderedTags.length === 0 && tags.length === 0) {
     return (
       <div>
         <div className="sidebar-section-title">{t('templates.form.tags')}</div>
         <Link
-          to="/notes/?isUntagged=true"
+          to={buildUntaggedUrl()}
           className="sidebar-tag-link"
           activeClassName="is-active"
         >
@@ -132,7 +141,7 @@ export default function SidebarTagsList() {
     <div>
       <div className="sidebar-section-title">{t('templates.form.tags')}</div>
       <Link
-        to="/notes/?isUntagged=true"
+        to={buildUntaggedUrl()}
         className="sidebar-tag-link"
         activeClassName="is-active"
       >
