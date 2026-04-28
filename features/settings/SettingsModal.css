@@ -67,6 +67,20 @@
                 font: var(--sm);
             }
 
+            .code-block {
+                background-color: var(--neutral-50);
+                border: 1px solid var(--neutral-200);
+                border-radius: 6px;
+                padding: var(--spacing-3);
+                font-family: var(--font-family-code);
+                font-size: 12px;
+                line-height: 1.4;
+                color: var(--neutral-600);
+                margin: 12px 0;
+                overflow-x: auto;
+                white-space: pre;
+            }
+
             .file-upload-container {
                 margin-bottom: 16px;
 
@@ -332,19 +346,7 @@
                     }
                 }
 
-                .export-tree {
-                    background-color: var(--neutral-50);
-                    border: 1px solid var(--neutral-200);
-                    border-radius: 6px;
-                    padding: var(--spacing-3);
-                    font-family: var(--font-family-code);
-                    font-size: 12px;
-                    line-height: 1.4;
-                    color: var(--neutral-600);
-                    margin: 12px 0;
-                    overflow-x: auto;
-                    white-space: pre;
-                }
+
             }
 
             .mcp-token-creator {

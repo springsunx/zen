@@ -309,20 +309,41 @@ func CreateNote(note Note) (Note, error) {
 
 	defer tx.Rollback()
 
-	query := `
-		INSERT INTO
-			notes (title, content)
-		VALUES
-			(?, ?)
-		RETURNING
-			note_id,
-			title,
-			content,
-			SUBSTR(content, 0, 500) AS snippet,
-			updated_at
-	`
+	var query string
+	var row *sql.Row
 
-	row := tx.QueryRow(query, note.Title, note.Content)
+	if !note.UpdatedAt.IsZero() {
+		query = `
+			INSERT INTO
+				notes (title, content, created_at, updated_at)
+			VALUES
+				(?, ?, ?, ?)
+			RETURNING
+				note_id,
+				title,
+				content,
+				SUBSTR(content, 0, 500) AS snippet,
+				updated_at
+		`
+
+		row = tx.QueryRow(query, note.Title, note.Content, note.CreatedAt, note.UpdatedAt)
+	} else {
+		query = `
+			INSERT INTO
+				notes (title, content)
+			VALUES
+				(?, ?)
+			RETURNING
+				note_id,
+				title,
+				content,
+				SUBSTR(content, 0, 500) AS snippet,
+				updated_at
+		`
+
+		row = tx.QueryRow(query, note.Title, note.Content)
+	}
+
 	err = row.Scan(&note.NoteID, &note.Title, &note.Content, &note.Snippet, &note.UpdatedAt)
 	if err != nil {
 		err = fmt.Errorf("error creating note: %w", err)

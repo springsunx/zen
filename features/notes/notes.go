@@ -22,6 +22,7 @@ type Note struct {
 	Content            string     `json:"content"`
 	HighlightedTitle   string     `json:"highlightedTitle,omitempty"`
 	HighlightedContent string     `json:"highlightedContent,omitempty"`
+	CreatedAt          time.Time  `json:"-"`
 	UpdatedAt          time.Time  `json:"updatedAt"`
 	Tags               []tags.Tag `json:"tags"`
 	IsArchived         bool       `json:"isArchived"`
