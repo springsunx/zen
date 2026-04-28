@@ -52,19 +52,19 @@ export default function Sidebar() {
             <NotesIcon />
             {t("nav.notes")}
           </Link>
-          <Link className="sidebar-button canvas" activeClassName="is-active" to="/canvases/">
+          <Link className="sidebar-button canvas" activeClassName="is-active" to="/canvases/" shouldPreserveSearchParams>
             <BoardIcon />
             {t("nav.canvas")}
           </Link>
-          <Link className="sidebar-button templates" activeClassName="is-active" to="/templates/">
+          <Link className="sidebar-button templates" activeClassName="is-active" to="/templates/" shouldPreserveSearchParams>
             <TemplatesIcon />
             {t("nav.templates")}
           </Link>
-          <Link className="sidebar-button archives" activeClassName="is-active" to="/notes/?isArchived=true">
+          <Link className="sidebar-button archives" activeClassName="is-active" to="/notes/?isArchived=true" shouldPreserveSearchParams>
             <ArchiveIcon />
             {t("nav.archives")}
           </Link>
-          <Link className="sidebar-button trash" activeClassName="is-active" to="/notes/?isDeleted=true">
+          <Link className="sidebar-button trash" activeClassName="is-active" to="/notes/?isDeleted=true" shouldPreserveSearchParams>
             <TrashIcon />
             {t("nav.trash")}
           </Link>
