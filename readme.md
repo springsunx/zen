@@ -33,6 +33,10 @@ English | [中文](./readme-cn.md)
 * Add a table of contents on the right side with navigation support
 * Support more Markdown syntax
 * Add tag count, tag moving up/down, and drag-and-drop sorting
+* Untagged notes filter (sidebar entry with count display)
+* Image cleanup: auto-register disk files, rebuild note-image associations
+* Markdown render internal note links, open in modal or navigate on click
+* Press <kbd>Ctrl+L</kbd> in the editor to search and insert internal note links
 
 ### Experimental Features
 * Canvas for spatial organization of notes and images (stored as [JSON Canvas](https://jsoncanvas.org/docs/apps/))
