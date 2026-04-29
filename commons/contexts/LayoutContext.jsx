@@ -13,7 +13,9 @@ const LayoutContext = createContext(defaultValue);
 
 export function LayoutProvider({ children }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(!isMobile());
-  const [isEditorExpanded, setIsEditorExpanded] = useState(false);
+  const [isEditorExpanded, setIsEditorExpanded] = useState(() => {
+    try { return localStorage.getItem('zen.editorExpanded') === 'true'; } catch { return false; }
+  });
 
   const toggleSidebar = useCallback(() => {
     setIsSidebarOpen(prev => !prev);
@@ -24,7 +26,11 @@ export function LayoutProvider({ children }) {
   }, []);
 
   const toggleEditorExpanded = useCallback(() => {
-    setIsEditorExpanded(prev => !prev);
+    setIsEditorExpanded(prev => {
+      const next = !prev;
+      try { localStorage.setItem('zen.editorExpanded', String(next)); } catch {}
+      return next;
+    });
   }, []);
 
   useEffect(() => {

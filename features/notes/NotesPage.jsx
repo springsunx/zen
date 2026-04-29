@@ -32,6 +32,9 @@ function NotesPageContent({ noteId }) {
   const { isSidebarOpen, toggleSidebar, isEditorExpanded } = useLayout();
   const [isMultiSelect, setIsMultiSelect] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
+  const [showToc, setShowToc] = useState(() => {
+    try { return localStorage.getItem('zen.showToc') === 'true'; } catch { return false; }
+  });
 
   const { refreshTags, refreshFocusModes } = useAppContext();
   const {
@@ -177,7 +180,7 @@ function NotesPageContent({ noteId }) {
   const isEditorExpandable = selectedView === "list";
   const isPageExpanded = isEditorExpanded === true && isEditorExpandable === true;
 
-  let editorContent = <NotesEditor isNewNote={noteId === "new"} isExpandable={isEditorExpandable} key={selectedNote?.noteId} />;
+  let editorContent = <NotesEditor isNewNote={noteId === "new"} isExpandable={isEditorExpandable} onToggleToc={() => setShowToc(prev => { const next = !prev; try { localStorage.setItem('zen.showToc', String(next)); } catch {} return next; })} key={selectedNote?.noteId} />;
   if (isMultiSelect === true) {
     editorContent = <BulkActionsPanel selectedIds={selectedIds} allIds={notes.map(n => n.noteId)} onClose={handleClearSelection} onSelectAll={() => setSelectedIds(notes.map(n => n.noteId))} />;
   }
@@ -241,6 +244,7 @@ function NotesPageContent({ noteId }) {
       {selectedView === "list" && (
         <RightSideToc
           content={selectedNote?.content || ""}
+          showToc={showToc}
           isEditable={isEditorEditable}
           isNewNote={noteId === "new"}
           noteId={selectedNote?.noteId}

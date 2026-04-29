@@ -3,7 +3,6 @@ import ApiClient from '../../commons/http/ApiClient.js';
 import NotesEditorTags from "../tags/NotesEditorTags.jsx";
 import NotesEditorFormattingToolbar from './NotesEditorFormattingToolbar.jsx';
 import NoteLinkPicker from './NoteLinkPicker.jsx';
-import TableOfContents from './TableOfContents.jsx';
 import TemplatePicker from '../templates/TemplatePicker.jsx';
 import renderMarkdown from '../../commons/utils/renderMarkdown.js';
 import navigateTo from '../../commons/utils/navigateTo.js';
@@ -23,10 +22,10 @@ import useEditorKeyboardShortcuts from "./useEditorKeyboardShortcuts.js";
 import useImageUpload from "./useImageUpload.js";
 import useMarkdownFormatter from "./useMarkdownFormatter.js";
 import "./NotesEditor.css";
-import { CloseIcon, SidebarCloseIcon, SidebarOpenIcon, BackIcon } from "../../commons/components/Icon.jsx";
+import { CloseIcon, SidebarCloseIcon, SidebarOpenIcon, BackIcon, ListOrderedIcon } from "../../commons/components/Icon.jsx";
 import { t } from "../../commons/i18n/index.js";
 
-export default function NotesEditor({ isNewNote, isModal, isExpandable = false, onClose, onEditModeChange = () => {}, onContentChange = () => {}, onSaved = () => {} }) {
+export default function NotesEditor({ isNewNote, isModal, isExpandable = false, onClose, onEditModeChange = () => {}, onContentChange = () => {}, onSaved = () => {}, onToggleToc }) {
   const { selectedNote, handleNoteChange, handlePinToggle } = useNotes();
   const { isEditorExpanded, toggleEditorExpanded } = useLayout();
 
@@ -512,6 +511,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
         onExpandToggleClick={handleExpandToggleClick}
         onPinClick={handlePinClick}
         onUnpinClick={handleUnpinClick}
+        onToggleToc={onToggleToc}
       />
       <div className="notes-editor-header">
         <div className="notes-editor-title" contentEditable={isEditable} ref={titleRef} onBlur={handleTitleChange} dangerouslySetInnerHTML={{ __html: title }} />
@@ -534,12 +534,11 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
         {contentArea}
       </div>
       {templatePicker}
-      {isModal && (<TableOfContents content={content} isExpanded={isEditorExpanded} isEditable={isEditable} isNewNote={isNewNote} visibleHeadings={visibleHeadings} />)}
     </div>
   );
 }
 
-function Toolbar({ note, isNewNote, isEditable, isModal, isSaveLoading, isExpanded, isExpandable, onSaveClick, onSaveAndCloseClick, onEditClick, onEditCancelClick, onCloseClick, onDeleteClick, onArchiveClick, onUnarchiveClick, onRestoreClick, onExpandToggleClick, onPinClick, onUnpinClick }) {
+function Toolbar({ note, isNewNote, isEditable, isModal, isSaveLoading, isExpanded, isExpandable, onSaveClick, onSaveAndCloseClick, onEditClick, onEditCancelClick, onCloseClick, onDeleteClick, onArchiveClick, onUnarchiveClick, onRestoreClick, onExpandToggleClick, onPinClick, onUnpinClick, onToggleToc }) {
   const saveButtonText = isSaveLoading ? t('common.saving') : t('common.save');
   const saveAndCloseText = t('editor.saveAndClose');
 
@@ -555,9 +554,16 @@ function Toolbar({ note, isNewNote, isEditable, isModal, isSaveLoading, isExpand
   const actions = {
     left: [
       {
+        key: 'toc',
+        condition: onToggleToc != null,
+        component: <Button variant="ghost" onClick={onToggleToc} data-tooltip={t('notes.toc.toggleTitle')}>
+          <ListOrderedIcon />
+        </Button>
+      },
+      {
         key: 'expand',
         condition: isExpandable === true && !isMobile(),
-        component: <Button variant="ghost" onClick={onExpandToggleClick}>
+        component: <Button variant="ghost" onClick={onExpandToggleClick} data-tooltip={isExpanded ? t('notes.editor.collapse') : t('notes.editor.expand')}>
           {isExpanded ? <SidebarCloseIcon /> : <SidebarOpenIcon />}
         </Button>
       },

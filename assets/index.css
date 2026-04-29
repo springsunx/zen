@@ -323,6 +323,10 @@ body.has-right-toc .page-container {
   padding-right: 220px;
 }
 
+body.has-right-toc .page-container.is-editor-expanded {
+  padding-right: 0;
+}
+
 body.has-right-toc .notes-editor-container {
   flex: 1;
   min-width: 0; /* 允许flex项收缩 */

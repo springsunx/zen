@@ -11,6 +11,9 @@ export default function NotesEditorModal({ note, isNewNote, onModalClose }) {
   const [isEditorEditable, setIsEditorEditable] = useState(false);
   const [currentContent, setCurrentContent] = useState(note?.content || selectedNote?.content || "");
   const savedNoteRef = useRef(null);
+  const [showToc, setShowToc] = useState(() => {
+    try { return localStorage.getItem('zen.modalShowToc') === 'true'; } catch { return false; }
+  });
 
   function handleCloseModal() {
     document.title = "Zen";
@@ -49,7 +52,7 @@ useEffect(() => {
   return (
     <ModalBackdrop onClose={handleCloseModal} isCentered={true} closeOnBackdrop={false}>
       <ModalContainer className="notes-editor-modal">
-        <ModalContent className="notes-editor-container">
+        <ModalContent className={`notes-editor-container${showToc ? ' toc-visible' : ''}`}>
           <NotesEditor
             key={selectedNote?.noteId || note?.noteId || "n"}
             isNewNote={isNewNote === true}
@@ -58,10 +61,12 @@ useEffect(() => {
             onEditModeChange={setIsEditorEditable}
             onContentChange={setCurrentContent}
             onSaved={(n) => { savedNoteRef.current = n; setSelectedNote(n); setCurrentContent(n?.content || ""); }}
+            onToggleToc={() => setShowToc(prev => { const next = !prev; try { localStorage.setItem('zen.modalShowToc', String(next)); } catch {} return next; })}
           />
           {/* 在弹窗右侧显示 TOC（仅在非编辑状态且有足够标题时生效） */}
           <RightSideToc
             content={currentContent}
+            showToc={showToc}
             isEditable={isEditorEditable}
             isNewNote={false}
             inModal={true}

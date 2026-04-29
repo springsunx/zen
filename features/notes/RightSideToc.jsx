@@ -6,18 +6,16 @@ import ApiClient from "../../commons/http/ApiClient.js";
 import Button from "../../commons/components/Button.jsx";
 import { useNotes } from "../../commons/contexts/NotesContext.jsx";
 
-export default function RightSideToc({ content, isEditable, isNewNote, inModal = false, noteId, onContentPatched }) {
+export default function RightSideToc({ content, isEditable, isNewNote, inModal = false, noteId, onContentPatched, showToc = false }) {
 
   const { selectedNote, handleNoteChange, setSelectedNote } = useNotes();
 
   const headings = extractHeadingsFromMarkdown(content);
   
-  // 当有标题且不在编辑模式时，添加类名到body
+  // Add or remove body class based on showToc
   useEffect(() => {
-    const shouldShowToc = !isEditable && !isNewNote && headings.length >= 2;
-    
     if (!inModal) {
-      if (shouldShowToc) {
+      if (showToc && !isEditable && !isNewNote && headings.length >= 2) {
         document.body.classList.add('has-right-toc');
       } else {
         document.body.classList.remove('has-right-toc');
@@ -25,10 +23,9 @@ export default function RightSideToc({ content, isEditable, isNewNote, inModal =
       return () => { document.body.classList.remove('has-right-toc'); }
     }
     return () => {};
-  }, [isEditable, isNewNote, headings.length, content]);
+  }, [showToc, isEditable, isNewNote, headings.length]);
   
-  // 如果不显示目录，返回null
-  if (isEditable || isNewNote || headings.length < 2) {
+  if (!showToc || isEditable || isNewNote || headings.length < 2) {
     return null;
   }
   
