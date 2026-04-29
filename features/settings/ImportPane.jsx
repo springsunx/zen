@@ -175,7 +175,7 @@ export default function ImportPane() {
       <h3>{t('settings.import.title')}</h3>
       <p>{t('settings.import.desc')}</p>
       <p>{t('settings.import.frontmatterHint')}</p>
-      <pre className="code-block">{`---\ncreated: 2023-04-15T10:30:00Z\nupdated: 2023-06-20T14:45:00Z\n---\n\n${t('settings.import.noteContentPlaceholder')}`}</pre>
+      <pre className="code-block">{`---\ntitle: My Note Title\ntags: work, ideas, project\ncreated: 2023-04-15T10:30:00Z\nupdated: 2023-06-20T14:45:00Z\n---\n\n${t('settings.import.noteContentPlaceholder')}`}</pre>
 
       <div className="file-upload-container">
         <p className="file-upload-label-text">{t('settings.import.chooseFolder')}</p>

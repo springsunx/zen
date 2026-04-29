@@ -29,6 +29,13 @@ type ImportResult struct {
 	SkippedFiles []string `json:"skippedFiles"`
 }
 
+type frontmatter struct {
+	title     string
+	tags      []string
+	createdAt *time.Time
+	updatedAt *time.Time
+}
+
 func HandleImport(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseMultipartForm(MAX_UPLOAD_SIZE)
 	if err != nil {
@@ -66,23 +73,34 @@ func HandleImport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body, createdAt, updatedAt := extractFrontmatter(string(content))
+	body, fm := extractFrontmatter(string(content))
 
-	note := notes.Note{
-		Title:   strings.TrimSuffix(handler.Filename, ext),
-		Content: body,
-		Tags:    extractTagsFromPath(path),
+	title := strings.TrimSuffix(handler.Filename, ext)
+	if fm.title != "" {
+		title = fm.title
 	}
 
-	if createdAt != nil && updatedAt != nil {
-		note.CreatedAt = *createdAt
-		note.UpdatedAt = *updatedAt
-	} else if createdAt != nil {
-		note.CreatedAt = *createdAt
-		note.UpdatedAt = *createdAt
-	} else if updatedAt != nil {
-		note.CreatedAt = *updatedAt
-		note.UpdatedAt = *updatedAt
+	tagNames := fm.tags
+	if len(tagNames) == 0 {
+		tagNames = extractTagNamesFromPath(path)
+	}
+	noteTags := resolveTags(tagNames)
+
+	note := notes.Note{
+		Title:   title,
+		Content: body,
+		Tags:    noteTags,
+	}
+
+	if fm.createdAt != nil && fm.updatedAt != nil {
+		note.CreatedAt = *fm.createdAt
+		note.UpdatedAt = *fm.updatedAt
+	} else if fm.createdAt != nil {
+		note.CreatedAt = *fm.createdAt
+		note.UpdatedAt = *fm.createdAt
+	} else if fm.updatedAt != nil {
+		note.CreatedAt = *fm.updatedAt
+		note.UpdatedAt = *fm.updatedAt
 	}
 
 	_, err = notes.CreateNote(note)
@@ -171,7 +189,7 @@ func handleZipImport(w http.ResponseWriter, src io.Reader, filename string) {
 			note := notes.Note{
 				Title:   strings.TrimSuffix(f.Name, ".md"),
 				Content: string(content),
-				Tags:    extractTagsFromPath(name),
+				Tags:    resolveTags(extractTagNamesFromPath(name)),
 			}
 
 			_, err = notes.CreateNote(note)
@@ -415,9 +433,9 @@ func getOrCreateTag(name string) int {
 	return tagID
 }
 
-func extractTagsFromPath(path string) []tags.Tag {
+func extractTagNamesFromPath(path string) []string {
 	if path == "" {
-		return []tags.Tag{}
+		return nil
 	}
 
 	cleanPath := filepath.Clean(path)
@@ -431,56 +449,90 @@ func extractTagsFromPath(path string) []tags.Tag {
 	}
 
 	if len(folders) == 0 {
-		return []tags.Tag{}
+		return nil
 	}
 
-	immediateFolder := folders[len(folders)-1]
-
-	existingTags, err := tags.SearchTags(immediateFolder)
-	if err == nil {
-		for _, existingTag := range existingTags {
-			if existingTag.Name == immediateFolder {
-				return []tags.Tag{existingTag}
-			}
-		}
-	}
-
-	return []tags.Tag{{TagID: -1, Name: immediateFolder}}
+	return []string{folders[len(folders)-1]}
 }
 
-func extractFrontmatter(content string) (string, *time.Time, *time.Time) {
+func extractFrontmatter(content string) (string, frontmatter) {
 	content = strings.ReplaceAll(content, "\r\n", "\n")
 
 	if !strings.HasPrefix(content, "---\n") {
-		return content, nil, nil
+		return content, frontmatter{}
 	}
 
 	end := strings.Index(content[4:], "\n---\n")
 	if end == -1 {
-		return content, nil, nil
+		return content, frontmatter{}
 	}
 
-	frontmatter := content[4 : end+4]
+	block := content[4 : end+4]
 	body := strings.TrimPrefix(content[end+9:], "\n")
 
-	var createdAt, updatedAt *time.Time
-	for _, line := range strings.Split(frontmatter, "\n") {
+	var fm frontmatter
+	for _, line := range strings.Split(block, "\n") {
 		key, value, found := strings.Cut(line, ":")
 		if !found {
 			continue
 		}
 		key = strings.TrimSpace(key)
 		value = strings.TrimSpace(value)
-		t, err := time.Parse(time.RFC3339, value)
-		if err != nil {
-			continue
-		}
-		if key == "created" && createdAt == nil {
-			createdAt = &t
-		} else if key == "updated" && updatedAt == nil {
-			updatedAt = &t
+
+		switch key {
+		case "title":
+			if fm.title == "" {
+				fm.title = value
+			}
+		case "tags":
+			if len(fm.tags) == 0 {
+				fm.tags = splitTags(value)
+			}
+		case "created":
+			if fm.createdAt == nil {
+				t, err := time.Parse(time.RFC3339, value)
+				if err == nil {
+					fm.createdAt = &t
+				}
+			}
+		case "updated":
+			if fm.updatedAt == nil {
+				t, err := time.Parse(time.RFC3339, value)
+				if err == nil {
+					fm.updatedAt = &t
+				}
+			}
 		}
 	}
 
-	return body, createdAt, updatedAt
+	return body, fm
+}
+
+func splitTags(value string) []string {
+	var result []string
+	for _, part := range strings.Split(value, ",") {
+		tag := strings.TrimSpace(part)
+		if tag != "" {
+			result = append(result, tag)
+		}
+	}
+	return result
+}
+
+func resolveTags(names []string) []tags.Tag {
+	var result []tags.Tag
+	for _, name := range names {
+		existingTags, err := tags.SearchTags(name)
+		if err == nil {
+			for _, t := range existingTags {
+				if t.Name == name {
+					result = append(result, t)
+					goto next
+				}
+			}
+		}
+		result = append(result, tags.Tag{TagID: -1, Name: name})
+	next:
+	}
+	return result
 }

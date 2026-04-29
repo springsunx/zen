@@ -55,7 +55,7 @@
   "settings.import.chooseZip": "Choose ZIP file",
   "settings.import.orImportZip": "Or import a Zen export (.zip):",
   "settings.import.noteContentPlaceholder": "Note content here...",
-  "settings.import.frontmatterHint": "For .md files, you can optionally include a YAML frontmatter block:",
+  "settings.import.frontmatterHint": "For .md files, you can optionally include a YAML frontmatter block with title, tags (comma-separated), created, and updated fields.",
   "settings.import.progress": "Importing {current} of {total} files...",
   "settings.import.summary.title": "Import Summary",
   "settings.import.summary.refresh": "Refresh to see changes.",

@@ -5,6 +5,7 @@ import { ModalBackdrop, ModalContainer, ModalContent, closeModal } from "../../c
 import { useNotes } from "../../commons/contexts/NotesContext.jsx";
 import "./NotesEditorModal.css";
 import ApiClient from '../../commons/http/ApiClient.js';
+import { extractHeadingsFromMarkdown } from "../../commons/utils/markdownToc.js";
 
 export default function NotesEditorModal({ note, isNewNote, onModalClose }) {
   const { setSelectedNote, selectedNote } = useNotes();
@@ -14,6 +15,8 @@ export default function NotesEditorModal({ note, isNewNote, onModalClose }) {
   const [showToc, setShowToc] = useState(() => {
     try { return localStorage.getItem('zen.modalShowToc') === 'true'; } catch { return false; }
   });
+  const headings = extractHeadingsFromMarkdown(currentContent);
+  const hasTocContent = showToc && !isEditorEditable && headings.length >= 2;
 
   function handleCloseModal() {
     document.title = "Zen";
@@ -52,7 +55,7 @@ useEffect(() => {
   return (
     <ModalBackdrop onClose={handleCloseModal} isCentered={true} closeOnBackdrop={false}>
       <ModalContainer className="notes-editor-modal">
-        <ModalContent className={`notes-editor-container${showToc ? ' toc-visible' : ''}`}>
+        <ModalContent className={`notes-editor-container${hasTocContent ? ' toc-visible' : ''}`}>
           <NotesEditor
             key={selectedNote?.noteId || note?.noteId || "n"}
             isNewNote={isNewNote === true}
