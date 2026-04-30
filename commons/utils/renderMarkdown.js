@@ -49,11 +49,49 @@ function createCopyHandler() {
   };
 }
 
+// 辅助函数：Tab 切换
+function createTabHandler() {
+  if (window._zenTabHandler) return;
+  window._zenTabHandler = true;
+
+  function activateTab(btn) {
+    const wrapper = btn.closest('.tabs-tabs-wrapper');
+    if (!wrapper) return;
+    const idx = btn.getAttribute('data-tab');
+    if (idx === null) return;
+
+    wrapper.querySelectorAll('.tabs-tab-button, .tabs-tab-content').forEach(el => {
+      el.removeAttribute('data-active');
+    });
+    btn.setAttribute('data-active', '');
+    const content = wrapper.querySelector(`.tabs-tab-content[data-index="${idx}"]`);
+    if (content) content.setAttribute('data-active', '');
+  }
+
+  // 初始化：无激活 tab 时默认激活第一个
+  function initTabs() {
+    document.querySelectorAll('.tabs-tabs-wrapper').forEach(wrapper => {
+      if (!wrapper.querySelector('[data-active]')) {
+        const first = wrapper.querySelector('.tabs-tab-button');
+        if (first) activateTab(first);
+      }
+    });
+  }
+
+  document.addEventListener('click', function (e) {
+    const btn = e.target.closest('.tabs-tab-button');
+    if (btn) activateTab(btn);
+  });
+
+  initTabs();
+  new MutationObserver(initTabs).observe(document.body, { childList: true, subtree: true });
+}
+
 // 主函数：渲染Markdown
 export default function renderMarkdown(text, opts = {}) {
-  // 确保复制处理器已初始化
   if (typeof window !== 'undefined') {
     createCopyHandler();
+    createTabHandler();
   }
 
   // 配置markdown-it
@@ -91,6 +129,7 @@ export default function renderMarkdown(text, opts = {}) {
     //katex: window.mdItPluginKatex?.katex,
     container: window.mdItPluginContainer?.container,
     layout: window.mdItPluginLayout?.layout,
+    tab: window.mdItPluginTab?.tab,
   };
 
   // 通用插件注册
@@ -98,11 +137,20 @@ export default function renderMarkdown(text, opts = {}) {
   Object.entries(plugins).forEach(([name, plugin]) => {
     if (!plugin) return;
     try {
-      if (name !== 'container') { md.use(plugin); }
+      if (name !== 'container' && name !== 'tab') { md.use(plugin); }
     } catch (err) {
       console.warn(`Plugin load failed: ${name}`, err);
     }
   });
+
+  // Tab 插件注册
+  if (plugins.tab) {
+    try {
+      md.use(plugins.tab, { name: 'tabs' });
+    } catch (err) {
+      console.warn('Plugin load failed: tab', err);
+    }
+  }
 
   // 容器插件注册（支持：info, warning, danger, success, tip, note, details）
   if (plugins.container) {

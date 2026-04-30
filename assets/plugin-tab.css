@@ -1,0 +1,49 @@
+/* plugin-tab.css */
+
+.tabs-tabs-wrapper {
+  margin: 12px 0;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.tabs-tabs-header {
+  display: flex;
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+  background: var(--neutral-50, #fafafa);
+}
+
+.tabs-tab-button {
+  all: unset;
+  cursor: pointer;
+  padding: 10px 18px;
+  font-size: 0.9em;
+  font-weight: 500;
+  color: var(--text-secondary, #6b7280);
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.tabs-tab-button:hover {
+  color: var(--text-primary, #111827);
+}
+
+.tabs-tab-button[data-active] {
+  color: var(--accent-color, #2f81f7);
+  border-bottom-color: var(--accent-color, #2f81f7);
+}
+
+.tabs-tabs-container {
+  display: grid;
+  padding: 4px 0;
+}
+
+.tabs-tab-content {
+  grid-area: 1 / 1;
+  visibility: hidden;
+  padding: 12px 18px;
+}
+
+.tabs-tab-content[data-active] {
+  visibility: visible;
+}
