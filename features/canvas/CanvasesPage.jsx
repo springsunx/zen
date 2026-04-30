@@ -12,15 +12,26 @@ import { openModal, closeModal } from "../../commons/components/Modal.jsx";
 import { showToast } from "../../commons/components/Toast.jsx";
 import { t } from "../../commons/i18n/index.js";
 import { LayoutProvider } from '../../commons/contexts/LayoutContext.jsx';
+import { useAppContext } from '../../commons/contexts/AppContext.jsx';
+import useSearchParams from '../../commons/components/useSearchParams.jsx';
 import "./CanvasesPage.css";
 
 export default function CanvasesPage() {
   const [canvases, setCanvases] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const searchParams = useSearchParams();
+  const selectedFocusId = searchParams.get("focusId");
+  const { tags, focusModes, refreshTags, refreshFocusModes } = useAppContext();
+
   useEffect(() => {
     refreshCanvases();
   }, []);
+
+  useEffect(() => {
+    refreshTags(selectedFocusId);
+    refreshFocusModes();
+  }, [selectedFocusId, refreshTags, refreshFocusModes]);
 
   function refreshCanvases() {
     setIsLoading(true);

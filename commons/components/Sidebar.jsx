@@ -32,6 +32,8 @@ export default function Sidebar() {
   const currentSearchParams = new URLSearchParams(window.location.search);
   const focusId = currentSearchParams.get("focusId");
   const notesLink = focusId ? `/notes/?focusId=${focusId}` : "/notes/";
+  const archiveLink = focusId ? `/notes/?isArchived=true&focusId=${focusId}` : "/notes/?isArchived=true";
+  const trashLink = focusId ? `/notes/?isDeleted=true&focusId=${focusId}` : "/notes/?isDeleted=true";
 
   return (
     <>
@@ -60,11 +62,11 @@ export default function Sidebar() {
             <TemplatesIcon />
             {t("nav.templates")}
           </Link>
-          <Link className="sidebar-button archives" activeClassName="is-active" to="/notes/?isArchived=true">
+          <Link className="sidebar-button archives" activeClassName="is-active" to={archiveLink}>
             <ArchiveIcon />
             {t("nav.archives")}
           </Link>
-          <Link className="sidebar-button trash" activeClassName="is-active" to="/notes/?isDeleted=true">
+          <Link className="sidebar-button trash" activeClassName="is-active" to={trashLink}>
             <TrashIcon />
             {t("nav.trash")}
           </Link>

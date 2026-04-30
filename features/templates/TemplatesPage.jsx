@@ -6,6 +6,7 @@ import ApiClient from "../../commons/http/ApiClient.js";
 import navigateTo from "../../commons/utils/navigateTo.js";
 import { useAppContext } from "../../commons/contexts/AppContext.jsx";
 import { LayoutProvider } from '../../commons/contexts/LayoutContext.jsx';
+import useSearchParams from '../../commons/components/useSearchParams.jsx';
 import { t } from "../../commons/i18n/index.js";
 
 export default function TemplatesPage({ templateId }) {
@@ -13,13 +14,16 @@ export default function TemplatesPage({ templateId }) {
   const [isTemplatesLoading, setIsTemplatesLoading] = useState(true);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
 
+  const searchParams = useSearchParams();
+  const selectedFocusId = searchParams.get("focusId");
+
   const { refreshTags, refreshFocusModes } = useAppContext();
 
   useEffect(() => {
     refreshTemplates();
-    refreshTags();
+    refreshTags(selectedFocusId);
     refreshFocusModes();
-  }, [refreshTags, refreshFocusModes]);
+  }, [refreshTags, refreshFocusModes, selectedFocusId]);
 
   useEffect(() => {
     if (templateId === "new") {
@@ -61,7 +65,7 @@ export default function TemplatesPage({ templateId }) {
 
   function handleTemplateChange() {
     refreshTemplates();
-    refreshTags();
+    refreshTags(selectedFocusId);
   }
 
   function handleNewTemplateClick() {
