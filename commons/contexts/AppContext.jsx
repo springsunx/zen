@@ -31,9 +31,8 @@ export function AppProvider({ children }) {
 
   // Initialize data on mount
   useEffect(() => {
-    refreshTags();
     refreshFocusModes();
-  }, [refreshTags, refreshFocusModes]);
+  }, [refreshFocusModes]);
 
   return (
     <AppContext.Provider value={{
