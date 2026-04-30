@@ -90,6 +90,7 @@ export default function renderMarkdown(text, opts = {}) {
     tasklist: window.mdItPluginTasklist?.tasklist,
     //katex: window.mdItPluginKatex?.katex,
     container: window.mdItPluginContainer?.container,
+    layout: window.mdItPluginLayout?.layout,
   };
 
   // 通用插件注册
