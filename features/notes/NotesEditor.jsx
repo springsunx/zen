@@ -330,12 +330,12 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
     ApiClient.deleteNote(selectedNote.noteId)
       .then(() => {
         handleDeleteCloseClick();
+        handleNoteChange();
         if (onClose) {
           onClose();
         } else {
           navigateTo("/", true);
         }
-        if (closeAfter) { handleNoteChange(); }
       });
   }
 
@@ -347,7 +347,8 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
     ApiClient.archiveNote(selectedNote.noteId)
       .then(() => {
         showToast("Note archived.");
-        if (closeAfter) { handleNoteChange(); }
+        handleNoteChange();
+        if (closeAfter) { navigateTo("/", true); }
       });
   }
 
@@ -355,14 +356,14 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
     ApiClient.unarchiveNote(selectedNote.noteId)
       .then(() => {
         showToast("Note unarchived.");
-        if (closeAfter) { handleNoteChange(); }
+        handleNoteChange();
       });
   }
 
   function handleRestoreClick() {
     ApiClient.restoreNote(selectedNote.noteId)
       .then(() => {
-        if (closeAfter) { handleNoteChange(); }
+        handleNoteChange();
       });
   }
 

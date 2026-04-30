@@ -61,11 +61,19 @@ export default function SidebarTagsList() {
     );
   }
 
+  function buildTagUrl(tagId) {
+    const params = new URLSearchParams(window.location.search);
+    const focusId = params.get("focusId");
+    if (focusId) {
+      return `/notes/?tagId=${tagId}&focusId=${focusId}`;
+    }
+    return `/notes/?tagId=${tagId}`;
+  }
+
   const items = orderedTags.map((tag, idx) => (
     <Link
       key={tag.tagId}
-      to={`/notes/?tagId=${tag.tagId}`}
-      shouldPreserveSearchParams
+      to={buildTagUrl(tag.tagId)}
       className="sidebar-tag-link"
       activeClassName="is-active"
       draggable

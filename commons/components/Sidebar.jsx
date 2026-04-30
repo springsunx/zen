@@ -60,11 +60,11 @@ export default function Sidebar() {
             <TemplatesIcon />
             {t("nav.templates")}
           </Link>
-          <Link className="sidebar-button archives" activeClassName="is-active" to="/notes/?isArchived=true" shouldPreserveSearchParams>
+          <Link className="sidebar-button archives" activeClassName="is-active" to="/notes/?isArchived=true">
             <ArchiveIcon />
             {t("nav.archives")}
           </Link>
-          <Link className="sidebar-button trash" activeClassName="is-active" to="/notes/?isDeleted=true" shouldPreserveSearchParams>
+          <Link className="sidebar-button trash" activeClassName="is-active" to="/notes/?isDeleted=true">
             <TrashIcon />
             {t("nav.trash")}
           </Link>

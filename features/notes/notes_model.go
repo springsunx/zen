@@ -12,6 +12,15 @@ import (
 
 const NOTES_LIMIT = 100
 
+func statusCondition(filter NotesFilter) string {
+	if filter.isDeleted {
+		return "n.deleted_at IS NOT NULL"
+	} else if filter.isArchived {
+		return "n.archived_at IS NOT NULL"
+	}
+	return "n.deleted_at IS NULL AND n.archived_at IS NULL"
+}
+
 func GetAllNotes(filter NotesFilter) ([]Note, int, error) {
 	notes := []Note{}
 	total := 0
@@ -20,8 +29,10 @@ func GetAllNotes(filter NotesFilter) ([]Note, int, error) {
 	var query string
 	var queryArgs []interface{}
 
+	statusCond := statusCondition(filter)
+
 	if filter.tagID != 0 {
-		query = `
+		query = fmt.Sprintf(`
 			SELECT
 				n.note_id,
 				n.title,
@@ -49,7 +60,7 @@ func GetAllNotes(filter NotesFilter) ([]Note, int, error) {
 			LEFT JOIN
 				tags t2 ON nt2.tag_id = t2.tag_id
 			WHERE
-				t.tag_id = ? AND n.deleted_at IS NULL AND n.archived_at IS NULL
+				t.tag_id = ? AND %s
 			GROUP BY
 				n.note_id
 			ORDER BY
@@ -62,18 +73,9 @@ func GetAllNotes(filter NotesFilter) ([]Note, int, error) {
 				?
 			OFFSET
 				?
-		`
+		`, statusCond)
 		queryArgs = []interface{}{filter.tagID, NOTES_LIMIT, offset}
 	} else if filter.isUntagged {
-		whereCondition := ""
-		if filter.isDeleted {
-			whereCondition = "WHERE n.deleted_at IS NOT NULL"
-		} else if filter.isArchived {
-			whereCondition = "WHERE n.archived_at IS NOT NULL"
-		} else {
-			whereCondition = "WHERE n.deleted_at IS NULL AND n.archived_at IS NULL"
-		}
-
 		query = fmt.Sprintf(`
 			SELECT
 				n.note_id,
@@ -88,7 +90,8 @@ func GetAllNotes(filter NotesFilter) ([]Note, int, error) {
 				COUNT(*) OVER() as total_count
 			FROM
 				notes n
-			%s
+			WHERE
+				%s
 				AND NOT EXISTS (
 					SELECT 1 FROM note_tags nt WHERE nt.note_id = n.note_id
 				)
@@ -102,10 +105,10 @@ func GetAllNotes(filter NotesFilter) ([]Note, int, error) {
 				?
 			OFFSET
 				?
-		`, whereCondition)
+		`, statusCond)
 		queryArgs = []interface{}{NOTES_LIMIT, offset}
 	} else if filter.focusModeID != 0 {
-		query = `
+		query = fmt.Sprintf(`
 			SELECT
 				n.note_id,
 				n.title,
@@ -131,7 +134,7 @@ func GetAllNotes(filter NotesFilter) ([]Note, int, error) {
 			JOIN
 				tags t ON nt.tag_id = t.tag_id
 			WHERE
-				fmt.focus_mode_id = ? AND n.deleted_at IS NULL AND n.archived_at IS NULL
+				fmt.focus_mode_id = ? AND %s
 			GROUP BY
 				n.note_id
 			ORDER BY
@@ -144,18 +147,9 @@ func GetAllNotes(filter NotesFilter) ([]Note, int, error) {
 				?
 			OFFSET
 				?
-		`
+		`, statusCond)
 		queryArgs = []interface{}{filter.focusModeID, NOTES_LIMIT, offset}
 	} else {
-		whereCondition := ""
-		if filter.isDeleted {
-			whereCondition = "WHERE n.deleted_at IS NOT NULL"
-		} else if filter.isArchived {
-			whereCondition = "WHERE n.archived_at IS NOT NULL"
-		} else {
-			whereCondition = "WHERE n.deleted_at IS NULL AND n.archived_at IS NULL"
-		}
-
 		query = fmt.Sprintf(`
 			SELECT
 				n.note_id,
@@ -181,7 +175,8 @@ func GetAllNotes(filter NotesFilter) ([]Note, int, error) {
 				note_tags nt ON n.note_id = nt.note_id
 			LEFT JOIN
 				tags t ON nt.tag_id = t.tag_id
-			%s
+			WHERE
+				%s
 			GROUP BY
 				n.note_id
 			ORDER BY
@@ -194,7 +189,7 @@ func GetAllNotes(filter NotesFilter) ([]Note, int, error) {
 				?
 			OFFSET
 				?
-		`, whereCondition)
+		`, statusCond)
 		queryArgs = []interface{}{NOTES_LIMIT, offset}
 	}
 

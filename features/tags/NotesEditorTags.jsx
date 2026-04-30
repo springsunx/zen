@@ -163,8 +163,13 @@ function TagItem({ tag, isEditable, onRemoveTag }) {
     );
   }
 
+  function tagUrl() {
+    const focusId = new URLSearchParams(window.location.search).get("focusId");
+    return focusId ? `/notes/?tagId=${tag.tagId}&focusId=${focusId}` : `/notes/?tagId=${tag.tagId}`;
+  }
+
   return (
-    <Link className="tag" key={tag.tagId} to={`/notes/?tagId=${tag.tagId}`} shouldPreserveSearchParams>
+    <Link className="tag" key={tag.tagId} to={tagUrl()}>
       {tag.name}
     </Link>
   );
