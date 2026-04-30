@@ -346,7 +346,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   function handleArchiveClick() {
     ApiClient.archiveNote(selectedNote.noteId)
       .then(() => {
-        showToast("Note archived.");
+        showToast(t('notes.toast.archived'));
         handleNoteChange();
         if (closeAfter) { navigateTo("/", true); }
       });
@@ -355,7 +355,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   function handleUnarchiveClick() {
     ApiClient.unarchiveNote(selectedNote.noteId)
       .then(() => {
-        showToast("Note unarchived.");
+        showToast(t('notes.toast.unarchived'));
         handleNoteChange();
       });
   }

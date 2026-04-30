@@ -250,5 +250,7 @@
   "bulk.toast.archived": "已归档 {count} 条笔记",
   "bulk.toast.trashed": "已移动 {count} 条笔记到回收站",
   "bulk.toast.archiveFailed": "归档失败",
-  "bulk.toast.trashFailed": "移动到回收站失败"
+  "bulk.toast.trashFailed": "移动到回收站失败",
+  "notes.toast.archived": "笔记已归档",
+  "notes.toast.unarchived": "笔记已取消归档"
 }

@@ -34,6 +34,9 @@ export default function Sidebar() {
   const notesLink = focusId ? `/notes/?focusId=${focusId}` : "/notes/";
   const archiveLink = focusId ? `/notes/?isArchived=true&focusId=${focusId}` : "/notes/?isArchived=true";
   const trashLink = focusId ? `/notes/?isDeleted=true&focusId=${focusId}` : "/notes/?isDeleted=true";
+  const newNoteLink = focusId ? `/notes/new?focusId=${focusId}` : "/notes/new";
+  const canvasLink = focusId ? `/canvases/?focusId=${focusId}` : "/canvases/";
+  const templatesLink = focusId ? `/templates/?focusId=${focusId}` : "/templates/";
 
   return (
     <>
@@ -42,7 +45,7 @@ export default function Sidebar() {
         <div className="sidebar-fixed">
           <FocusSwitcher focusModes={focusModes} />
 
-          <Link className="sidebar-button new" to="/notes/new" shouldPreserveSearchParams>
+          <Link className="sidebar-button new" to={newNoteLink}>
             <NewIcon />
             {t("nav.new")}
           </Link>
@@ -54,11 +57,11 @@ export default function Sidebar() {
             <NotesIcon />
             {t("nav.notes")}
           </Link>
-          <Link className="sidebar-button canvas" activeClassName="is-active" to="/canvases/" shouldPreserveSearchParams>
+          <Link className="sidebar-button canvas" activeClassName="is-active" to={canvasLink}>
             <BoardIcon />
             {t("nav.canvas")}
           </Link>
-          <Link className="sidebar-button templates" activeClassName="is-active" to="/templates/" shouldPreserveSearchParams>
+          <Link className="sidebar-button templates" activeClassName="is-active" to={templatesLink}>
             <TemplatesIcon />
             {t("nav.templates")}
           </Link>

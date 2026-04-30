@@ -247,5 +247,7 @@
   "bulk.toast.archived": "{count} {noteNoun} archived",
   "bulk.toast.trashed": "{count} {noteNoun} moved to trash",
   "bulk.toast.archiveFailed": "Failed to archive notes",
-  "bulk.toast.trashFailed": "Failed to move notes to trash"
+  "bulk.toast.trashFailed": "Failed to move notes to trash",
+  "notes.toast.archived": "Note archived.",
+  "notes.toast.unarchived": "Note unarchived."
 }
