@@ -108,6 +108,11 @@ func GetAllNotes(filter NotesFilter) ([]Note, int, error) {
 		`, statusCond)
 		queryArgs = []interface{}{NOTES_LIMIT, offset}
 	} else if filter.focusModeID != 0 {
+		// For archive/trash in focus mode, include untagged notes too
+		untaggedClause := ""
+		if filter.isDeleted || filter.isArchived {
+			untaggedClause = "OR NOT EXISTS (SELECT 1 FROM note_tags nt2 WHERE nt2.note_id = n.note_id)"
+		}
 		query = fmt.Sprintf(`
 			SELECT
 				n.note_id,
@@ -119,22 +124,23 @@ func GetAllNotes(filter NotesFilter) ([]Note, int, error) {
 					JSON_GROUP_ARRAY(JSON_OBJECT(
 						'tagId', t.tag_id,
 						'name', t.name
-					)), '[]'
+					)) FILTER (WHERE t.tag_id IS NOT NULL), '[]'
 				) as tags_json,
 				n.archived_at,
 				n.deleted_at,
 				n.pinned_at,
 				COUNT(*) OVER() as total_count
 			FROM
-				focus_mode_tags fmt
-			JOIN
-				note_tags nt ON fmt.tag_id = nt.tag_id
-			JOIN
-				notes n ON nt.note_id = n.note_id
-			JOIN
+				notes n
+			LEFT JOIN
+				note_tags nt ON n.note_id = nt.note_id
+			LEFT JOIN
 				tags t ON nt.tag_id = t.tag_id
+			LEFT JOIN
+				focus_mode_tags fmt ON nt.tag_id = fmt.tag_id AND fmt.focus_mode_id = ?
 			WHERE
-				fmt.focus_mode_id = ? AND %s
+				%s
+				AND (fmt.focus_mode_id = ? %s)
 			GROUP BY
 				n.note_id
 			ORDER BY
@@ -147,8 +153,8 @@ func GetAllNotes(filter NotesFilter) ([]Note, int, error) {
 				?
 			OFFSET
 				?
-		`, statusCond)
-		queryArgs = []interface{}{filter.focusModeID, NOTES_LIMIT, offset}
+		`, statusCond, untaggedClause)
+		queryArgs = []interface{}{filter.focusModeID, filter.focusModeID, NOTES_LIMIT, offset}
 	} else {
 		query = fmt.Sprintf(`
 			SELECT
