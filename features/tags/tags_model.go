@@ -136,6 +136,120 @@ func GetTagsByFocusModeID(focusModeID int) ([]Tag, error) {
 	return tags, nil
 }
 
+func statusJoin(statusCol string) string {
+	if statusCol == "archived" {
+		return "JOIN notes n ON nt.note_id = n.note_id AND n.archived_at IS NOT NULL"
+	} else if statusCol == "deleted" {
+		return "JOIN notes n ON nt.note_id = n.note_id AND n.deleted_at IS NOT NULL"
+	}
+	return "JOIN notes n ON nt.note_id = n.note_id AND n.deleted_at IS NULL AND n.archived_at IS NULL"
+}
+
+// GetFilteredTags returns tags filtered by focus mode, status, and section.
+func GetFilteredTags(focusModeID int, isArchived, isDeleted bool, section string, query string) ([]Tag, error) {
+	tags := []Tag{}
+
+	var statusCol string
+	if isDeleted {
+		statusCol = "deleted"
+	} else if isArchived {
+		statusCol = "archived"
+	} else {
+		statusCol = "active"
+	}
+
+	joinNote := statusJoin(statusCol)
+
+	var q string
+	var args []interface{}
+
+	if section == "templates" {
+		// Templates use template_tags, no archive/trash status
+		q = `
+			SELECT
+				t.tag_id,
+				t.name,
+				COUNT(tt.template_id) AS note_count
+			FROM
+				tags t
+			LEFT JOIN
+				template_tags tt ON t.tag_id = tt.tag_id
+			GROUP BY
+				t.tag_id, t.name, t.sort_order
+			HAVING
+				COUNT(tt.template_id) > 0
+			ORDER BY
+				COALESCE(t.sort_order, 2147483647) ASC,
+				note_count DESC
+		`
+		args = []interface{}{}
+	} else {
+		// Notes section
+		if focusModeID != 0 {
+			// Focus mode: only count notes that belong to the focus mode
+			q = fmt.Sprintf(`
+				SELECT
+					t.tag_id,
+					t.name,
+					COUNT(nt.note_id) AS note_count
+				FROM
+					tags t
+				LEFT JOIN
+					note_tags nt ON t.tag_id = nt.tag_id
+				%s
+				JOIN
+					focus_mode_tags f ON t.tag_id = f.tag_id
+				WHERE
+					f.focus_mode_id = ?
+				GROUP BY
+					t.tag_id, t.name, t.sort_order
+				ORDER BY
+					t.tag_id ASC
+			`, joinNote)
+			args = []interface{}{focusModeID}
+		} else {
+			q = fmt.Sprintf(`
+				SELECT
+					t.tag_id,
+					t.name,
+					COUNT(nt.note_id) AS note_count
+				FROM
+					tags t
+				LEFT JOIN
+					note_tags nt ON t.tag_id = nt.tag_id
+				%s
+				GROUP BY
+					t.tag_id, t.name, t.sort_order
+				ORDER BY
+					COALESCE(t.sort_order, 2147483647) ASC,
+					note_count DESC
+			`, joinNote)
+			args = []interface{}{}
+		}
+	}
+
+	rows, err := sqlite.DB.Query(q, args...)
+	if err != nil {
+		err = fmt.Errorf("error retrieving tags: %w", err)
+		slog.Error(err.Error())
+		return tags, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var tag Tag
+		err = rows.Scan(&tag.TagID, &tag.Name, &tag.NoteCount)
+		if err != nil {
+			err = fmt.Errorf("error scanning tag: %w", err)
+			slog.Error(err.Error())
+			return tags, err
+		}
+		tags = append(tags, tag)
+	}
+
+	return tags, nil
+}
+
 func UpdateTag(tag Tag) error {
 	query := `
 		UPDATE
@@ -207,16 +321,37 @@ func UpdateTagOrder(tagIDs []int) error {
     return nil
 }
 
-func GetUntaggedCount() (int, error) {
+func GetUntaggedCount(isArchived, isDeleted bool, section string) (int, error) {
 	var count int
-	query := `
-		SELECT COUNT(*) FROM notes n
-		WHERE n.deleted_at IS NULL AND n.archived_at IS NULL
-		AND NOT EXISTS (SELECT 1 FROM note_tags nt WHERE nt.note_id = n.note_id)
-	`
+	var query string
+
+	if section == "templates" {
+		query = `
+			SELECT COUNT(*) FROM templates t
+			WHERE NOT EXISTS (SELECT 1 FROM template_tags tt WHERE tt.template_id = t.template_id)
+		`
+	} else if isDeleted {
+		query = `
+			SELECT COUNT(*) FROM notes n
+			WHERE n.deleted_at IS NOT NULL
+			AND NOT EXISTS (SELECT 1 FROM note_tags nt WHERE nt.note_id = n.note_id)
+		`
+	} else if isArchived {
+		query = `
+			SELECT COUNT(*) FROM notes n
+			WHERE n.archived_at IS NOT NULL
+			AND NOT EXISTS (SELECT 1 FROM note_tags nt WHERE nt.note_id = n.note_id)
+		`
+	} else {
+		query = `
+			SELECT COUNT(*) FROM notes n
+			WHERE n.deleted_at IS NULL AND n.archived_at IS NULL
+			AND NOT EXISTS (SELECT 1 FROM note_tags nt WHERE nt.note_id = n.note_id)
+		`
+	}
 	err := sqlite.DB.QueryRow(query).Scan(&count)
 	if err != nil {
-		return 0, fmt.Errorf("error counting untagged notes: %w", err)
+		return 0, fmt.Errorf("error counting untagged: %w", err)
 	}
 	return count, nil
 }

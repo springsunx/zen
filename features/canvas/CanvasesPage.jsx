@@ -29,7 +29,7 @@ export default function CanvasesPage() {
   }, []);
 
   useEffect(() => {
-    refreshTags(selectedFocusId);
+    refreshTags(selectedFocusId, false, false, 'notes');
     refreshFocusModes();
   }, [selectedFocusId, refreshTags, refreshFocusModes]);
 

@@ -83,7 +83,7 @@ function NotesPageContent({ noteId }) {
   useEffect(() => {
     refreshNotes(selectedTagId, selectedFocusId, isArchivesPage, isTrashPage, 1, isUntaggedPage);
     refreshImages(selectedTagId, selectedFocusId);
-    refreshTags(selectedFocusId);
+    refreshTags(selectedFocusId, isArchivesPage, isTrashPage);
     refreshFocusModes();
   }, [refreshNotes, refreshImages, refreshTags, refreshFocusModes]);
 
@@ -93,7 +93,7 @@ function NotesPageContent({ noteId }) {
 
     refreshNotes(selectedTagId, selectedFocusId, isArchivesPage, isTrashPage, 1, isUntaggedPage);
     refreshImages(selectedTagId, selectedFocusId);
-    refreshTags(selectedFocusId);
+    refreshTags(selectedFocusId, isArchivesPage, isTrashPage);
 
     // Reload preference
     const savedView = ViewPreferences.getPreference(selectedFocusId, selectedTagId, isArchivesPage, isTrashPage);

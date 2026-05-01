@@ -272,12 +272,14 @@ async function clearTrash() {
 
 // Tags
 
-async function getTags(focusId) {
+async function getTags(focusId, isArchived, isDeleted, section) {
   let url = "/api/tags";
-
-  if (focusId) {
-    url += `?focusId=${focusId}`;
-  }
+  const params = [];
+  if (focusId) params.push('focusId=' + focusId);
+  if (isArchived) params.push('isArchived=true');
+  if (isDeleted) params.push('isDeleted=true');
+  if (section) params.push('section=' + section);
+  if (params.length) url += '?' + params.join('&');
 
   const resp = await request('GET', url);
   // Handle TagsResponse envelope { tags: [...], untaggedCount: N }

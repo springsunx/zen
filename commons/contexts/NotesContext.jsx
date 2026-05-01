@@ -70,7 +70,7 @@ export function NotesProvider({ children }) {
 
     refreshNotes(selectedTagId, selectedFocusId, isArchivesPage, isTrashPage, 1, isUntagged);
     refreshImages(selectedTagId, selectedFocusId);
-    refreshTags(selectedFocusId);
+    refreshTags(selectedFocusId, isArchivesPage, isTrashPage);
     refreshFocusModes();
   }, [searchParams, refreshNotes, refreshImages, refreshTags, refreshFocusModes]);
 

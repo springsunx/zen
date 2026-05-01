@@ -23,7 +23,7 @@ export default function TemplatesPage({ templateId }) {
 
   useEffect(() => {
     refreshTemplates(selectedTagId, isUntagged);
-    refreshTags(selectedFocusId);
+    refreshTags(selectedFocusId, false, false, 'templates');
     refreshFocusModes();
   }, [refreshTags, refreshFocusModes, selectedFocusId, selectedTagId, isUntagged]);
 
@@ -67,7 +67,7 @@ export default function TemplatesPage({ templateId }) {
 
   function handleTemplateChange() {
     refreshTemplates(selectedTagId, isUntagged);
-    refreshTags(selectedFocusId);
+    refreshTags(selectedFocusId, false, false, 'templates');
   }
 
   function handleNewTemplateClick() {

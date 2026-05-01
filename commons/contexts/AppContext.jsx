@@ -8,8 +8,8 @@ export function AppProvider({ children }) {
   const [tags, setTags] = useState([]);
   const [focusModes, setFocusModes] = useState([]);
 
-  const refreshTags = useCallback((focusId) => {
-    return ApiClient.getTags(focusId)
+  const refreshTags = useCallback((focusId, isArchived, isDeleted, section) => {
+    return ApiClient.getTags(focusId, isArchived, isDeleted, section)
       .then(newTags => {
         setTags(newTags);
         try { window.dispatchEvent(new CustomEvent('tags:updated')); } catch(_) {}

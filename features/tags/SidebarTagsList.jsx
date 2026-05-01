@@ -7,10 +7,35 @@ import { openModal } from "../../commons/components/Modal.jsx";
 import { useAppContext } from "../../commons/contexts/AppContext.jsx";
 import { t } from "../../commons/i18n/index.js";
 
+function sectionTitle() {
+  const path = window.location.pathname;
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("isArchived") === "true") return t('nav.archives');
+  if (params.get("isDeleted") === "true") return t('nav.trash');
+  if (path.includes('/templates/')) return t('nav.templates');
+  return t('nav.notes');
+}
+
+function isCanvas() {
+  return window.location.pathname.includes('/canvases/');
+}
+
 export default function SidebarTagsList() {
   const { tags, refreshTags } = useAppContext();
   const [orderedTags, setOrderedTags] = useState([]);
   const [untaggedCount, setUntaggedCount] = useState(0);
+  const [title, setTitle] = useState(sectionTitle());
+
+  useEffect(() => {
+    setTitle(sectionTitle());
+    function handleNav() { setTitle(sectionTitle()); }
+    window.addEventListener("navigate", handleNav);
+    window.addEventListener("popstate", handleNav);
+    return () => {
+      window.removeEventListener("navigate", handleNav);
+      window.removeEventListener("popstate", handleNav);
+    };
+  }, []);
 
   useEffect(() => {
     setUntaggedCount(window.__untaggedCount || 0);
@@ -54,9 +79,10 @@ export default function SidebarTagsList() {
   }
 
   if (orderedTags.length === 0 && tags.length === 0) {
+    if (isCanvas()) return null;
     return (
       <div>
-        <div className="sidebar-section-title">{t('templates.form.tags')}</div>
+        <div className="sidebar-section-title">{title}</div>
         <Link
           to={buildUntaggedUrl()}
           className="sidebar-tag-link"
@@ -143,9 +169,12 @@ export default function SidebarTagsList() {
     } catch (e) {}
   }
 
+  // Hide tags on canvas page (no tag support yet)
+  if (isCanvas()) return null;
+
   return (
     <div>
-      <div className="sidebar-section-title">{t('templates.form.tags')}</div>
+      <div className="sidebar-section-title">{title}</div>
       <Link
         to={buildUntaggedUrl()}
         className="sidebar-tag-link"

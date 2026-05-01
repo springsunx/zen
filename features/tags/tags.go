@@ -25,6 +25,12 @@ func HandleGetTags(w http.ResponseWriter, r *http.Request) {
 
 	query := r.URL.Query().Get("query")
 	focusModeIDStr := r.URL.Query().Get("focusId")
+	isArchived := r.URL.Query().Get("isArchived") == "true"
+	isDeleted := r.URL.Query().Get("isDeleted") == "true"
+	section := r.URL.Query().Get("section")
+	if section != "templates" {
+		section = "notes"
+	}
 
 	focusModeID := 0
 	if focusModeIDStr != "" {
@@ -35,12 +41,12 @@ func HandleGetTags(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if focusModeID != 0 {
-		tags, err = GetTagsByFocusModeID(focusModeID)
+	if section == "templates" {
+		tags, err = GetFilteredTags(focusModeID, isArchived, isDeleted, section, query)
 	} else if query != "" {
 		tags, err = SearchTags(query)
 	} else {
-		tags, err = GetAllTags()
+		tags, err = GetFilteredTags(focusModeID, isArchived, isDeleted, "notes", "")
 	}
 
 	if err != nil {
@@ -48,7 +54,7 @@ func HandleGetTags(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	untaggedCount, err := GetUntaggedCount()
+	untaggedCount, err := GetUntaggedCount(isArchived, isDeleted, section)
 	if err != nil {
 		slog.Error("error fetching untagged count", "error", err)
 	}
