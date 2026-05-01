@@ -9,41 +9,103 @@ import (
 	"zen/features/tags"
 )
 
-func GetAllTemplates() ([]Template, error) {
+func GetAllTemplates(tagID int, isUntagged bool) ([]Template, error) {
 	templates := []Template{}
 
-	query := `
-		SELECT
-			t.template_id,
-			t.name,
-			t.title,
-			t.content,
-			t.created_at,
-			t.updated_at,
-			t.usage_count,
-			t.last_used_at,
-			COALESCE(
-				JSON_GROUP_ARRAY(
-					CASE 
-						WHEN tag.tag_id IS NOT NULL THEN JSON_OBJECT(
-							'tagId', tag.tag_id,
-							'name', tag.name
-						)
-						ELSE NULL
-					END
-				) FILTER (WHERE tag.tag_id IS NOT NULL), '[]'
-			) as tags_json
-		FROM
-			templates t
-			LEFT JOIN template_tags tt ON t.template_id = tt.template_id
-			LEFT JOIN tags tag ON tt.tag_id = tag.tag_id
-		GROUP BY
-			t.template_id, t.name, t.title, t.content, t.created_at, t.updated_at, t.usage_count, t.last_used_at
-		ORDER BY
-			t.usage_count DESC, t.created_at DESC
-	`
+	var query string
+	var args []interface{}
 
-	rows, err := sqlite.DB.Query(query)
+	if tagID != 0 {
+		query = `
+			SELECT
+				t.template_id,
+				t.name,
+				t.title,
+				t.content,
+				t.created_at,
+				t.updated_at,
+				t.usage_count,
+				t.last_used_at,
+				COALESCE(
+					JSON_GROUP_ARRAY(
+						CASE 
+							WHEN tag.tag_id IS NOT NULL THEN JSON_OBJECT(
+								'tagId', tag.tag_id,
+								'name', tag.name
+							)
+							ELSE NULL
+						END
+					) FILTER (WHERE tag.tag_id IS NOT NULL), '[]'
+				) as tags_json
+			FROM
+				templates t
+				LEFT JOIN template_tags tt ON t.template_id = tt.template_id
+				LEFT JOIN tags tag ON tt.tag_id = tag.tag_id
+			WHERE
+				t.template_id IN (
+					SELECT tt2.template_id FROM template_tags tt2 WHERE tt2.tag_id = ?
+				)
+			GROUP BY
+				t.template_id, t.name, t.title, t.content, t.created_at, t.updated_at, t.usage_count, t.last_used_at
+			ORDER BY
+				t.usage_count DESC, t.created_at DESC
+		`
+		args = []interface{}{tagID}
+	} else if isUntagged {
+		query = `
+			SELECT
+				t.template_id,
+				t.name,
+				t.title,
+				t.content,
+				t.created_at,
+				t.updated_at,
+				t.usage_count,
+				t.last_used_at,
+				'[]' as tags_json
+			FROM
+				templates t
+			WHERE
+				NOT EXISTS (SELECT 1 FROM template_tags tt WHERE tt.template_id = t.template_id)
+			ORDER BY
+				t.usage_count DESC, t.created_at DESC
+		`
+		args = []interface{}{}
+	} else {
+		query = `
+			SELECT
+				t.template_id,
+				t.name,
+				t.title,
+				t.content,
+				t.created_at,
+				t.updated_at,
+				t.usage_count,
+				t.last_used_at,
+				COALESCE(
+					JSON_GROUP_ARRAY(
+						CASE 
+							WHEN tag.tag_id IS NOT NULL THEN JSON_OBJECT(
+								'tagId', tag.tag_id,
+								'name', tag.name
+							)
+							ELSE NULL
+						END
+					) FILTER (WHERE tag.tag_id IS NOT NULL), '[]'
+				) as tags_json
+			FROM
+				templates t
+				LEFT JOIN template_tags tt ON t.template_id = tt.template_id
+				LEFT JOIN tags tag ON tt.tag_id = tag.tag_id
+			GROUP BY
+				t.template_id, t.name, t.title, t.content, t.created_at, t.updated_at, t.usage_count, t.last_used_at
+			ORDER BY
+				t.usage_count DESC, t.created_at DESC
+		`
+		args = []interface{}{}
+	}
+
+	rows, err := sqlite.DB.Query(query, args...)
 	if err != nil {
 		err = fmt.Errorf("error retrieving templates: %w", err)
 		slog.Error(err.Error())

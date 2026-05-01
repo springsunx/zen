@@ -164,8 +164,10 @@ function TagItem({ tag, isEditable, onRemoveTag }) {
   }
 
   function tagUrl() {
-    const focusId = new URLSearchParams(window.location.search).get("focusId");
-    return focusId ? `/notes/?tagId=${tag.tagId}&focusId=${focusId}` : `/notes/?tagId=${tag.tagId}`;
+    const p = new URLSearchParams(window.location.search);
+    p.set('tagId', tag.tagId);
+    p.delete('isUntagged');
+    return `/notes/?${p.toString()}`;
   }
 
   return (

@@ -177,7 +177,7 @@ function CanvasCard({ canvas, onClick, onDelete }) {
         <div className="canvas-card-title">{canvas.title || t('canvas.untitled')}</div>
         <div className="canvas-card-meta">
           <span className="canvas-card-date">{updatedAt}</span>
-          <button className="canvas-card-delete" onClick={onDelete} title="Delete">
+          <button className="canvas-card-delete" onClick={onDelete} title={t('common.delete')}>
             <TrashIcon />
           </button>
         </div>

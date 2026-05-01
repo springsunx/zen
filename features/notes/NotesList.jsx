@@ -126,8 +126,10 @@ function NotesListItem({ note, isMultiSelect, isSelected, onMultiSelectStart, on
 function NotesGridItem({ note, index, cardHeight }) {
   const link = `/notes/${note.noteId}`;
   function tagUrl(tagId) {
-    const focusId = new URLSearchParams(window.location.search).get("focusId");
-    return focusId ? `/notes/?tagId=${tagId}&focusId=${focusId}` : `/notes/?tagId=${tagId}`;
+    const p = new URLSearchParams(window.location.search);
+    p.set('tagId', tagId);
+    p.delete('isUntagged');
+    return `/notes/?${p.toString()}`;
   }
   const tags = note.tags?.map(tag => (<Link className="tag" key={tag.tagId} to={tagUrl(tag.tagId)}>{tag.name}</Link>));
   let title = <div className="notes-grid-item-title">{note.title}</div>

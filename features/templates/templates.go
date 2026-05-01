@@ -25,7 +25,19 @@ type Template struct {
 }
 
 func HandleGetTemplates(w http.ResponseWriter, r *http.Request) {
-	allTemplates, err := GetAllTemplates()
+	tagIDStr := r.URL.Query().Get("tagId")
+	isUntagged := r.URL.Query().Get("isUntagged") == "true"
+	var tagID int
+	if tagIDStr != "" {
+		var err error
+		tagID, err = strconv.Atoi(tagIDStr)
+		if err != nil {
+			utils.SendErrorResponse(w, "INVALID_TAG_ID", "Invalid tag ID", err, http.StatusBadRequest)
+			return
+		}
+	}
+
+	allTemplates, err := GetAllTemplates(tagID, isUntagged)
 	if err != nil {
 		utils.SendErrorResponse(w, "TEMPLATES_READ_FAILED", "Error fetching templates.", err, http.StatusInternalServerError)
 		return

@@ -37,13 +37,20 @@ export default function SidebarTagsList() {
     }
   }, [tags]);
 
+  function buildTagUrl(tagId) {
+    const p = new URLSearchParams(window.location.search);
+    p.set('tagId', tagId);
+    p.delete('isUntagged');
+    const q = p.toString();
+    return window.location.pathname + (q ? '?' + q : '');
+  }
+
   function buildUntaggedUrl() {
-    const params = new URLSearchParams(window.location.search);
-    const focusId = params.get("focusId");
-    if (focusId) {
-      return `/notes/?isUntagged=true&focusId=${focusId}`;
-    }
-    return "/notes/?isUntagged=true";
+    const p = new URLSearchParams(window.location.search);
+    p.set('isUntagged', 'true');
+    p.delete('tagId');
+    const q = p.toString();
+    return window.location.pathname + (q ? '?' + q : '');
   }
 
   if (orderedTags.length === 0 && tags.length === 0) {
@@ -59,15 +66,6 @@ export default function SidebarTagsList() {
         </Link>
       </div>
     );
-  }
-
-  function buildTagUrl(tagId) {
-    const params = new URLSearchParams(window.location.search);
-    const focusId = params.get("focusId");
-    if (focusId) {
-      return `/notes/?tagId=${tagId}&focusId=${focusId}`;
-    }
-    return `/notes/?tagId=${tagId}`;
   }
 
   const items = orderedTags.map((tag, idx) => (

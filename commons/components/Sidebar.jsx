@@ -31,12 +31,38 @@ export default function Sidebar() {
 
   const currentSearchParams = new URLSearchParams(window.location.search);
   const focusId = currentSearchParams.get("focusId");
-  const notesLink = focusId ? `/notes/?focusId=${focusId}` : "/notes/";
-  const archiveLink = focusId ? `/notes/?isArchived=true&focusId=${focusId}` : "/notes/?isArchived=true";
-  const trashLink = focusId ? `/notes/?isDeleted=true&focusId=${focusId}` : "/notes/?isDeleted=true";
-  const newNoteLink = focusId ? `/notes/new?focusId=${focusId}` : "/notes/new";
-  const canvasLink = focusId ? `/canvases/?focusId=${focusId}` : "/canvases/";
-  const templatesLink = focusId ? `/templates/?focusId=${focusId}` : "/templates/";
+
+  function focusParam() {
+    return focusId ? `focusId=${encodeURIComponent(focusId)}` : '';
+  }
+
+  // 笔记首页/新建/归档/回收站：全部模式不带参数，聚焦模式只带 focusId
+  function notesLink() {
+    const p = focusParam();
+    return `/notes/${p ? '?' + p : ''}`;
+  }
+
+  function newNoteLink() {
+    const p = focusParam();
+    return `/notes/new${p ? '?' + p : ''}`;
+  }
+
+  function statusLink(key) {
+    const p = focusParam();
+    const base = `/notes/?${key}=true`;
+    return p ? base + '&' + p : base;
+  }
+
+  // 模板/画布：全部模式不带参数，聚焦模式只带 focusId
+  function sectionLink(base) {
+    const p = focusParam();
+    return base + (p ? '?' + p : '');
+  }
+
+  const archiveLink = statusLink('isArchived');
+  const trashLink = statusLink('isDeleted');
+  const canvasLink = sectionLink('/canvases/');
+  const templatesLink = sectionLink('/templates/');
 
   return (
     <>
@@ -45,7 +71,7 @@ export default function Sidebar() {
         <div className="sidebar-fixed">
           <FocusSwitcher focusModes={focusModes} />
 
-          <Link className="sidebar-button new" to={newNoteLink}>
+          <Link className="sidebar-button new" to={newNoteLink()}>
             <NewIcon />
             {t("nav.new")}
           </Link>
@@ -53,7 +79,7 @@ export default function Sidebar() {
             <SearchIcon />
             {t("nav.search")}
           </div>
-          <Link className="sidebar-button notes" to={notesLink}>
+          <Link className="sidebar-button notes" to={notesLink()}>
             <NotesIcon />
             {t("nav.notes")}
           </Link>

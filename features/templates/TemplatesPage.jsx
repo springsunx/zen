@@ -16,14 +16,16 @@ export default function TemplatesPage({ templateId }) {
 
   const searchParams = useSearchParams();
   const selectedFocusId = searchParams.get("focusId");
+  const selectedTagId = searchParams.get("tagId");
+  const isUntagged = searchParams.get("isUntagged") === "true";
 
   const { refreshTags, refreshFocusModes } = useAppContext();
 
   useEffect(() => {
-    refreshTemplates();
+    refreshTemplates(selectedTagId, isUntagged);
     refreshTags(selectedFocusId);
     refreshFocusModes();
-  }, [refreshTags, refreshFocusModes, selectedFocusId]);
+  }, [refreshTags, refreshFocusModes, selectedFocusId, selectedTagId, isUntagged]);
 
   useEffect(() => {
     if (templateId === "new") {
@@ -48,10 +50,10 @@ export default function TemplatesPage({ templateId }) {
     }
   }, [templateId]);
 
-  function refreshTemplates() {
+  function refreshTemplates(tagId, untagged) {
     setIsTemplatesLoading(true);
 
-    ApiClient.getTemplates()
+    ApiClient.getTemplates(tagId, untagged)
       .then(templates => {
         setTemplates(templates);
       })
@@ -64,7 +66,7 @@ export default function TemplatesPage({ templateId }) {
 
 
   function handleTemplateChange() {
-    refreshTemplates();
+    refreshTemplates(selectedTagId, isUntagged);
     refreshTags(selectedFocusId);
   }
 

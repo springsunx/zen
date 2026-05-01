@@ -380,8 +380,13 @@ async function exportNotes() {
 
 // Templates
 
-async function getTemplates() {
-  return await request('GET', "/api/templates/");
+async function getTemplates(tagId, isUntagged) {
+  let url = "/api/templates/";
+  const params = [];
+  if (tagId) params.push('tagId=' + tagId);
+  if (isUntagged) params.push('isUntagged=true');
+  if (params.length) url += '?' + params.join('&');
+  return await request('GET', url);
 }
 
 async function getTemplateById(templateId) {
