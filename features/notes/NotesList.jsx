@@ -1,4 +1,4 @@
-import { h, useMemo } from "../../assets/preact.esm.js"
+import { h, Fragment, useMemo } from "../../assets/preact.esm.js"
 import NotesListToolbar from './NotesListToolbar.jsx';
 import Link from '../../commons/components/Link.jsx';
 import Spinner from '../../commons/components/Spinner.jsx';

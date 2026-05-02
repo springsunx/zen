@@ -1,4 +1,4 @@
-import { h } from "../../assets/preact.esm.js"
+import { h, Fragment } from "../../assets/preact.esm.js"
 import Link from './Link.jsx';
 import SidebarTagsList from "../../features/tags/SidebarTagsList.jsx";
 import FocusSwitcher from "../../features/focus/FocusSwitcher.jsx";

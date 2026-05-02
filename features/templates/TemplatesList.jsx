@@ -1,4 +1,4 @@
-import { h } from "../../assets/preact.esm.js"
+import { h, Fragment } from "../../assets/preact.esm.js"
 import TemplatesListToolbar from './TemplatesListToolbar.jsx';
 import TemplateListItem from './TemplateListItem.jsx';
 import Spinner from '../../commons/components/Spinner.jsx';

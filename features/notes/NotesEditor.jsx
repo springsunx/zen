@@ -208,7 +208,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
         if (closeAfter) setIsEditable(false);
         resetAttachments();
         if (closeAfter && isNewNote && !onClose) navigateTo(`/notes/${savedNote.noteId}`, true);
-        patchNote(savedNote.noteId, { title: savedNote.title, content: savedNote.content, snippet: savedNote.snippet });
+        patchNote(savedNote.noteId, { title: savedNote.title, content: savedNote.content, snippet: savedNote.snippet, tags: savedNote.tags });
         onSaved(savedNote);
       })
       .finally(() => setIsSaveLoading(false));
