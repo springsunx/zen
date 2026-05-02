@@ -42,6 +42,20 @@ export default function NotesEditorModal({ note, isNewNote, onModalClose }) {
     }
   }, [note?.noteId]);
 
+  function handleToggleToc() {
+    setShowToc(prev => {
+      const next = !prev;
+      try { localStorage.setItem('zen.modalShowToc', String(next)); } catch {}
+      return next;
+    });
+  }
+
+  function handleSaved(n) {
+    savedNoteRef.current = n;
+    setSelectedNote(n);
+    setCurrentContent(n?.content || "");
+  }
+
   return (
     <ModalBackdrop onClose={handleCloseModal} isCentered={true} closeOnBackdrop={false}>
       <ModalContainer className="notes-editor-modal">
@@ -53,8 +67,8 @@ export default function NotesEditorModal({ note, isNewNote, onModalClose }) {
             onClose={handleCloseModal}
             onEditModeChange={setIsEditorEditable}
             onContentChange={setCurrentContent}
-            onSaved={(n) => { savedNoteRef.current = n; setSelectedNote(n); setCurrentContent(n?.content || ""); }}
-            onToggleToc={() => setShowToc(prev => { const next = !prev; try { localStorage.setItem('zen.modalShowToc', String(next)); } catch {} return next; })}
+            onSaved={handleSaved}
+            onToggleToc={handleToggleToc}
           />
           {/* 在弹窗右侧显示 TOC（仅在非编辑状态且有足够标题时生效） */}
           <RightSideToc

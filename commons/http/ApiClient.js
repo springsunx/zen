@@ -1,29 +1,44 @@
-
 import ApiCache from '../storage/ApiCache.js';
 import BackendHealth from '../net/BackendHealth.js';
 import NotesCache from '../storage/NotesCache.js';
-import ApiCacheFind from '../storage/ApiCache.js';
 import { showToast } from "../components/Toast.jsx";
+
+// ─── Cache helpers ───
+
+async function getCached(url) {
+  try { return await ApiCache.get(url); } catch (_) { return null; }
+}
+
+async function setCached(url, data) {
+  try { await ApiCache.set(url, data); } catch (_) {}
+}
+
+async function getNoteCacheFallback(url) {
+  try {
+    const match = url.match(/\/api\/notes\/(\d+)\/?/);
+    if (!match) return null;
+    const nid = parseInt(match[1], 10);
+    const note = await NotesCache.get(nid);
+    if (note) return note;
+    const fromList = await ApiCache.findNoteById(nid);
+    if (fromList) { try { await NotesCache.set(fromList); } catch (_) {} return fromList; }
+  } catch (_) {}
+  return null;
+}
+
+// ─── Core request ───
 
 async function request(method, url, payload, opts) {
   const isApiGet = method === 'GET' && url.startsWith('/api/');
-  if (BackendHealth.shouldSkipNetwork() && isApiGet) {
-    const cached = await ApiCache.get(url);
-    if (cached) return cached;
-    // If no cache, avoid network but return null to let caller handle gracefully
-  }
-  if (!navigator.onLine && isApiGet) {
-    const cached = await ApiCache.get(url);
-    if (cached) {
-      return cached;
-    }
-  }
-  const options = {
-    method: method,
-    headers: {},
-    ...opts,
-  };
 
+  // 1. Offline / backend unhealthy → serve from cache if available
+  if (isApiGet && (BackendHealth.shouldSkipNetwork() || !navigator.onLine)) {
+    const cached = await getCached(url);
+    if (cached) return cached;
+  }
+
+  // 2. Build fetch options
+  const options = { method, headers: {}, ...opts };
   if (payload instanceof FormData) {
     options.body = payload;
   } else if (payload) {
@@ -31,91 +46,83 @@ async function request(method, url, payload, opts) {
     options.body = JSON.stringify(payload);
   }
 
+  // 3. Execute fetch
+  let response;
   try {
-    const response = await fetch(url, options);
-
-    if (!response.ok) {
-      if (isApiGet) {
-        const cached = await ApiCache.get(url);
-        if (cached) return cached;
-      }
-      throw response;
-    }
-
+    response = await fetch(url, options);
+  } catch (networkError) {
+    // Network error → try cache, then handle offline/connection errors
     if (isApiGet) {
-      try { await ApiCache.set(url, await response.clone().json()); } catch(_) {}
+      const cached = await getCached(url);
+      if (cached) return cached;
+      const noteFallback = await getNoteCacheFallback(url);
+      if (noteFallback) return noteFallback;
     }
-    try { BackendHealth.clearFailure(); } catch(_) {}
-    const isJsonResponse = response.headers.get('content-type')?.includes('application/json');
-    return isJsonResponse ? await response.json() : null;
-  } catch (error) {
-        if (isApiGet) {
-      try {
-        const cached = await ApiCache.get(url);
-        if (cached) {
-          return cached;
-        }
-      } catch (_) {}
-    }
-    // Prefer handling HTTP Response errors first
-    if (error instanceof Response) {
-      const isJsonResponse = error.headers.get('content-type')?.includes('application/json');
-      if (isJsonResponse) {
-        const body = await error.json();
-        const err = new Error(body?.message || error.statusText);
-        err.code = body?.code;
-        try { err.body = body; } catch(_) {}
-        if (body && body.referencedBy) { try { err.referencedBy = body.referencedBy; } catch(_) {} }
-        const skipCodes = ['NO_USERS', 'NO_SESSION', 'INVALID_EMAIL', 'INVALID_PASSWORD', 'INCORRECT_EMAIL', 'INCORRECT_PASSWORD', 'IMAGE_IN_USE'];
-        if (!skipCodes.includes(body?.code)) {
-          const message = body?.message || 'An unexpected error occurred';
-          showToast(message);
-        }
-        if (body?.code !== 'IMAGE_IN_USE') console.error('API error:', body);
-        throw err;
-      }
-      showToast('An unexpected error occurred');
-      try { BackendHealth.clearFailure(); } catch(_) {}
-      throw new Error(error.statusText);
-    }
-
-    // Network/offline errors (TypeError or offline)
-    if (!navigator.onLine) {
-      showToast('No internet connection.');
-      try { BackendHealth.markFailure(); } catch(_) {}
-      console.error('Network error:', error);
-      throw error;
-    }
-    if (error instanceof TypeError && (
-      error.message.includes('fetch') ||
-      error.message.includes('Load failed') ||
-      error.message.includes('NetworkError')
-    )) {
-      showToast('Connection failed.');
-      try { BackendHealth.markFailure(); } catch(_) {}
-      console.error('Fetch error:', error);
-      throw error;
-    }
-
-    // Extra fallback for note detail: try NotesCache and cached lists by ID
-    try {
-      const noteIdMatch = url.match(/\/api\/notes\/(\d+)\/?/);
-      if (isApiGet && noteIdMatch) {
-        const nid = parseInt(noteIdMatch[1], 10);
-        let note = await NotesCache.get(nid);
-        if (note) { return note; }
-        const fromList = await ApiCacheFind.findNoteById(nid);
-        if (fromList) { try { await NotesCache.set(fromList); } catch(_) {} return fromList; }
-      }
-    } catch (_) {}
-
-    throw error;
+    return handleNetworkError(networkError);
   }
 
+  // 4. Handle HTTP errors (non-2xx)
+  if (!response.ok) {
+    if (isApiGet) {
+      const cached = await getCached(url);
+      if (cached) return cached;
+    }
+    return handleHttpError(response);
+  }
+
+  // 5. Success → cache GET responses, return parsed body
+  if (isApiGet) {
+    try { await setCached(url, await response.clone().json()); } catch (_) {}
+  }
+  try { BackendHealth.clearFailure(); } catch (_) {}
+  const isJson = response.headers.get('content-type')?.includes('application/json');
+  return isJson ? await response.json() : null;
 }
 
+// ─── Error handlers ───
 
-// Users
+function handleHttpError(response) {
+  const isJson = response.headers.get('content-type')?.includes('application/json');
+  if (isJson) {
+    return response.json().then(body => {
+      const err = new Error(body?.message || response.statusText);
+      err.code = body?.code;
+      try { err.body = body; } catch (_) {}
+      if (body?.referencedBy) { try { err.referencedBy = body.referencedBy; } catch (_) {} }
+      const skipCodes = ['NO_USERS', 'NO_SESSION', 'INVALID_EMAIL', 'INVALID_PASSWORD', 'INCORRECT_EMAIL', 'INCORRECT_PASSWORD', 'IMAGE_IN_USE'];
+      if (!skipCodes.includes(body?.code)) {
+        showToast(body?.message || 'An unexpected error occurred');
+      }
+      if (body?.code !== 'IMAGE_IN_USE') console.error('API error:', body);
+      throw err;
+    });
+  }
+  showToast('An unexpected error occurred');
+  try { BackendHealth.clearFailure(); } catch (_) {}
+  throw new Error(response.statusText);
+}
+
+function handleNetworkError(error) {
+  if (!navigator.onLine) {
+    showToast('No internet connection.');
+    try { BackendHealth.markFailure(); } catch (_) {}
+    console.error('Network error:', error);
+    throw error;
+  }
+  if (error instanceof TypeError && (
+    error.message.includes('fetch') ||
+    error.message.includes('Load failed') ||
+    error.message.includes('NetworkError')
+  )) {
+    showToast('Connection failed.');
+    try { BackendHealth.markFailure(); } catch (_) {}
+    console.error('Fetch error:', error);
+    throw error;
+  }
+  throw error;
+}
+
+// ─── Users ───
 
 async function checkUser() {
   return await request('GET', '/api/users/me');
@@ -137,7 +144,7 @@ async function logout() {
   return await request('POST', '/api/users/logout');
 }
 
-// Focus Modes
+// ─── Focus Modes ───
 
 async function getFocusModes() {
   return await request('GET', '/api/focus');
@@ -155,35 +162,18 @@ async function deleteFocusMode(focusId) {
   return await request('DELETE', `/api/focus/${focusId}/`);
 }
 
-// Notes
+// ─── Notes ───
 
 async function getNotes(tagId, focusId, isArchived, isDeleted, page, isUntagged) {
   let url = "/api/notes/";
   const params = new URLSearchParams();
-
-  if (tagId) {
-    params.append('tagId', tagId);
-  } else if (focusId) {
-    params.append('focusId', focusId);
-  }
-
-  if (isUntagged === true) {
-    params.append('isUntagged', "true");
-  }
-
-  if (page) {
-    params.append('page', page);
-  }
-
-  if (isArchived) {
-    params.append('isArchived', "true");
-  } else if (isDeleted) {
-    params.append('isDeleted', "true");
-  }
-
-  if (params.toString()) {
-    url += '?' + params.toString();
-  }
+  if (tagId) params.append('tagId', tagId);
+  else if (focusId) params.append('focusId', focusId);
+  if (isUntagged === true) params.append('isUntagged', "true");
+  if (page) params.append('page', page);
+  if (isArchived) params.append('isArchived', "true");
+  else if (isDeleted) params.append('isDeleted', "true");
+  if (params.toString()) url += '?' + params.toString();
 
   const resp = await request('GET', url);
   try {
@@ -194,34 +184,23 @@ async function getNotes(tagId, focusId, isArchived, isDeleted, page, isUntagged)
 }
 
 async function getNoteById(noteId) {
-  // Circuit-breaker: if recent failures and cache exists, skip network to avoid error spam
+  // Circuit-breaker: if recent failures and cache exists, skip network
   try {
-    const failKey = 'api_fail_notes_detail';
-    const lastFail = parseInt(sessionStorage.getItem(failKey) || '0', 10);
-    const within = Date.now() - lastFail < 30000;
-    if (within) {
-      const nid = parseInt(noteId, 10);
-      const cachedNote = await NotesCache.get(nid);
-      if (cachedNote) return cachedNote;
-      try {
-        const fromList = await ApiCacheFind.findNoteById(nid);
-        if (fromList) { try { await NotesCache.set(fromList); } catch(_) {} return fromList; }
-      } catch (_) {}
+    const lastFail = parseInt(sessionStorage.getItem('api_fail_notes_detail') || '0', 10);
+    if (Date.now() - lastFail < 30000) {
+      const cached = await getNoteCacheFallback(`/api/notes/${noteId}`);
+      if (cached) return cached;
     }
   } catch (_) {}
+
   try {
     const note = await request('GET', `/api/notes/${noteId}`);
-    try { await NotesCache.set(note); } catch(_) {}
+    try { await NotesCache.set(note); } catch (_) {}
     return note;
   } catch (e) {
-    try { sessionStorage.setItem('api_fail_notes_detail', String(Date.now())); } catch(_) {}
-    let cached = await NotesCache.get(parseInt(noteId, 10));
+    try { sessionStorage.setItem('api_fail_notes_detail', String(Date.now())); } catch (_) {}
+    const cached = await getNoteCacheFallback(`/api/notes/${noteId}`);
     if (cached) return cached;
-    // try find in cached lists
-    try {
-      const hit = await ApiCacheFind.findNoteById(parseInt(noteId, 10));
-      if (hit) { try { await NotesCache.set(hit); } catch(_) {} return hit; }
-    } catch(_) {}
     throw e;
   }
 }
@@ -270,7 +249,7 @@ async function clearTrash() {
   return await request('DELETE', '/api/notes/?isDeleted=true');
 }
 
-// Tags
+// ─── Tags ───
 
 async function getTags(focusId, isArchived, isDeleted, section) {
   let url = "/api/tags";
@@ -282,9 +261,7 @@ async function getTags(focusId, isArchived, isDeleted, section) {
   if (params.length) url += '?' + params.join('&');
 
   const resp = await request('GET', url);
-  // Handle TagsResponse envelope { tags: [...], untaggedCount: N }
-  if (resp && resp.tags && Array.isArray(resp.tags)) {
-    // Store untaggedCount globally for sidebar use
+  if (resp?.tags && Array.isArray(resp.tags)) {
     window.__untaggedCount = resp.untaggedCount;
     return resp.tags;
   }
@@ -293,10 +270,7 @@ async function getTags(focusId, isArchived, isDeleted, section) {
 
 async function searchTags(query) {
   const resp = await request('GET', `/api/tags?query=${query}`);
-  if (resp && resp.tags && Array.isArray(resp.tags)) {
-    return resp.tags;
-  }
-  return resp;
+  return resp?.tags && Array.isArray(resp.tags) ? resp.tags : resp;
 }
 
 async function updateTag(tag) {
@@ -307,25 +281,19 @@ async function deleteTag(tagId) {
   return await request('DELETE', `/api/tags/${tagId}`);
 }
 
-// Images
+async function reorderTags(order) {
+  return await request('PUT', '/api/tags/reorder/', { order });
+}
+
+// ─── Images ───
 
 async function getImages(tagId, focusId, page) {
   let url = "/api/images/";
   const params = new URLSearchParams();
-
-  if (tagId) {
-    params.append('tagId', tagId);
-  } else if (focusId) {
-    params.append('focusId', focusId);
-  }
-
-  if (page) {
-    params.append('page', page);
-  }
-
-  if (params.toString()) {
-    url += '?' + params.toString();
-  }
+  if (tagId) params.append('tagId', tagId);
+  else if (focusId) params.append('focusId', focusId);
+  if (page) params.append('page', page);
+  if (params.toString()) url += '?' + params.toString();
 
   const resp = await request('GET', url);
   try {
@@ -339,48 +307,51 @@ async function uploadImage(formData) {
   return await request('POST', '/api/images/', formData);
 }
 
-// Search
+async function deleteImage(filename) {
+  return await request('DELETE', `/api/images/${encodeURIComponent(filename)}/`);
+}
+
+async function forceDeleteImage(filename) {
+  return await request('DELETE', `/api/images/${encodeURIComponent(filename)}/?force=true`);
+}
+
+async function cleanupImages() {
+  return await request('POST', '/api/images/cleanup');
+}
+
+// ─── Search ───
 
 async function search(query) {
   return await request('GET', `/api/search?query=${query}`);
 }
 
-// Intelligence
+// ─── Intelligence ───
 
 async function getSimilarImages(filename) {
   return await request('GET', `/api/intelligence/similarity/images/${filename}/`);
 }
 
-// Import
+// ─── Import / Export ───
 
 async function importFile(formData) {
   return await request('POST', '/api/import/', formData);
 }
 
-// Export
-
 async function exportNotes() {
-  const response = await fetch('/api/export/', {
-    method: 'GET',
-    headers: {}
-  });
-
-  if (!response.ok) {
-    throw new Error('Export failed');
-  }
-
+  const response = await fetch('/api/export/', { method: 'GET', headers: {} });
+  if (!response.ok) throw new Error('Export failed');
   const blob = await response.blob();
-  const url = window.URL.createObjectURL(blob);
+  const downloadUrl = window.URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url;
+  a.href = downloadUrl;
   a.download = response.headers.get('content-disposition')?.match(/filename="([^"]+)"/)?.[1] || 'zen-export.zip';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  window.URL.revokeObjectURL(url);
+  window.URL.revokeObjectURL(downloadUrl);
 }
 
-// Templates
+// ─── Templates ───
 
 async function getTemplates(tagId, isUntagged) {
   let url = "/api/templates/";
@@ -415,8 +386,7 @@ async function incrementTemplateUsage(templateId) {
   return await request('PUT', `/api/templates/${templateId}/usage/`);
 }
 
-
-// MCP Tokens
+// ─── MCP Tokens ───
 
 async function getTokens() {
   return await request('GET', '/api/mcp/tokens/');
@@ -430,7 +400,7 @@ async function deleteToken(tokenId) {
   return await request('DELETE', `/api/mcp/tokens/${tokenId}/`);
 }
 
-// Canvases
+// ─── Canvases ───
 
 async function getCanvases() {
   return await request('GET', '/api/canvases/');
@@ -480,15 +450,16 @@ export default {
   searchTags,
   updateTag,
   deleteTag,
+  reorderTags,
   getImages,
+  uploadImage,
   deleteImage,
   forceDeleteImage,
-  uploadImage,
+  cleanupImages,
   search,
   getSimilarImages,
   importFile,
   exportNotes,
-  cleanupImages,
   getTemplates,
   getTemplateById,
   createTemplate,
@@ -504,21 +475,4 @@ export default {
   createCanvas,
   updateCanvas,
   deleteCanvas,
-  reorderTags
 };
-
-async function reorderTags(order) {
-  return await request('PUT', '/api/tags/reorder/', { order });
-}
-
-async function deleteImage(filename) {
-  return await request('DELETE', `/api/images/${encodeURIComponent(filename)}/`);
-}
-
-async function forceDeleteImage(filename) {
-  return await request('DELETE', `/api/images/${encodeURIComponent(filename)}/?force=true`);
-}
-
-async function cleanupImages() {
-  return await request('POST', '/api/images/cleanup');
-}
