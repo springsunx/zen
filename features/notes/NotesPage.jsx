@@ -248,6 +248,9 @@ function NotesPageContent({ noteId }) {
           isEditable={isEditorEditable}
           isNewNote={noteId === "new"}
           noteId={selectedNote?.noteId}
+          onContentPatched={(patchedContent) => {
+            setSelectedNote(prev => prev ? { ...prev, content: patchedContent } : prev);
+          }}
         />
       )}
         <MobileNavbar />

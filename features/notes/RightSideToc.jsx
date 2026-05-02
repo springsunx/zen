@@ -89,7 +89,6 @@ export default function RightSideToc({ content, isEditable, isNewNote, inModal =
             const updated = await ApiClient.updateNote(noteId, { title: selectedNote?.title, content: newContent, tags: selectedNote?.tags });
             try { if (setSelectedNote && (selectedNote?.noteId === noteId)) setSelectedNote({ ...(selectedNote || {}), ...(updated || {}), content: newContent }); } catch {}
             try { if (typeof onContentPatched === "function") onContentPatched(newContent); } catch {}
-            handleNoteChange();
           } catch (e) { console.error('Insert TOC failed:', e); }
         }}>{t('notes.toc.insert') || '插入目录到正文'}</Button></div>
       )}

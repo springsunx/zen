@@ -84,14 +84,14 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
     handleTextAreaHeight();
   }, [content, isEditable]);
 
-  // Sync from selectedNote when switching to a different note
+  // Sync from selectedNote when switching to a different note or content changes externally (e.g. ToC insert)
   useEffect(() => {
     if (selectedNote) {
       setTitle(selectedNote.title || "");
       setContent(selectedNote.content || "");
       setTags(selectedNote.tags || []);
     }
-  }, [selectedNote?.noteId]);
+  }, [selectedNote?.noteId, selectedNote?.content]);
 
   
   // Auto focus editor textarea whenever entering edit mode (any entry path)
@@ -264,8 +264,8 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   }
 
   function handleEditClick() {
-    // Use savedNoteRef (API response) if available, fall back to selectedNote
-    const latest = savedNoteRef.current || selectedNote;
+    const latest = selectedNote;
+    savedNoteRef.current = latest;
     setTitle(latest?.title || "");
     setContent(latest?.content || "");
     setTags(latest?.tags || []);
