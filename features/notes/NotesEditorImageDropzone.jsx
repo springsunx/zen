@@ -1,4 +1,5 @@
 import { h, Fragment, useRef, useEffect } from "../../assets/preact.esm.js";
+import { t } from "../../commons/i18n/index.js";
 
 export default function ImageDropzone({ isDraggingOver, attachments, fileInputRef, handleImageDrop, handleDragOver, handleDragLeave, handleDropzoneClick, handleFileInputChange }) {
   const objectUrls = useRef([]);
@@ -21,7 +22,7 @@ export default function ImageDropzone({ isDraggingOver, attachments, fileInputRe
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onClick={handleDropzoneClick}>
-        Click to upload or drag and drop images
+        {t('notes.editor.imageDropzoneHint')}
         <input
           type="file"
           accept="image/*"

@@ -250,5 +250,6 @@
   "bulk.toast.trashFailed": "Failed to move notes to trash",
   "notes.toast.archived": "Note archived.",
   "notes.toast.unarchived": "Note unarchived.",
-  "search.recent": "Recent"
+  "search.recent": "Recent",
+  "notes.editor.imageDropzoneHint": "Click to upload or drag and drop images"
 }
