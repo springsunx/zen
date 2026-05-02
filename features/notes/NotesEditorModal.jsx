@@ -26,31 +26,21 @@ export default function NotesEditorModal({ note, isNewNote, onModalClose }) {
     }
   }
 
-  // Set the selected note when the modal opens
-  if (isNewNote !== true) {
-    setSelectedNote(note);
-  }
-
-
+  // Set the selected note when the modal opens (only on noteId change, not every render)
   useEffect(() => {
-    // Initialize selectedNote from the note prop for immediate rendering; fetch will overwrite if newer
-    if (note) {
+    if (isNewNote !== true && note) {
       setSelectedNote(note);
       setCurrentContent(note?.content || "");
     }
   }, [note?.noteId]);
 
-useEffect(() => {
+  useEffect(() => {
     if (note?.noteId) {
       ApiClient.getNoteById(note.noteId)
         .then((fresh) => { setSelectedNote(fresh); setCurrentContent(fresh?.content || ''); })
         .catch(() => {});
     }
   }, [note?.noteId]);
-
-  useEffect(() => {
-    setCurrentContent(selectedNote?.content || note?.content || "");
-  }, [selectedNote, note]);
 
   return (
     <ModalBackdrop onClose={handleCloseModal} isCentered={true} closeOnBackdrop={false}>

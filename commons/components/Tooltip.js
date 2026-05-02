@@ -13,8 +13,21 @@ function handleMouseOver(e) {
 }
 
 function handleMouseOut(e) {
+  const related = e.relatedTarget;
+  // 如果鼠标移到了另一个 data-tooltip 元素，不隐藏
+  if (related && related.closest && related.closest('[data-tooltip]')) {
+    return;
+  }
   const element = e.target.closest('[data-tooltip]');
   if (element) {
+    hideTooltip();
+  }
+}
+
+function handleMouseMove(e) {
+  if (!activeTooltip) return;
+  const element = e.target.closest('[data-tooltip]');
+  if (!element) {
     hideTooltip();
   }
 }
@@ -34,6 +47,7 @@ function handleResize() {
 function addGlobalEventListeners() {
   document.addEventListener('mouseover', handleMouseOver);
   document.addEventListener('mouseout', handleMouseOut);
+  document.addEventListener('mousemove', handleMouseMove);
   document.addEventListener('scroll', handleScroll, true);
   window.addEventListener('resize', handleResize);
 }
@@ -84,7 +98,12 @@ function showTooltip(element) {
       return;
     }
 
-    removeTooltip();
+    // 如果元素已经不在 DOM 中，不显示 tooltip
+    if (!element.parentNode) {
+      return;
+    }
+
+    removeTooltip(activeTooltip);
 
     const tooltip = document.createElement('div');
     tooltip.className = 'tooltip';
@@ -119,11 +138,8 @@ function hideTooltip() {
 }
 
 function removeTooltip(tooltip) {
-  if (tooltip) {
-    if (tooltip.parentNode) {
-      tooltip.parentNode.removeChild(tooltip);
-    }
-    return;
+  if (tooltip && tooltip.parentNode) {
+    tooltip.parentNode.removeChild(tooltip);
   }
   if (activeTooltip && activeTooltip.parentNode) {
     activeTooltip.parentNode.removeChild(activeTooltip);
