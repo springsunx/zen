@@ -34,7 +34,24 @@ function saveItem(item) {
   }
 }
 
+function removeItem(item) {
+  try {
+    let history = getItems();
+    history = history.filter(h =>
+      !(
+        (item.noteId && h.noteId === item.noteId) ||
+        (item.tagId && h.tagId === item.tagId)
+      )
+    );
+    localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(history));
+    return history;
+  } catch {
+    return getItems();
+  }
+}
+
 export default {
   getItems,
-  saveItem
+  saveItem,
+  removeItem
 };

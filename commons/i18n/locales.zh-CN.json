@@ -252,5 +252,6 @@
   "bulk.toast.archiveFailed": "归档失败",
   "bulk.toast.trashFailed": "移动到回收站失败",
   "notes.toast.archived": "笔记已归档",
-  "notes.toast.unarchived": "笔记已取消归档"
+  "notes.toast.unarchived": "笔记已取消归档",
+  "search.recent": "最近搜索"
 }

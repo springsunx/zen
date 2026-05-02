@@ -145,13 +145,16 @@ export default function SearchMenu() {
     const historyItems = searchHistory.map((item, index) => {
       const isSelected = (item.noteId && item.noteId === selectedItem?.noteId) || (item.tagId && item.tagId === selectedItem?.tagId);
       return (
-        <SearchResultItem key={`history-${index}`} item={item} isSelected={isSelected} onClick={() => handleResultClick(item)} />
+        <div className="search-history-item" key={`history-${index}`}>
+          <SearchResultItem item={item} isSelected={isSelected} onClick={() => handleResultClick(item)} />
+          <div className="search-history-delete" onClick={(e) => { e.stopPropagation(); const updated = SearchHistory.removeItem(item); setSearchHistory(updated); }} title={t('common.delete') || '删除'}>&#x2715;</div>
+        </div>
       )
     });
 
     historySection = (
       <div className="search-section">
-        <h4 className="search-section-title">Recent</h4>
+        <h4 className="search-section-title">{t('search.recent')}</h4>
         {historyItems}
       </div>
     );

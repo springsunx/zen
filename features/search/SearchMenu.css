@@ -40,6 +40,30 @@
             display: none;
         }
 
+        .search-history-item {
+            display: flex;
+            align-items: center;
+
+            .search-history-delete {
+                padding: 4px 8px;
+                cursor: pointer;
+                opacity: 0;
+                transition: opacity 0.2s;
+                color: var(--text-secondary);
+                font-size: 14px;
+                border-radius: 4px;
+
+                &:hover {
+                    background-color: var(--neutral-100);
+                    color: var(--text-primary);
+                }
+            }
+
+            &:hover .search-history-delete {
+                opacity: 1;
+            }
+        }
+
         .search-section-title {
             font: var(--sm);
             font-size: 12px;

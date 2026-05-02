@@ -249,5 +249,6 @@
   "bulk.toast.archiveFailed": "Failed to archive notes",
   "bulk.toast.trashFailed": "Failed to move notes to trash",
   "notes.toast.archived": "Note archived.",
-  "notes.toast.unarchived": "Note unarchived."
+  "notes.toast.unarchived": "Note unarchived.",
+  "search.recent": "Recent"
 }
