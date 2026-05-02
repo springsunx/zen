@@ -1,4 +1,4 @@
-import { h, useState, useEffect, Fragment } from "../../assets/preact.esm.js"
+import { h, useState, useEffect } from "../../assets/preact.esm.js"
 import Input from "../../commons/components/Input.jsx";
 import Button from "../../commons/components/Button.jsx";
 import { ArrowRightIcon } from "../../commons/components/Icon.jsx";

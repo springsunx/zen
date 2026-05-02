@@ -34,8 +34,8 @@ export default function DropdownMenu({ actions }) {
     setIsDropdownOpen(false);
   }
 
-  const items = actions.map(action => (
-    <li key={action} className="dropdown-option" onClick={() => handleItemClick(action)}>
+  const items = actions.map((action, index) => (
+    <li key={index} className="dropdown-option" onClick={() => handleItemClick(action)}>
       {action}
     </li>
   ));

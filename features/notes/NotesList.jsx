@@ -1,4 +1,4 @@
-import { h, Fragment } from "../../assets/preact.esm.js"
+import { h, useMemo } from "../../assets/preact.esm.js"
 import NotesListToolbar from './NotesListToolbar.jsx';
 import Link from '../../commons/components/Link.jsx';
 import Spinner from '../../commons/components/Spinner.jsx';
@@ -152,6 +152,8 @@ function NotesGridItem({ note, index, cardHeight }) {
   }
 
 
+  const snippetHtml = useMemo(() => renderMarkdown(note.snippet, { stripHeadingIds: true }), [note.snippet]);
+
   const content = (
     <>
       <div className="notes-grid-item-header">
@@ -161,7 +163,7 @@ function NotesGridItem({ note, index, cardHeight }) {
           className="notes-grid-item-pin"
         />
       </div>
-      <div className="notes-grid-item-content" dangerouslySetInnerHTML={{ __html: renderMarkdown(note.snippet, { stripHeadingIds: true }) }} />
+      <div className="notes-grid-item-content" dangerouslySetInnerHTML={{ __html: snippetHtml }} />
       <div className="notes-grid-item-tags">{tags}</div>
     </>
   );

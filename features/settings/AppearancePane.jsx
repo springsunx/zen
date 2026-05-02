@@ -53,7 +53,7 @@ export default function AppearancePane() {
   const themeOptions = themes.map(theme => {
     const isSelected = selectedThemeId === theme.id;
     return (
-      <div className={`theme-option ${isSelected ? 'is-selected' : ''}`} onClick={() => handleThemeSelect(theme.id)}>
+      <div key={theme.id} className={`theme-option ${isSelected ? 'is-selected' : ''}`} onClick={() => handleThemeSelect(theme.id)}>
         <div className="theme-preview">
           {theme.preview}
         </div>

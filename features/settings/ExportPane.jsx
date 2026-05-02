@@ -1,5 +1,4 @@
 import { h, useState } from "../../assets/preact.esm.js"
-import { DownloadIcon } from "../../commons/components/Icon.jsx";
 import { showToast } from "../../commons/components/Toast.jsx";
 import ApiClient from "../../commons/http/ApiClient.js";
 import Button from "../../commons/components/Button.jsx";

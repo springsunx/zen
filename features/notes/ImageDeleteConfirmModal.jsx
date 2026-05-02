@@ -1,4 +1,4 @@
-import { h, Fragment } from "../../assets/preact.esm.js";
+import { h } from "../../assets/preact.esm.js";
 import { useEffect, useState } from "../../assets/preact.esm.js";
 import { ModalBackdrop, ModalContainer, ModalHeader, ModalContent, ModalFooter } from "../../commons/components/Modal.jsx";
 import ApiClient from "../../commons/http/ApiClient.js";

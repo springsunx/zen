@@ -34,7 +34,7 @@ export default function ImageDropzone({ isDraggingOver, attachments, fileInputRe
       </div>
       <div className="notes-editor-image-attachment-preview">
         {objectUrls.current.map((url, index) => (
-          <img src={url} alt={`Attachment ${index}`} />
+          <img key={index} src={url} alt={`Attachment ${index}`} />
         ))}
       </div>
     </>
