@@ -1,3 +1,4 @@
+import { h } from "../../assets/preact.esm.js"
 import { NewIcon } from '../../commons/components/Icon.jsx';
 import "./TemplatesListToolbar.css";
 import { t } from "../../commons/i18n/index.js";
