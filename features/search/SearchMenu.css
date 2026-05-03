@@ -43,24 +43,38 @@
         .search-history-item {
             display: flex;
             align-items: center;
+            min-width: 0;
 
-            .search-history-delete {
-                padding: 4px 8px;
-                cursor: pointer;
-                opacity: 0;
-                transition: opacity 0.2s;
-                color: var(--text-secondary);
-                font-size: 14px;
-                border-radius: 4px;
+            .search-result-item {
+                min-width: 0;
+                flex: 1;
 
-                &:hover {
-                    background-color: var(--neutral-100);
-                    color: var(--text-primary);
+                .search-result-item-content {
+                    min-width: 0;
+
+                    .title,
+                    .subtitle {
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                        white-space: nowrap;
+                    }
                 }
             }
 
-            &:hover .search-history-delete {
-                opacity: 1;
+            .search-history-delete {
+                margin-left: auto;
+                padding: 8px;
+                cursor: pointer;
+                color: var(--text-secondary);
+                font-size: 16px;
+                border-radius: 4px;
+                flex-shrink: 0;
+
+                &:hover,
+                &:active {
+                    background-color: var(--neutral-100);
+                    color: var(--text-primary);
+                }
             }
         }
 
