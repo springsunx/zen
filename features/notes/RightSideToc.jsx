@@ -64,7 +64,7 @@ export default function RightSideToc({ content, isEditable, isNewNote, inModal =
         className="right-toc-item"
         style={{ paddingLeft }}
         onClick={() => handleHeadingClick(heading)}
-        title={heading.text}
+        data-tooltip={heading.text}
       >
         <span className="right-toc-item-text">{heading.text}</span>
       </div>
