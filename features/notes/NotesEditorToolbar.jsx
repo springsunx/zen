@@ -1,9 +1,10 @@
 import { h } from "../../assets/preact.esm.js";
 import Button from '../../commons/components/Button.jsx';
 import DropdownMenu from '../../commons/components/DropdownMenu.jsx';
-import { CloseIcon, SidebarCloseIcon, SidebarOpenIcon, BackIcon, ListOrderedIcon } from "../../commons/components/Icon.jsx";
+import { CloseIcon, SidebarCloseIcon, SidebarOpenIcon, BackIcon, ListOrderedIcon, CopyIcon } from "../../commons/components/Icon.jsx";
 import isMobile from '../../commons/utils/isMobile.js';
 import { t } from "../../commons/i18n/index.js";
+import { showToast } from "../../commons/components/Toast.jsx";
 
 export default function NotesEditorToolbar({ note, isNewNote, isEditable, isModal, isSaveLoading, isExpanded, isExpandable, onSaveClick, onSaveAndCloseClick, onEditClick, onEditCancelClick, onCloseClick, onDeleteClick, onArchiveClick, onUnarchiveClick, onRestoreClick, onExpandToggleClick, onPinClick, onUnpinClick, onToggleToc }) {
   const saveButtonText = isSaveLoading ? t('common.saving') : t('common.save');
@@ -24,6 +25,21 @@ export default function NotesEditorToolbar({ note, isNewNote, isEditable, isModa
         condition: onToggleToc != null,
         component: <Button variant="ghost" onClick={onToggleToc} data-tooltip={t('notes.toc.toggleTitle')}>
           <ListOrderedIcon />
+        </Button>
+      },
+      {
+        key: 'copyMarkdown',
+        condition: !isNewNote && note?.content != null,
+        component: <Button variant="ghost" onClick={async () => {
+          try {
+            await navigator.clipboard.writeText(note.content);
+            showToast(t('notes.editor.copyMarkdown.success'));
+          } catch (e) {
+            console.error('Copy markdown failed:', e);
+            showToast(t('notes.editor.copyMarkdown.failed'));
+          }
+        }} data-tooltip={t('notes.editor.copyMarkdown.tooltip')}>
+          <CopyIcon />
         </Button>
       },
       {
