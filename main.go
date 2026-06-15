@@ -2,6 +2,7 @@ package main
 
 import (
 	"embed"
+	"flag"
 	"fmt"
 	"io/fs"
 	"log/slog"
@@ -32,7 +33,28 @@ var assets embed.FS
 //go:embed migrations/*.sql
 var migrations embed.FS
 
+// Version can be set via ZEN_VERSION env var or -ldflags
+var version = getEnv("ZEN_VERSION", "dev")
+
 func main() {
+	// ─── CLI Flags ───
+	port := flag.String("port", getEnv("PORT", "8080"), "server port")
+	dataFolder := flag.String("data", getEnv("DATA_FOLDER", "."), "database directory")
+	imagesFolder := flag.String("images", getEnv("IMAGES_FOLDER", "./images"), "image storage directory")
+	showVersion := flag.Bool("version", false, "print version and exit")
+	flag.Parse()
+
+	// ─── Subcommands ───
+	if *showVersion {
+		fmt.Printf("zen %s\n", version)
+		return
+	}
+
+	// Apply flag values back to env so existing code works unchanged
+	os.Setenv("PORT", *port)
+	os.Setenv("DATA_FOLDER", *dataFolder)
+	os.Setenv("IMAGES_FOLDER", *imagesFolder)
+
 	defer func() {
 		if r := recover(); r != nil {
 			slog.Error("killing server", "error", r)
@@ -67,14 +89,9 @@ func main() {
 
 	go runBackgroundTasks()
 
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
-	port = ":" + port
-
-	slog.Info("starting server", "port", port)
-	err := http.ListenAndServe(port, newRouter())
+	addr := ":" + *port
+	slog.Info("starting server", "port", *port)
+	err := http.ListenAndServe(addr, newRouter())
 	if err != nil {
 		panic(err)
 	}
@@ -103,6 +120,7 @@ func newRouter() *http.ServeMux {
 	addPrivateRoute(mux, "PUT /api/notes/{noteId}/restore/", notes.HandleRestoreDeletedNote)
 	addPrivateRoute(mux, "PUT /api/notes/{noteId}/pin/", notes.HandlePinNote)
 	addPrivateRoute(mux, "PUT /api/notes/{noteId}/unpin/", notes.HandleUnpinNote)
+	addPrivateRoute(mux, "GET /api/notes/{noteId}/backlinks/", notes.HandleGetBacklinks)
 
 	addPrivateRoute(mux, "GET /api/tags/", tags.HandleGetTags)
 	addPrivateRoute(mux, "PUT /api/tags/", tags.HandleUpdateTag)
@@ -239,6 +257,13 @@ func runBackgroundTasks() {
 			intelligence.ProcessQueues()
 		}
 	}()
+}
+
+func getEnv(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
 }
 
 func handleServiceWorker(w http.ResponseWriter, r *http.Request) {

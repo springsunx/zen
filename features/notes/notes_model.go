@@ -944,3 +944,49 @@ func GetNotesCount(isDeleted, isArchived bool) (int, error) {
 
 	return count, nil
 }
+
+
+// GetBacklinks returns notes whose content contains a link to the given noteID.
+// Internal link format: [title](/notes/{noteId})
+func GetBacklinks(noteID int) ([]Note, error) {
+	notes := []Note{}
+	linkPattern := fmt.Sprintf("%%/notes/%d)%%", noteID)
+
+	query := `
+		SELECT
+			n.note_id,
+			n.title,
+			SUBSTR(n.content, 0, 200) AS snippet,
+			n.updated_at
+		FROM
+			notes n
+		WHERE
+			n.content LIKE ?
+			AND n.deleted_at IS NULL
+			AND n.note_id != ?
+		ORDER BY
+			n.updated_at DESC
+	`
+
+	rows, err := sqlite.DB.Query(query, linkPattern, noteID)
+	if err != nil {
+		err = fmt.Errorf("error querying backlinks: %w", err)
+		slog.Error(err.Error())
+		return notes, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var note Note
+		err = rows.Scan(&note.NoteID, &note.Title, &note.Snippet, &note.UpdatedAt)
+		if err != nil {
+			err = fmt.Errorf("error scanning backlink note: %w", err)
+			slog.Error(err.Error())
+			return notes, err
+		}
+		note.Tags = []tags.Tag{}
+		notes = append(notes, note)
+	}
+
+	return notes, nil
+}
