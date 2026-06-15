@@ -2,6 +2,7 @@ import { h } from "../../assets/preact.esm.js";
 import { LinkIcon } from "../../commons/components/Icon.jsx";
 import navigateTo from "../../commons/utils/navigateTo.js";
 import formatDate from "../../commons/utils/formatDate.js";
+import { t } from "../../commons/i18n/index.js";
 import "./BacklinksPanel.css";
 
 export default function BacklinksPanel({ backlinks = [], isLoading = false }) {
@@ -10,9 +11,9 @@ export default function BacklinksPanel({ backlinks = [], isLoading = false }) {
       <div className="backlinks-panel">
         <div className="backlinks-header">
           <LinkIcon />
-          <span className="backlinks-title">Backlinks</span>
+          <span className="backlinks-title">{t('backlinks.title')}</span>
         </div>
-        <div className="backlinks-loading">Loading...</div>
+        <div className="backlinks-loading">{t('backlinks.loading')}</div>
       </div>
     );
   }
@@ -33,7 +34,7 @@ export default function BacklinksPanel({ backlinks = [], isLoading = false }) {
 
     return (
       <a className="backlinks-item" key={note.noteId} href={`/notes/${note.noteId}`} onClick={handleClick}>
-        <div className="backlinks-item-title">{note.title || "Untitled"}</div>
+        <div className="backlinks-item-title">{note.title || t('backlinks.untitled')}</div>
         {snippet && <div className="backlinks-item-snippet">{snippet}</div>}
         <div className="backlinks-item-date">{shortDate}</div>
       </a>
@@ -44,7 +45,7 @@ export default function BacklinksPanel({ backlinks = [], isLoading = false }) {
     <div className="backlinks-panel">
       <div className="backlinks-header">
         <LinkIcon />
-        <span className="backlinks-title">Backlinks</span>
+        <span className="backlinks-title">{t('backlinks.title')}</span>
         <span className="backlinks-count">{backlinks.length}</span>
       </div>
       <div className="backlinks-list">
