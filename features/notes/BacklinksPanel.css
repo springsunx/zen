@@ -12,6 +12,22 @@
   color: var(--text-secondary, #666);
 }
 
+.backlinks-toggle {
+  display: inline-flex;
+  align-items: center;
+  transition: transform var(--transition-fast);
+
+  &.is-expanded {
+    transform: rotate(90deg);
+  }
+
+  svg.lucide {
+    width: 16px;
+    height: 16px;
+    padding: 0;
+  }
+}
+
 .backlinks-header svg {
   width: 16px;
   height: 16px;

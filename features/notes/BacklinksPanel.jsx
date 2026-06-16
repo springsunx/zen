@@ -1,11 +1,13 @@
-import { h } from "../../assets/preact.esm.js";
-import { LinkIcon } from "../../commons/components/Icon.jsx";
+import { h, useState } from "../../assets/preact.esm.js";
+import { LinkIcon, ChevronRightIcon } from "../../commons/components/Icon.jsx";
 import navigateTo from "../../commons/utils/navigateTo.js";
 import formatDate from "../../commons/utils/formatDate.js";
 import { t } from "../../commons/i18n/index.js";
 import "./BacklinksPanel.css";
 
 export default function BacklinksPanel({ backlinks = [], isLoading = false }) {
+  const [isExpanded, setIsExpanded] = useState(true);
+
   if (isLoading === true) {
     return (
       <div className="backlinks-panel">
@@ -20,6 +22,11 @@ export default function BacklinksPanel({ backlinks = [], isLoading = false }) {
 
   if (backlinks.length === 0) {
     return null;
+  }
+
+  function handleToggle(e) {
+    e.stopPropagation();
+    setIsExpanded(!isExpanded);
   }
 
   const items = backlinks.map(note => {
@@ -43,14 +50,19 @@ export default function BacklinksPanel({ backlinks = [], isLoading = false }) {
 
   return (
     <div className="backlinks-panel">
-      <div className="backlinks-header">
+      <div className="backlinks-header" onClick={handleToggle} style="cursor: pointer;">
+        <span className={`backlinks-toggle ${isExpanded ? 'is-expanded' : ''}`}>
+          <ChevronRightIcon />
+        </span>
         <LinkIcon />
         <span className="backlinks-title">{t('backlinks.title')}</span>
         <span className="backlinks-count">{backlinks.length}</span>
       </div>
-      <div className="backlinks-list">
-        {items}
-      </div>
+      {isExpanded && (
+        <div className="backlinks-list">
+          {items}
+        </div>
+      )}
     </div>
   );
 }
