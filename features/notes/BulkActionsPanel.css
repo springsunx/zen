@@ -48,4 +48,15 @@
             font: var(--sm);
         }
     }
+
+    .bulk-actions-panel-tags {
+        margin-bottom: var(--spacing-4);
+
+        label {
+            display: block;
+            font: var(--sm);
+            font-weight: 600;
+            margin-bottom: var(--spacing-2);
+        }
+    }
 }

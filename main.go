@@ -115,6 +115,8 @@ func newRouter() *http.ServeMux {
 	addPrivateRoute(mux, "DELETE /api/notes/{noteId}/", notes.HandleSoftDeleteNote)
 	addPrivateRoute(mux, "DELETE /api/notes/", notes.HandleDeleteNotes)
 	addPrivateRoute(mux, "PUT /api/notes/bulk/archive/", notes.HandleBulkArchiveNotes)
+	addPrivateRoute(mux, "PUT /api/notes/bulk/tag/", notes.HandleBulkAddTag)
+	addPrivateRoute(mux, "DELETE /api/notes/bulk/tag/", notes.HandleBulkRemoveTag)
 	addPrivateRoute(mux, "PUT /api/notes/{noteId}/archive/", notes.HandleArchiveNote)
 	addPrivateRoute(mux, "PUT /api/notes/{noteId}/unarchive/", notes.HandleUnarchiveNote)
 	addPrivateRoute(mux, "PUT /api/notes/{noteId}/restore/", notes.HandleRestoreDeletedNote)
@@ -126,6 +128,7 @@ func newRouter() *http.ServeMux {
 	addPrivateRoute(mux, "PUT /api/tags/", tags.HandleUpdateTag)
 	addPrivateRoute(mux, "PUT /api/tags/reorder/", tags.HandleReorderTags)
 	addPrivateRoute(mux, "DELETE /api/tags/{tagId}/", tags.HandleDeleteTag)
+	addPrivateRoute(mux, "PATCH /api/tags/{tagId}/parent/", tags.HandleMoveTag)
 
 	addPrivateRoute(mux, "GET /api/focus/", focus.HandleGetAllFocusModes)
 	addPrivateRoute(mux, "POST /api/focus/", focus.HandleCreateFocusMode)

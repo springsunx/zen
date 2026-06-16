@@ -3,6 +3,7 @@ import ApiClient from '../../commons/http/ApiClient.js';
 import { RemoveIcon } from "../../commons/components/Icon.jsx";
 import Link from "../../commons/components/Link.jsx";
 import { t } from "../../commons/i18n/index.js";
+import { TAG_COLORS } from "./TagDetailModal.jsx";
 
 export default function NotesEditorTags({ tags, isEditable, canCreateTag, onAddTag, onRemoveTag }) {
   const [query, setQuery] = useState("");
@@ -154,9 +155,14 @@ export default function NotesEditorTags({ tags, isEditable, canCreateTag, onAddT
 }
 
 function TagItem({ tag, isEditable, onRemoveTag }) {
+  const tagColor = tag.color ? (TAG_COLORS.find(c => c.value === tag.color)?.hex || null) : null;
+  const tagBgStyle = tagColor
+    ? { backgroundColor: `${tagColor}22`, color: tagColor }
+    : { backgroundColor: 'var(--neutral-100)' };
+
   if (isEditable) {
     return (
-      <div className="tag" key={tag.tagId}>
+      <div className="tag" key={tag.tagId} style={tagBgStyle}>
         {tag.name}
         <RemoveIcon onClick={onRemoveTag} />
       </div>
@@ -171,7 +177,7 @@ function TagItem({ tag, isEditable, onRemoveTag }) {
   }
 
   return (
-    <Link className="tag" key={tag.tagId} to={tagUrl()}>
+    <Link className="tag" key={tag.tagId} to={tagUrl()} style={tagBgStyle}>
       {tag.name}
     </Link>
   );

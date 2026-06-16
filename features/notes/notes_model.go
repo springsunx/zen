@@ -42,7 +42,8 @@ func GetAllNotes(filter NotesFilter) ([]Note, int, error) {
 				COALESCE(
 					JSON_GROUP_ARRAY(JSON_OBJECT(
 						'tagId', t2.tag_id,
-						'name', t2.name
+						'name', t2.name,
+						'color', t2.color
 					)), '[]'
 				) as tags_json,
 				n.archived_at,
@@ -123,7 +124,8 @@ func GetAllNotes(filter NotesFilter) ([]Note, int, error) {
 				COALESCE(
 					JSON_GROUP_ARRAY(JSON_OBJECT(
 						'tagId', t.tag_id,
-						'name', t.name
+						'name', t.name,
+						'color', t.color
 					)) FILTER (WHERE t.tag_id IS NOT NULL), '[]'
 				) as tags_json,
 				n.archived_at,
@@ -167,7 +169,8 @@ func GetAllNotes(filter NotesFilter) ([]Note, int, error) {
 					WHEN COUNT(t.tag_id) > 0 THEN
 						JSON_GROUP_ARRAY(JSON_OBJECT(
 							'tagId', t.tag_id,
-							'name', t.name
+							'name', t.name,
+							'color', t.color
 						))
 					ELSE '[]'
 				END AS tags_json,
@@ -255,7 +258,8 @@ func GetNoteByID(noteID int) (Note, error) {
 				WHEN COUNT(t.tag_id) > 0 THEN
 					JSON_GROUP_ARRAY(JSON_OBJECT(
 						'tagId', t.tag_id,
-						'name', t.name
+						'name', t.name,
+						'color', t.color
 					))
 				ELSE '[]'
 			END AS tags_json,
@@ -354,23 +358,15 @@ func CreateNote(note Note) (Note, error) {
 
 	for _, tag := range note.Tags {
 		if tag.TagID == -1 {
-			query = `
-				INSERT INTO
-					tags (name)
-				VALUES
-					(?)
-				RETURNING
-					tag_id,
-					name
-			`
-
-			row := tx.QueryRow(query, tag.Name)
-			err := row.Scan(&tag.TagID, &tag.Name)
-			if err != nil {
-				err = fmt.Errorf("error creating tag: %w", err)
-				slog.Error(err.Error())
-				return note, err
+			// Use hierarchy-aware tag creation
+			tagID, tagName, hErr := tags.ParseAndCreateTagHierarchy(tag.Name, tx)
+			if hErr != nil {
+				hErr = fmt.Errorf("error creating tag: %w", hErr)
+				slog.Error(hErr.Error())
+				return note, hErr
 			}
+			tag.TagID = tagID
+			tag.Name = tagName
 		}
 
 		query := `
@@ -393,7 +389,8 @@ func CreateNote(note Note) (Note, error) {
 			COALESCE(
 				JSON_GROUP_ARRAY(JSON_OBJECT(
 					'tagId', t.tag_id,
-					'name', t.name
+					'name', t.name,
+					'color', t.color
 				)), '[]'
 			) as tags_json
 		FROM
@@ -486,23 +483,15 @@ func UpdateNote(note Note) (Note, error) {
 
 	for _, tag := range note.Tags {
 		if tag.TagID == -1 {
-			query = `
-				INSERT INTO
-					tags (name)
-				VALUES
-					(?)
-				RETURNING
-					tag_id,
-					name
-			`
-
-			row := tx.QueryRow(query, tag.Name)
-			err := row.Scan(&tag.TagID, &tag.Name)
-			if err != nil {
-				err = fmt.Errorf("error creating tag: %w", err)
-				slog.Error(err.Error())
-				return note, err
+			// Use hierarchy-aware tag creation
+			tagID, tagName, hErr := tags.ParseAndCreateTagHierarchy(tag.Name, tx)
+			if hErr != nil {
+				hErr = fmt.Errorf("error creating tag: %w", hErr)
+				slog.Error(hErr.Error())
+				return note, hErr
 			}
+			tag.TagID = tagID
+			tag.Name = tagName
 		}
 
 		query := `
@@ -525,7 +514,8 @@ func UpdateNote(note Note) (Note, error) {
 			COALESCE(
 				JSON_GROUP_ARRAY(JSON_OBJECT(
 					'tagId', t.tag_id,
-					'name', t.name
+					'name', t.name,
+					'color', t.color
 				)), '[]'
 			) as tags_json
 		FROM

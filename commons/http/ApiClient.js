@@ -233,6 +233,14 @@ async function bulkArchiveNotes(ids) {
   return await request('PUT', '/api/notes/bulk/archive/', { ids });
 }
 
+async function bulkAddTag(ids, tagId, tagName) {
+  return await request('PUT', '/api/notes/bulk/tag/', { ids, tagId, tagName });
+}
+
+async function bulkRemoveTag(ids, tagId) {
+  return await request('DELETE', '/api/notes/bulk/tag/', { ids, tagId });
+}
+
 async function unarchiveNote(noteId) {
   return await request('PUT', `/api/notes/${noteId}/unarchive/`);
 }
@@ -287,6 +295,10 @@ async function deleteTag(tagId) {
 
 async function reorderTags(order) {
   return await request('PUT', '/api/tags/reorder/', { order });
+}
+
+async function moveTag(tagId, parentId, parentName) {
+  return await request('PATCH', `/api/tags/${tagId}/parent/`, { parentId, parentName });
 }
 
 // ─── Images ───
@@ -446,6 +458,8 @@ export default {
   restoreNote,
   archiveNote,
   bulkArchiveNotes,
+  bulkAddTag,
+  bulkRemoveTag,
   unarchiveNote,
   getBacklinks,
   pinNote,
@@ -456,6 +470,7 @@ export default {
   updateTag,
   deleteTag,
   reorderTags,
+  moveTag,
   getImages,
   uploadImage,
   deleteImage,

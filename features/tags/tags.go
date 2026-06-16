@@ -8,17 +8,6 @@ import (
 	"zen/commons/utils"
 )
 
-type Tag struct {
-	TagID     int    `json:"tagId"`
-	Name      string `json:"name"`
-	NoteCount int    `json:"noteCount"`
-}
-
-type TagsResponse struct {
-	Tags          []Tag `json:"tags"`
-	UntaggedCount int   `json:"untaggedCount"`
-}
-
 func HandleGetTags(w http.ResponseWriter, r *http.Request) {
 	var tags []Tag
 	var err error
@@ -59,8 +48,16 @@ func HandleGetTags(w http.ResponseWriter, r *http.Request) {
 		slog.Error("error fetching untagged count", "error", err)
 	}
 
+	// Build tree structure for non-search queries
+	var responseTags []Tag
+	if query == "" {
+		responseTags = BuildTagTree(tags)
+	} else {
+		responseTags = tags
+	}
+
 	response := TagsResponse{
-		Tags:          tags,
+		Tags:          responseTags,
 		UntaggedCount: untaggedCount,
 	}
 
@@ -99,16 +96,44 @@ func HandleDeleteTag(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func HandleMoveTag(w http.ResponseWriter, r *http.Request) {
+	tagIDStr := r.PathValue("tagId")
+	tagID, err := strconv.Atoi(tagIDStr)
+	if err != nil {
+		utils.SendErrorResponse(w, "INVALID_TAG_ID", "Invalid tag ID", err, http.StatusBadRequest)
+		return
+	}
+
+	var payload struct {
+		ParentID   *int   `json:"parentId"`
+		ParentName string `json:"parentName"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		utils.SendErrorResponse(w, "INVALID_REQUEST_BODY", "Invalid request data", err, http.StatusBadRequest)
+		return
+	}
+
+	parentID, err := MoveTag(tagID, payload.ParentID, payload.ParentName)
+	if err != nil {
+		utils.SendErrorResponse(w, "TAG_MOVE_FAILED", "Error moving tag.", err, http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(struct {
+		ParentID int `json:"parentId"`
+	}{ParentID: parentID})
+}
 
 func HandleReorderTags(w http.ResponseWriter, r *http.Request) {
-    var payload struct{ Order []int `json:"order"` }
-    if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-        utils.SendErrorResponse(w, "INVALID_REQUEST_BODY", "Invalid request data", err, http.StatusBadRequest)
-        return
-    }
-    if err := UpdateTagOrder(payload.Order); err != nil {
-        utils.SendErrorResponse(w, "TAG_REORDER_FAILED", "Error reordering tags.", err, http.StatusInternalServerError)
-        return
-    }
-    w.WriteHeader(http.StatusNoContent)
+	var payload struct{ Order []int `json:"order"` }
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		utils.SendErrorResponse(w, "INVALID_REQUEST_BODY", "Invalid request data", err, http.StatusBadRequest)
+		return
+	}
+	if err := UpdateTagOrder(payload.Order); err != nil {
+		utils.SendErrorResponse(w, "TAG_REORDER_FAILED", "Error reordering tags.", err, http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }

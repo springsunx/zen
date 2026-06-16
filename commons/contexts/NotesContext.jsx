@@ -1,4 +1,4 @@
-import { h, createContext, useContext, useState, useCallback } from '../../assets/preact.esm.js';
+import { h, createContext, useContext, useState, useCallback, useEffect } from '../../assets/preact.esm.js';
 import ApiClient from '../../commons/http/ApiClient.js';
 import useSearchParams from "../../commons/components/useSearchParams.jsx";
 import { useAppContext } from './AppContext.jsx';
@@ -30,6 +30,12 @@ export function NotesProvider({ children }) {
           setNotes(prevNotes => [...prevNotes, ...res.notes]);
         } else {
           setNotes(res.notes);
+          // Sync selectedNote with refreshed data (e.g., updated tag names/colors)
+          setSelectedNote(prev => {
+            if (!prev) return prev;
+            const updated = res.notes.find(n => n.noteId === prev.noteId);
+            return updated ? { ...prev, ...updated } : prev;
+          });
         }
         setNotesTotal(res.total);
       })
@@ -113,6 +119,13 @@ export function NotesProvider({ children }) {
     setImages([]);
     setSelectedNote(null);
   }, []);
+
+  // Listen for notes:refresh events (e.g., after tag rename)
+  useEffect(() => {
+    function handleRefresh() { handleNoteChange(); }
+    window.addEventListener('notes:refresh', handleRefresh);
+    return () => window.removeEventListener('notes:refresh', handleRefresh);
+  }, [handleNoteChange]);
 
   return (
     <NotesContext.Provider value={{
