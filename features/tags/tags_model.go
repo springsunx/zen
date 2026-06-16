@@ -210,8 +210,14 @@ func GetFilteredTags(focusModeID int, isArchived, isDeleted bool, section string
 	} else {
 		// Notes section
 		if focusModeID != 0 {
-			// Focus mode: only count notes that belong to the focus mode
+			// Focus mode: include selected tags AND all their descendants
 			q = fmt.Sprintf(`
+				WITH RECURSIVE focus_tags(id) AS (
+					SELECT tag_id FROM focus_mode_tags WHERE focus_mode_id = ?
+					UNION ALL
+					SELECT t.tag_id FROM tags t
+					INNER JOIN focus_tags ft ON t.parent_id = ft.id
+				)
 				SELECT
 					t.tag_id,
 					t.name,
@@ -221,10 +227,8 @@ func GetFilteredTags(focusModeID int, isArchived, isDeleted bool, section string
 				FROM
 					tags t
 				%s
-				JOIN
-					focus_mode_tags f ON t.tag_id = f.tag_id
 				WHERE
-					f.focus_mode_id = ?
+					t.tag_id IN (SELECT id FROM focus_tags)
 				GROUP BY
 					t.tag_id, t.name, t.parent_id, t.sort_order
 				ORDER BY
