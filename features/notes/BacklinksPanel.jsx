@@ -6,7 +6,7 @@ import { t } from "../../commons/i18n/index.js";
 import "./BacklinksPanel.css";
 
 export default function BacklinksPanel({ backlinks = [], isLoading = false }) {
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   if (isLoading === true) {
     return (
@@ -50,7 +50,7 @@ export default function BacklinksPanel({ backlinks = [], isLoading = false }) {
 
   return (
     <div className="backlinks-panel">
-      <div className="backlinks-header" onClick={handleToggle} style="cursor: pointer;">
+      <div className={`backlinks-header ${isExpanded ? 'expanded' : ''}`} onClick={handleToggle}>
         <span className={`backlinks-toggle ${isExpanded ? 'is-expanded' : ''}`}>
           <ChevronRightIcon />
         </span>
