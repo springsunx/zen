@@ -51,6 +51,12 @@ func HandleGetTags(w http.ResponseWriter, r *http.Request) {
 	// Build tree structure for non-search queries
 	var responseTags []Tag
 	if query == "" {
+		// In focus mode, show all tags as root level (ignore parent-child hierarchy)
+		if focusModeID != 0 {
+			for i := range tags {
+				tags[i].ParentID = nil
+			}
+		}
 		responseTags = BuildTagTree(tags)
 	} else {
 		responseTags = tags
