@@ -254,5 +254,8 @@
   "notes.toast.archived": "Note archived.",
   "notes.toast.unarchived": "Note unarchived.",
   "search.recent": "Recent",
-  "notes.editor.imageDropzoneHint": "Click to upload or drag and drop images"
+  "notes.editor.imageDropzoneHint": "Click to upload or drag and drop images",
+  "backlinks.title": "Backlinks",
+  "backlinks.loading": "Loading...",
+  "backlinks.untitled": "Untitled"
 }

@@ -367,3 +367,22 @@ func HandleDeleteNotes(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 }
+
+
+func HandleGetBacklinks(w http.ResponseWriter, r *http.Request) {
+	noteIDStr := r.PathValue("noteId")
+	noteID, err := strconv.Atoi(noteIDStr)
+	if err != nil {
+		utils.SendErrorResponse(w, "INVALID_NOTE_ID", "Invalid note ID", err, http.StatusBadRequest)
+		return
+	}
+
+	backlinks, err := GetBacklinks(noteID)
+	if err != nil {
+		utils.SendErrorResponse(w, "BACKLINKS_READ_FAILED", "Error fetching backlinks.", err, http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(backlinks)
+}

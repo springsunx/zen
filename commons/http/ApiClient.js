@@ -237,6 +237,10 @@ async function unarchiveNote(noteId) {
   return await request('PUT', `/api/notes/${noteId}/unarchive/`);
 }
 
+async function getBacklinks(noteId) {
+  return await request('GET', `/api/notes/${noteId}/backlinks/`);
+}
+
 async function pinNote(noteId) {
   return await request('PUT', `/api/notes/${noteId}/pin/`);
 }
@@ -443,6 +447,7 @@ export default {
   archiveNote,
   bulkArchiveNotes,
   unarchiveNote,
+  getBacklinks,
   pinNote,
   unpinNote,
   clearTrash,

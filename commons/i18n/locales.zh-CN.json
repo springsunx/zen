@@ -257,5 +257,8 @@
   "notes.toast.archived": "笔记已归档",
   "notes.toast.unarchived": "笔记已取消归档",
   "search.recent": "最近搜索",
-  "notes.editor.imageDropzoneHint": "点击上传或拖拽图片到此处"
+  "notes.editor.imageDropzoneHint": "点击上传或拖拽图片到此处",
+  "backlinks.title": "反向链接",
+  "backlinks.loading": "加载中...",
+  "backlinks.untitled": "无标题"
 }

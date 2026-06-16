@@ -5,6 +5,7 @@ import NotesEditorFormattingToolbar from './NotesEditorFormattingToolbar.jsx';
 import NotesEditorToolbar from './NotesEditorToolbar.jsx';
 import NotesEditorImageDropzone from './NotesEditorImageDropzone.jsx';
 import NoteLinkPicker from './NoteLinkPicker.jsx';
+import BacklinksPanel from './BacklinksPanel.jsx';
 import TemplatePicker from '../templates/TemplatePicker.jsx';
 import renderMarkdown from '../../commons/utils/renderMarkdown.js';
 import navigateTo from '../../commons/utils/navigateTo.js';
@@ -38,6 +39,8 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   const [tags, setTags] = useState(selectedNote?.tags || []);
   const [isSaveLoading, setIsSaveLoading] = useState(false);
   const [showLinkPicker, setShowLinkPicker] = useState(false);
+  const [backlinks, setBacklinks] = useState([]);
+  const [isBacklinksLoading, setIsBacklinksLoading] = useState(false);
 
   // ─── Refs ───
   const titleRef = useRef(null);
@@ -133,6 +136,21 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
       }, 0);
     }
   }, [isEditable]);
+
+  // Fetch backlinks when note changes
+  useEffect(() => {
+    if (!isNewNote && selectedNote?.noteId) {
+      setIsBacklinksLoading(true);
+      ApiClient.getBacklinks(selectedNote.noteId)
+        .then(data => {
+          setBacklinks(Array.isArray(data) ? data : []);
+        })
+        .catch(() => setBacklinks([]))
+        .finally(() => setIsBacklinksLoading(false));
+    } else {
+      setBacklinks([]);
+    }
+  }, [selectedNote?.noteId, isNewNote]);
 
   // Setup anchor links after markdown is rendered
   useEffect(() => {
@@ -424,6 +442,9 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
         {contentArea}
       </div>
       {showTemplatePicker && <TemplatePicker onTemplateApply={handleTemplateApply} />}
+      {!isNewNote && !isEditable && (backlinks.length > 0 || isBacklinksLoading) && (
+        <BacklinksPanel backlinks={backlinks} isLoading={isBacklinksLoading} />
+      )}
     </div>
   );
 }
