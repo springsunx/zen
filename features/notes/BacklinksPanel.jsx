@@ -10,12 +10,12 @@ export default function BacklinksPanel({ backlinks = [], isLoading = false }) {
 
   if (isLoading === true) {
     return (
-      <div className="backlinks-panel">
+      <div className="backlinks-panel is-loading">
         <div className="backlinks-header">
           <LinkIcon />
           <span className="backlinks-title">{t('backlinks.title')}</span>
+          <span className="backlinks-loading">{t('backlinks.loading')}</span>
         </div>
-        <div className="backlinks-loading">{t('backlinks.loading')}</div>
       </div>
     );
   }
@@ -49,9 +49,9 @@ export default function BacklinksPanel({ backlinks = [], isLoading = false }) {
   });
 
   return (
-    <div className="backlinks-panel">
-      <div className={`backlinks-header ${isExpanded ? 'expanded' : ''}`} onClick={handleToggle}>
-        <span className={`backlinks-toggle ${isExpanded ? 'is-expanded' : ''}`}>
+    <div className={`backlinks-panel ${isExpanded ? 'is-expanded' : ''}`}>
+      <div className="backlinks-header" onClick={handleToggle}>
+        <span className="backlinks-toggle">
           <ChevronRightIcon />
         </span>
         <LinkIcon />
