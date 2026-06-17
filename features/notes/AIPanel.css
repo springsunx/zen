@@ -69,6 +69,25 @@
     }
 }
 
+.ai-panel-insert-all {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: background 0.15s;
+
+    &:hover {
+        background: var(--neutral-200, #e5e5e5);
+        color: var(--text-primary);
+    }
+}
+
 .ai-panel-close {
     display: flex;
     align-items: center;

@@ -301,6 +301,7 @@
   "ai.modal.replace": "Replace Note",
   "ai.modal.replaceSelection": "Replace Selection",
   "ai.modal.copied": "Copied to clipboard",
+  "ai.modal.insertAll": "Insert full conversation",
   "ai.process.failed": "AI processing failed",
   "ai.panel.emptyHint": "Describe what you need, AI will help you generate or organize content",
   "notes.toolbar.ai": "AI Assistant",

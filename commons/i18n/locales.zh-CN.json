@@ -304,6 +304,7 @@
   "ai.modal.replace": "替换笔记",
   "ai.modal.replaceSelection": "替换选中内容",
   "ai.modal.copied": "已复制到剪贴板",
+  "ai.modal.insertAll": "插入完整对话",
   "ai.process.failed": "AI 处理失败",
   "ai.panel.emptyHint": "描述你需要的内容，AI 将帮你生成或整理",
   "notes.toolbar.ai": "AI 助手",
