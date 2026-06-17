@@ -7,8 +7,11 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
+	"strings"
 	"time"
 	"zen/commons/sqlite"
 	"zen/commons/utils"
@@ -46,7 +49,7 @@ func HandleGetConfigs(w http.ResponseWriter, r *http.Request) {
 		if envModel == "" {
 			envModel = "gpt-4o-mini"
 		}
-		if envKey != "" || envURL != "" {
+		if envKey != "" {
 			configs = []AIConfig{
 				{ConfigID: 0, Name: "Default (env)", BaseURL: envURL, APIKey: "***", Model: envModel, IsDefault: true},
 			}
@@ -197,6 +200,8 @@ type modelsResponse struct {
 	Data []ModelInfo `json:"data"`
 }
 
+const maxResponseBodySize = 10 * 1024 * 1024 // 10MB
+
 func HandleFetchModels(w http.ResponseWriter, r *http.Request) {
 	var req FetchModelsRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -205,6 +210,10 @@ func HandleFetchModels(w http.ResponseWriter, r *http.Request) {
 	}
 
 	url := req.BaseURL + "/models"
+	if err := validateBaseURL(req.BaseURL); err != nil {
+		utils.SendErrorResponse(w, "INVALID_URL", "Invalid base URL.", err, http.StatusBadRequest)
+		return
+	}
 	httpReq, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		utils.SendErrorResponse(w, "FETCH_MODELS_FAILED", "Error creating request.", err, http.StatusInternalServerError)
@@ -227,7 +236,7 @@ func HandleFetchModels(w http.ResponseWriter, r *http.Request) {
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBodySize))
 	if err != nil {
 		utils.SendErrorResponse(w, "FETCH_MODELS_FAILED", "Error reading response.", err, http.StatusInternalServerError)
 		return
@@ -343,7 +352,9 @@ func SetDefaultConfig(configID int) error {
 	}
 	defer tx.Rollback()
 
-	_, _ = tx.Exec("UPDATE ai_configs SET is_default = 0")
+	if _, err := tx.Exec("UPDATE ai_configs SET is_default = 0"); err != nil {
+		slog.Error("error unsetting defaults", "error", err)
+	}
 	_, err = tx.Exec("UPDATE ai_configs SET is_default = 1 WHERE config_id = ?", configID)
 	if err != nil {
 		return fmt.Errorf("error setting default: %w", err)
@@ -366,17 +377,43 @@ func boolToInt(b bool) int {
 	return 0
 }
 
+// validateBaseURL checks that the URL is not pointing to a private/internal IP (SSRF protection).
+func validateBaseURL(rawURL string) error {
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return fmt.Errorf("invalid URL: %w", err)
+	}
+	host := parsed.Hostname()
+	if host == "" || host == "localhost" {
+		return fmt.Errorf("invalid host")
+	}
+	ip := net.ParseIP(host)
+	if ip != nil {
+		if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
+			return fmt.Errorf("private/internal IP addresses are not allowed")
+		}
+	}
+	// Also block common internal hostnames
+	lower := strings.ToLower(host)
+	if lower == "localhost" || strings.HasSuffix(lower, ".local") || strings.HasSuffix(lower, ".internal") {
+		return fmt.Errorf("internal hostnames are not allowed")
+	}
+	return nil
+}
+
 func resolveConfig(configID int) (AIConfig, error) {
 	if configID == 0 {
 		// Try database default
 		var c AIConfig
 		var isDefault int
+		var skipTLS int
 		err := sqlite.DB.QueryRow(`
 			SELECT config_id, name, base_url, api_key, model, is_default, skip_tls_verify, created_at, updated_at
 			FROM ai_configs WHERE is_default = 1 LIMIT 1
-		`).Scan(&c.ConfigID, &c.Name, &c.BaseURL, &c.APIKey, &c.Model, &isDefault, &c.SkipTLSVerify, &c.CreatedAt, &c.UpdatedAt)
+		`).Scan(&c.ConfigID, &c.Name, &c.BaseURL, &c.APIKey, &c.Model, &isDefault, &skipTLS, &c.CreatedAt, &c.UpdatedAt)
 		if err == nil {
 			c.IsDefault = true
+			c.SkipTLSVerify = skipTLS == 1
 			return c, nil
 		}
 		// Fallback to env
@@ -394,25 +431,27 @@ func resolveConfig(configID int) (AIConfig, error) {
 
 	var c AIConfig
 	var isDefault int
+	var skipTLS int
 	err := sqlite.DB.QueryRow(`
 		SELECT config_id, name, base_url, api_key, model, is_default, skip_tls_verify, created_at, updated_at
 		FROM ai_configs WHERE config_id = ?
-	`, configID).Scan(&c.ConfigID, &c.Name, &c.BaseURL, &c.APIKey, &c.Model, &isDefault, &c.SkipTLSVerify, &c.CreatedAt, &c.UpdatedAt)
+	`, configID).Scan(&c.ConfigID, &c.Name, &c.BaseURL, &c.APIKey, &c.Model, &isDefault, &skipTLS, &c.CreatedAt, &c.UpdatedAt)
 	if err != nil {
 		return c, fmt.Errorf("config not found: %w", err)
 	}
 	c.IsDefault = isDefault == 1
+	c.SkipTLSVerify = skipTLS == 1
 	return c, nil
 }
 
 func buildPrompt(instruction, selectedText, fullContent string) string {
 	if selectedText != "" {
-		return fmt.Sprintf("用户选中的文本：\n```\n%s\n```\n\n完整笔记内容（供参考）：\n```\n%s\n```\n\n用户指令：%s\n\n请直接输出处理后的内容，不要加额外说明。", selectedText, fullContent, instruction)
+		return fmt.Sprintf("Selected text:\n```\n%s\n```\n\nFull note content (for reference):\n```\n%s\n```\n\nUser instruction: %s\n\nOutput the processed content directly, without additional explanation.", selectedText, fullContent, instruction)
 	}
 	if fullContent != "" {
-		return fmt.Sprintf("笔记内容：\n```\n%s\n```\n\n用户指令：%s\n\n请直接输出处理后的内容，不要加额外说明。", fullContent, instruction)
+		return fmt.Sprintf("Note content:\n```\n%s\n```\n\nUser instruction: %s\n\nOutput the processed content directly, without additional explanation.", fullContent, instruction)
 	}
-	return fmt.Sprintf("用户指令：%s\n\n请直接输出生成的内容，不要加额外说明。", instruction)
+	return fmt.Sprintf("User instruction: %s\n\nOutput the generated content directly, without additional explanation.", instruction)
 }
 
 // ─── LLM API Call ───
@@ -447,6 +486,9 @@ func callLLM(config AIConfig, prompt string) (string, error) {
 	}
 
 	url := config.BaseURL + "/chat/completions"
+	if err := validateBaseURL(config.BaseURL); err != nil {
+		return "", fmt.Errorf("invalid base URL: %w", err)
+	}
 	httpReq, err := http.NewRequest("POST", url, bytes.NewBuffer(payload))
 	if err != nil {
 		return "", fmt.Errorf("error creating request: %w", err)
@@ -468,7 +510,7 @@ func callLLM(config AIConfig, prompt string) (string, error) {
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBodySize))
 	if err != nil {
 		return "", fmt.Errorf("error reading response: %w", err)
 	}

@@ -20,7 +20,7 @@ export default function AIPanel({ fullContent, selectedText, onInsert, onReplace
       const def = list.find(c => c.isDefault);
       if (def) setSelectedConfigId(def.configId);
       else if (list.length > 0) setSelectedConfigId(list[0].configId);
-    }).catch(() => {});
+    }).catch(err => { console.error('Failed to load AI configs:', err); });
     // Focus input on mount
     setTimeout(() => { if (inputRef.current) inputRef.current.focus(); }, 100);
   }, []);
@@ -49,7 +49,7 @@ export default function AIPanel({ fullContent, selectedText, onInsert, onReplace
   }
 
   function handleKeyDown(e) {
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
       e.preventDefault();
       handleSend();
     }

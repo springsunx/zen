@@ -294,7 +294,7 @@
   "ai.config.selectModel": "-- 选择模型 --",
   "ai.config.skipTlsVerify": "跳过 TLS 证书验证（适用于 Docker/自建服务）",
   "ai.modal.title": "AI 助手",
-  "ai.modal.placeholder": "输入指令... (Ctrl+Enter 发送)",
+  "ai.modal.placeholder": "描述你需要的内容... (Ctrl+Enter 发送)",
   "ai.modal.send": "发送",
   "ai.modal.processing": "处理中...",
   "ai.modal.waiting": "AI 正在生成回复...",
