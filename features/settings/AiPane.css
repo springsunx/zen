@@ -141,6 +141,12 @@
     }
 }
 
+.ai-pane-checkboxes-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-4);
+}
+
 .ai-pane-actions {
     display: flex;
     justify-content: flex-end;

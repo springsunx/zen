@@ -149,13 +149,11 @@ export default function AiPane() {
               </button>
             </div>
           </div>
-          <div className="ai-pane-field">
+          <div className="ai-pane-field ai-pane-checkboxes-row">
             <label className="ai-pane-checkbox">
               <input type="checkbox" checked={isDefault} onChange={e => setIsDefault(e.target.checked)} />
               {t('ai.config.isDefault')}
             </label>
-          </div>
-          <div className="ai-pane-field">
             <label className="ai-pane-checkbox">
               <input type="checkbox" checked={skipTlsVerify} onChange={e => setSkipTlsVerify(e.target.checked)} />
               {t('ai.config.skipTlsVerify')}
