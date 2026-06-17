@@ -5,11 +5,10 @@ import renderMarkdown from '../../commons/utils/renderMarkdown.js';
 import { t } from "../../commons/i18n/index.js";
 import "./AIPanel.css";
 
-export default function AIPanel({ fullContent, selectedText, onInsert, onReplace, onClose }) {
+export default function AIPanel({ fullContent, selectedText, messages, setMessages, onInsert, onReplace, onClose }) {
   const [configs, setConfigs] = useState([]);
   const [selectedConfigId, setSelectedConfigId] = useState(0);
   const [instruction, setInstruction] = useState("");
-  const [messages, setMessages] = useState([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const bodyRef = useRef(null);
   const inputRef = useRef(null);

@@ -44,6 +44,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   const [backlinks, setBacklinks] = useState([]);
   const [isBacklinksLoading, setIsBacklinksLoading] = useState(false);
   const [showAIModal, setShowAIModal] = useState(false);
+  const [aiMessages, setAiMessages] = useState([]);
 
   // ─── Refs ───
   const titleRef = useRef(null);
@@ -462,6 +463,8 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
         <AIPanel
           fullContent={content}
           selectedText={textareaRef.current ? textareaRef.current.value.substring(textareaRef.current.selectionStart, textareaRef.current.selectionEnd) : ""}
+          messages={aiMessages}
+          setMessages={setAiMessages}
           onInsert={handleAIInsert}
           onReplace={handleAIReplace}
           onClose={() => setShowAIModal(false)}
