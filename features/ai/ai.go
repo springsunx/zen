@@ -179,6 +179,72 @@ func HandleProcess(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(ProcessResponse{Result: result})
 }
 
+// ─── Fetch Models ───
+
+type FetchModelsRequest struct {
+	BaseURL string `json:"baseUrl"`
+	APIKey  string `json:"apiKey"`
+}
+
+type ModelInfo struct {
+	ID string `json:"id"`
+}
+
+type modelsResponse struct {
+	Data []ModelInfo `json:"data"`
+}
+
+func HandleFetchModels(w http.ResponseWriter, r *http.Request) {
+	var req FetchModelsRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		utils.SendErrorResponse(w, "INVALID_REQUEST_BODY", "Invalid request data.", err, http.StatusBadRequest)
+		return
+	}
+
+	url := req.BaseURL + "/models"
+	httpReq, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		utils.SendErrorResponse(w, "FETCH_MODELS_FAILED", "Error creating request.", err, http.StatusInternalServerError)
+		return
+	}
+	if req.APIKey != "" {
+		httpReq.Header.Set("Authorization", "Bearer "+req.APIKey)
+	}
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		utils.SendErrorResponse(w, "FETCH_MODELS_FAILED", "Error fetching models.", err, http.StatusInternalServerError)
+		return
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		utils.SendErrorResponse(w, "FETCH_MODELS_FAILED", "Error reading response.", err, http.StatusInternalServerError)
+		return
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		utils.SendErrorResponse(w, "FETCH_MODELS_FAILED", fmt.Sprintf("API error: status %d", resp.StatusCode), nil, http.StatusInternalServerError)
+		return
+	}
+
+	var modelsResp modelsResponse
+	if err := json.Unmarshal(body, &modelsResp); err != nil {
+		utils.SendErrorResponse(w, "FETCH_MODELS_FAILED", "Error decoding response.", err, http.StatusInternalServerError)
+		return
+	}
+
+	modelIDs := make([]string, 0, len(modelsResp.Data))
+	for _, m := range modelsResp.Data {
+		modelIDs = append(modelIDs, m.ID)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(modelIDs)
+}
+
 // ─── Database Functions ───
 
 func GetAllConfigs() ([]AIConfig, error) {

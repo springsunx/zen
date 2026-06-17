@@ -107,6 +107,28 @@
     }
 }
 
+.ai-pane-model-row {
+    display: flex;
+    gap: var(--spacing-2);
+    align-items: center;
+}
+
+.ai-pane-model-select {
+    flex: 1;
+    padding: var(--spacing-2);
+    border: 1px solid var(--neutral-200);
+    border-radius: 4px;
+    font: var(--sm);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    outline: none;
+}
+
+.ai-pane-fetch-btn {
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
 .ai-pane-checkbox {
     display: flex;
     align-items: center;

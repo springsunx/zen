@@ -162,6 +162,7 @@ func newRouter() *http.ServeMux {
 	addPrivateRoute(mux, "DELETE /api/ai/configs/{configId}/", ai.HandleDeleteConfig)
 	addPrivateRoute(mux, "PUT /api/ai/configs/{configId}/default/", ai.HandleSetDefault)
 	addPrivateRoute(mux, "POST /api/ai/process/", ai.HandleProcess)
+	addPrivateRoute(mux, "POST /api/ai/models/", ai.HandleFetchModels)
 
 	addPrivateRoute(mux, "GET /api/templates/", templates.HandleGetTemplates)
 	addPrivateRoute(mux, "GET /api/templates/{templateId}/", templates.HandleGetTemplate)

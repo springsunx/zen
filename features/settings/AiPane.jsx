@@ -13,6 +13,8 @@ export default function AiPane() {
   const [apiKey, setApiKey] = useState("");
   const [model, setModel] = useState("gpt-4o-mini");
   const [isDefault, setIsDefault] = useState(false);
+  const [availableModels, setAvailableModels] = useState([]);
+  const [isFetchingModels, setIsFetchingModels] = useState(false);
 
   useEffect(() => {
     loadConfigs();
@@ -30,6 +32,8 @@ export default function AiPane() {
     setIsDefault(false);
     setIsEditing(false);
     setEditConfig(null);
+    setAvailableModels([]);
+    setIsFetchingModels(false);
   }
 
   function handleAdd() {
@@ -45,6 +49,17 @@ export default function AiPane() {
     setModel(config.model);
     setIsDefault(config.isDefault);
     setIsEditing(true);
+    setAvailableModels([]);
+    // Auto-fetch models if both baseUrl and apiKey are available
+    if (config.baseUrl && config.apiKey && config.apiKey !== "***") {
+      setIsFetchingModels(true);
+      ApiClient.fetchAIModels(config.baseUrl, config.apiKey)
+        .then(models => {
+          setAvailableModels(models);
+        })
+        .catch(() => {})
+        .finally(() => { setIsFetchingModels(false); });
+    }
   }
 
   function handleSave() {
@@ -77,6 +92,21 @@ export default function AiPane() {
     resetForm();
   }
 
+  function handleFetchModels() {
+    if (!baseUrl) return;
+    setIsFetchingModels(true);
+    setAvailableModels([]);
+    ApiClient.fetchAIModels(baseUrl, apiKey)
+      .then(models => {
+        setAvailableModels(models);
+        if (models.length > 0 && !models.includes(model)) {
+          setModel(models[0]);
+        }
+      })
+      .catch(() => { showToast(t('ai.config.fetchModelsFailed')); })
+      .finally(() => { setIsFetchingModels(false); });
+  }
+
   if (isEditing) {
     return (
       <div className="ai-pane">
@@ -98,7 +128,23 @@ export default function AiPane() {
           </div>
           <div className="ai-pane-field">
             <label>{t('ai.config.model')}</label>
-            <input type="text" value={model} onInput={e => setModel(e.target.value)} placeholder="gpt-4o-mini" />
+            <div className="ai-pane-model-row">
+              <select value={model} onChange={e => setModel(e.target.value)} className="ai-pane-model-select">
+                <option value="">{t('ai.config.selectModel')}</option>
+                {availableModels.map(m => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="ghost-button ai-pane-fetch-btn"
+                onClick={handleFetchModels}
+                disabled={isFetchingModels || !baseUrl || !apiKey}
+                title={t('ai.config.fetchModels')}
+              >
+                {isFetchingModels ? '...' : t('ai.config.fetchModels')}
+              </button>
+            </div>
           </div>
           <div className="ai-pane-field">
             <label className="ai-pane-checkbox">

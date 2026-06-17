@@ -327,6 +327,10 @@ async function processWithAI(configId, instruction, fullContent, selectedText) {
   return await request('POST', '/api/ai/process/', { configId, instruction, fullContent, selectedText });
 }
 
+async function fetchAIModels(baseUrl, apiKey) {
+  return await request('POST', '/api/ai/models/', { baseUrl, apiKey });
+}
+
 // ─── Images ───
 
 async function getImages(tagId, focusId, page) {
@@ -503,6 +507,7 @@ export default {
   deleteAIConfig,
   setDefaultAIConfig,
   processWithAI,
+  fetchAIModels,
   getImages,
   uploadImage,
   deleteImage,
