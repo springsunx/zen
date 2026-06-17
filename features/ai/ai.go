@@ -201,6 +201,7 @@ type modelsResponse struct {
 }
 
 const maxResponseBodySize = 10 * 1024 * 1024 // 10MB
+const maxContentLength = 8000 // Max characters for note content in prompt
 
 func HandleFetchModels(w http.ResponseWriter, r *http.Request) {
 	var req FetchModelsRequest
@@ -209,11 +210,11 @@ func HandleFetchModels(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	url := req.BaseURL + "/models"
 	if err := validateBaseURL(req.BaseURL); err != nil {
 		utils.SendErrorResponse(w, "INVALID_URL", "Invalid base URL.", err, http.StatusBadRequest)
 		return
 	}
+	url := req.BaseURL + "/models"
 	httpReq, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		utils.SendErrorResponse(w, "FETCH_MODELS_FAILED", "Error creating request.", err, http.StatusInternalServerError)
@@ -444,14 +445,24 @@ func resolveConfig(configID int) (AIConfig, error) {
 	return c, nil
 }
 
+func truncateContent(s string) string {
+	if len(s) > maxContentLength {
+		return s[:maxContentLength] + "\n... (truncated)"
+	}
+	return s
+}
+
 func buildPrompt(instruction, selectedText, fullContent string) string {
+	// Wrap user inputs in XML tags to mitigate prompt injection
+	safeInstruction := fmt.Sprintf("<user_instruction>%s</user_instruction>", instruction)
+
 	if selectedText != "" {
-		return fmt.Sprintf("Selected text:\n```\n%s\n```\n\nFull note content (for reference):\n```\n%s\n```\n\nUser instruction: %s\n\nOutput the processed content directly, without additional explanation.", selectedText, fullContent, instruction)
+		return fmt.Sprintf("<selected_text>\n%s\n</selected_text>\n\n<note_content>\n%s\n</note_content>\n\n%s\n\nOutput the processed content directly, without additional explanation.", selectedText, truncateContent(fullContent), safeInstruction)
 	}
 	if fullContent != "" {
-		return fmt.Sprintf("Note content:\n```\n%s\n```\n\nUser instruction: %s\n\nOutput the processed content directly, without additional explanation.", fullContent, instruction)
+		return fmt.Sprintf("<note_content>\n%s\n</note_content>\n\n%s\n\nOutput the processed content directly, without additional explanation.", truncateContent(fullContent), safeInstruction)
 	}
-	return fmt.Sprintf("User instruction: %s\n\nOutput the generated content directly, without additional explanation.", instruction)
+	return fmt.Sprintf("%s\n\nOutput the generated content directly, without additional explanation.", safeInstruction)
 }
 
 // ─── LLM API Call ───
@@ -485,10 +496,10 @@ func callLLM(config AIConfig, prompt string) (string, error) {
 		return "", fmt.Errorf("error marshaling request: %w", err)
 	}
 
-	url := config.BaseURL + "/chat/completions"
 	if err := validateBaseURL(config.BaseURL); err != nil {
 		return "", fmt.Errorf("invalid base URL: %w", err)
 	}
+	url := config.BaseURL + "/chat/completions"
 	httpReq, err := http.NewRequest("POST", url, bytes.NewBuffer(payload))
 	if err != nil {
 		return "", fmt.Errorf("error creating request: %w", err)
@@ -516,7 +527,8 @@ func callLLM(config AIConfig, prompt string) (string, error) {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("LLM API error: status %d, body: %s", resp.StatusCode, string(body))
+		slog.Error("LLM API error", "status", resp.StatusCode, "body", string(body))
+		return "", fmt.Errorf("LLM API error: status %d", resp.StatusCode)
 	}
 
 	var chatResp chatResponse

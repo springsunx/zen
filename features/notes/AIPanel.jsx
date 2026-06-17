@@ -3,6 +3,15 @@ import ApiClient from '../../commons/http/ApiClient.js';
 import { showToast } from '../../commons/components/Toast.jsx';
 import renderMarkdown from '../../commons/utils/renderMarkdown.js';
 import { t } from "../../commons/i18n/index.js";
+
+// Simple HTML sanitizer for AI-generated markdown output
+function sanitizeHTML(html) {
+  // Remove script/event handler patterns
+  return html
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/\bon\w+\s*=/gi, 'data-blocked=')
+    .replace(/javascript:/gi, 'blocked:');
+}
 import "./AIPanel.css";
 
 export default function AIPanel({ fullContent, selectedText, messages, setMessages, onInsert, onReplace, onClose }) {
@@ -69,8 +78,6 @@ export default function AIPanel({ fullContent, selectedText, messages, setMessag
     showToast(t('ai.modal.copied'));
   }
 
-  const lastAiMessage = [...messages].reverse().find(m => m.role === "assistant" && !m.isError);
-
   function formatFullConversation() {
     return messages.map(m => {
       if (m.role === "user") {
@@ -135,7 +142,7 @@ export default function AIPanel({ fullContent, selectedText, messages, setMessag
               </div>
             );
           }
-          const rendered = renderMarkdown(msg.content);
+          const rendered = sanitizeHTML(renderMarkdown(msg.content));
           const isLast = i === messages.length - 1;
           return (
             <div key={i} className={`ai-panel-msg ai-panel-msg-ai ${msg.isError ? 'is-error' : ''}`}>

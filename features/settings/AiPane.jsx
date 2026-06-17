@@ -23,7 +23,7 @@ export default function AiPane() {
   }, []);
 
   function loadConfigs() {
-    ApiClient.getAIConfigs().then(setConfigs).catch(() => {});
+    ApiClient.getAIConfigs().then(setConfigs).catch(err => { console.error('Failed to load AI configs:', err); });
   }
 
   function resetForm() {
@@ -61,13 +61,13 @@ export default function AiPane() {
         .then(models => {
           setAvailableModels(models);
         })
-        .catch(() => {})
+        .catch(err => { console.error('Failed to auto-fetch models:', err); })
         .finally(() => { setIsFetchingModels(false); });
     }
   }
 
   function handleSave() {
-    const payload = { name, baseUrl, apiKey, model, isDefault, skipTlsVerify };
+    const payload = { name, baseUrl, apiKey: apiKey || (editConfig ? editConfig.apiKey : ""), model, isDefault, skipTlsVerify };
 
     if (editConfig && editConfig.configId > 0) {
       ApiClient.updateAIConfig(editConfig.configId, payload)
