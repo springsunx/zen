@@ -9,9 +9,9 @@ export default function AIPanel({ fullContent, selectedText, onInsert, onReplace
   const [configs, setConfigs] = useState([]);
   const [selectedConfigId, setSelectedConfigId] = useState(0);
   const [instruction, setInstruction] = useState("");
-  const [result, setResult] = useState("");
+  const [messages, setMessages] = useState([]);
   const [isProcessing, setIsProcessing] = useState(false);
-  const resultRef = useRef(null);
+  const bodyRef = useRef(null);
   const inputRef = useRef(null);
 
   useEffect(() => {
@@ -21,27 +21,37 @@ export default function AIPanel({ fullContent, selectedText, onInsert, onReplace
       if (def) setSelectedConfigId(def.configId);
       else if (list.length > 0) setSelectedConfigId(list[0].configId);
     }).catch(err => { console.error('Failed to load AI configs:', err); });
-    // Focus input on mount
     setTimeout(() => { if (inputRef.current) inputRef.current.focus(); }, 100);
   }, []);
 
+  // Auto-scroll to bottom when messages change
   useEffect(() => {
-    if (resultRef.current && result) {
-      resultRef.current.scrollTop = resultRef.current.scrollHeight;
+    if (bodyRef.current) {
+      bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
     }
-  }, [result]);
+  }, [messages, isProcessing]);
 
   function handleSend() {
-    if (!instruction.trim() || isProcessing) return;
-    setIsProcessing(true);
-    setResult("");
+    const text = instruction.trim();
+    if (!text || isProcessing) return;
 
-    ApiClient.processWithAI(selectedConfigId, instruction, fullContent || "", selectedText || "")
+    // Add user message
+    const userMsg = { role: "user", content: text };
+    setMessages(prev => [...prev, userMsg]);
+    setInstruction("");
+    // Reset textarea height
+    if (inputRef.current) inputRef.current.style.height = 'auto';
+
+    setIsProcessing(true);
+
+    ApiClient.processWithAI(selectedConfigId, text, fullContent || "", selectedText || "")
       .then(res => {
-        setResult(res.result);
+        const aiMsg = { role: "assistant", content: res.result };
+        setMessages(prev => [...prev, aiMsg]);
       })
       .catch(() => {
-        showToast(t('ai.process.failed'));
+        const errMsg = { role: "assistant", content: t('ai.process.failed'), isError: true };
+        setMessages(prev => [...prev, errMsg]);
       })
       .finally(() => {
         setIsProcessing(false);
@@ -55,13 +65,12 @@ export default function AIPanel({ fullContent, selectedText, onInsert, onReplace
     }
   }
 
-  function handleCopy() {
-    navigator.clipboard.writeText(result);
+  function handleCopy(text) {
+    navigator.clipboard.writeText(text);
     showToast(t('ai.modal.copied'));
   }
 
-  const hasResult = result.length > 0;
-  const renderedResult = hasResult ? renderMarkdown(result) : "";
+  const lastAiMessage = [...messages].reverse().find(m => m.role === "assistant" && !m.isError);
 
   return (
     <div className="ai-panel">
@@ -86,9 +95,9 @@ export default function AIPanel({ fullContent, selectedText, onInsert, onReplace
         </button>
       </div>
 
-      {/* Result Area */}
-      <div className="ai-panel-body" ref={resultRef}>
-        {!hasResult && !isProcessing && (
+      {/* Messages Area */}
+      <div className="ai-panel-body" ref={bodyRef}>
+        {messages.length === 0 && !isProcessing && (
           <div className="ai-panel-empty">
             <div className="ai-panel-empty-icon">
               <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -101,51 +110,66 @@ export default function AIPanel({ fullContent, selectedText, onInsert, onReplace
           </div>
         )}
 
-        {isProcessing && (
-          <div className="ai-panel-thinking">
-            <div className="ai-panel-thinking-dots">
-              <span></span><span></span><span></span>
-            </div>
-            <span>{t('ai.modal.waiting')}</span>
-          </div>
-        )}
-
-        {hasResult && !isProcessing && (
-          <div className="ai-panel-result">
-            <div className="ai-panel-result-content rendered" dangerouslySetInnerHTML={{ __html: renderedResult }} />
-            <div className="ai-panel-result-actions">
-              <button className="ai-panel-action-btn" onClick={handleCopy} title={t('ai.modal.copy')}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                </svg>
-                {t('ai.modal.copy')}
-              </button>
-              {selectedText && (
-                <button className="ai-panel-action-btn" onClick={() => onReplace(result)} title={t('ai.modal.replaceSelection')}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="17 1 21 5 17 9"/>
-                    <path d="M3 11V9a4 4 0 0 1 4-4h14"/>
-                    <polyline points="7 23 3 19 7 15"/>
-                    <path d="M21 13v2a4 4 0 0 1-4 4H3"/>
-                  </svg>
-                  {t('ai.modal.replaceSelection')}
-                </button>
+        {messages.map((msg, i) => {
+          if (msg.role === "user") {
+            return (
+              <div key={i} className="ai-panel-msg ai-panel-msg-user">
+                <div className="ai-panel-msg-content">{msg.content}</div>
+              </div>
+            );
+          }
+          const rendered = renderMarkdown(msg.content);
+          const isLast = i === messages.length - 1;
+          return (
+            <div key={i} className={`ai-panel-msg ai-panel-msg-ai ${msg.isError ? 'is-error' : ''}`}>
+              <div className="ai-panel-msg-content rendered" dangerouslySetInnerHTML={{ __html: rendered }} />
+              {!msg.isError && isLast && !isProcessing && (
+                <div className="ai-panel-result-actions">
+                  <button className="ai-panel-action-btn" onClick={() => handleCopy(msg.content)} title={t('ai.modal.copy')}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                    </svg>
+                    {t('ai.modal.copy')}
+                  </button>
+                  {selectedText && (
+                    <button className="ai-panel-action-btn" onClick={() => onReplace(msg.content)} title={t('ai.modal.replaceSelection')}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="17 1 21 5 17 9"/>
+                        <path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+                        <polyline points="7 23 3 19 7 15"/>
+                        <path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+                      </svg>
+                      {t('ai.modal.replaceSelection')}
+                    </button>
+                  )}
+                  <button className="ai-panel-action-btn" onClick={() => onInsert(msg.content)} title={t('ai.modal.insert')}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="12" y1="5" x2="12" y2="19"/>
+                      <line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    {t('ai.modal.insert')}
+                  </button>
+                  <button className="ai-panel-action-btn primary" onClick={() => onReplace(msg.content)} title={t('ai.modal.replace')}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 20h9"/>
+                      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                    </svg>
+                    {t('ai.modal.replace')}
+                  </button>
+                </div>
               )}
-              <button className="ai-panel-action-btn" onClick={() => onInsert(result)} title={t('ai.modal.insert')}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="12" y1="5" x2="12" y2="19"/>
-                  <line x1="5" y1="12" x2="19" y2="12"/>
-                </svg>
-                {t('ai.modal.insert')}
-              </button>
-              <button className="ai-panel-action-btn primary" onClick={() => onReplace(result)} title={t('ai.modal.replace')}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 20h9"/>
-                  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
-                </svg>
-                {t('ai.modal.replace')}
-              </button>
+            </div>
+          );
+        })}
+
+        {isProcessing && (
+          <div className="ai-panel-msg ai-panel-msg-ai">
+            <div className="ai-panel-thinking">
+              <div className="ai-panel-thinking-dots">
+                <span></span><span></span><span></span>
+              </div>
+              <span>{t('ai.modal.waiting')}</span>
             </div>
           </div>
         )}
@@ -159,9 +183,8 @@ export default function AIPanel({ fullContent, selectedText, onInsert, onReplace
           value={instruction}
           onInput={e => {
             setInstruction(e.target.value);
-            // Auto-resize
             e.target.style.height = 'auto';
-            e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+            e.target.style.height = e.target.scrollHeight + 'px';
           }}
           onKeyDown={handleKeyDown}
           placeholder={t('ai.modal.placeholder')}

@@ -1,6 +1,7 @@
 import { h, useState, useEffect } from "../../assets/preact.esm.js"
 import ApiClient from '../../commons/http/ApiClient.js';
 import { showToast } from '../../commons/components/Toast.jsx';
+import Button from '../../commons/components/Button.jsx';
 import { t } from "../../commons/i18n/index.js";
 import "./AiPane.css";
 
@@ -160,8 +161,8 @@ export default function AiPane() {
             </label>
           </div>
           <div className="ai-pane-actions">
-            <button className="ghost-button" onClick={handleCancel}>{t('common.cancel')}</button>
-            <button className="button primary" onClick={handleSave}>{t('common.save')}</button>
+            <Button onClick={handleCancel}>{t('common.cancel')}</Button>
+            <Button variant="primary" onClick={handleSave}>{t('common.save')}</Button>
           </div>
         </div>
       </div>
