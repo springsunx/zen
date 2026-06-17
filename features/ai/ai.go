@@ -201,7 +201,6 @@ type modelsResponse struct {
 }
 
 const maxResponseBodySize = 10 * 1024 * 1024 // 10MB
-const maxContentLength = 8000 // Max characters for note content in prompt
 
 func HandleFetchModels(w http.ResponseWriter, r *http.Request) {
 	var req FetchModelsRequest
@@ -445,19 +444,11 @@ func resolveConfig(configID int) (AIConfig, error) {
 	return c, nil
 }
 
-func truncateContent(s string) string {
-	if len(s) > maxContentLength {
-		return s[:maxContentLength] + "\n... (truncated)"
-	}
-	return s
-}
-
 func buildPrompt(instruction, selectedText, fullContent string) string {
-	// Wrap user inputs in XML tags to mitigate prompt injection
 	safeInstruction := fmt.Sprintf("<user_instruction>%s</user_instruction>", instruction)
 
 	if selectedText != "" {
-		return fmt.Sprintf("<selected_text>\n%s\n</selected_text>\n\n<note_content>\n%s\n</note_content>\n\n%s\n\nOutput the processed content directly, without additional explanation.", selectedText, truncateContent(fullContent), safeInstruction)
+		return fmt.Sprintf("<selected_text>\n%s\n</selected_text>\n\n%s\n\nOutput the processed content directly, without additional explanation.", selectedText, safeInstruction)
 	}
 	if fullContent != "" {
 		return fmt.Sprintf("<note_content>\n%s\n</note_content>\n\n%s\n\nOutput the processed content directly, without additional explanation.", fullContent, safeInstruction)
