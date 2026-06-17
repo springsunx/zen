@@ -56,7 +56,7 @@ export default function AiPane() {
     // Auto-fetch models if both baseUrl and apiKey are available
     if (config.baseUrl && config.apiKey && config.apiKey !== "***") {
       setIsFetchingModels(true);
-      ApiClient.fetchAIModels(config.baseUrl, config.apiKey)
+      ApiClient.fetchAIModels(config.baseUrl, config.apiKey, config.skipTlsVerify)
         .then(models => {
           setAvailableModels(models);
         })
