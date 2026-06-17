@@ -460,7 +460,7 @@ func buildPrompt(instruction, selectedText, fullContent string) string {
 		return fmt.Sprintf("<selected_text>\n%s\n</selected_text>\n\n<note_content>\n%s\n</note_content>\n\n%s\n\nOutput the processed content directly, without additional explanation.", selectedText, truncateContent(fullContent), safeInstruction)
 	}
 	if fullContent != "" {
-		return fmt.Sprintf("<note_content>\n%s\n</note_content>\n\n%s\n\nOutput the processed content directly, without additional explanation.", truncateContent(fullContent), safeInstruction)
+		return fmt.Sprintf("<note_content>\n%s\n</note_content>\n\n%s\n\nOutput the processed content directly, without additional explanation.", fullContent, safeInstruction)
 	}
 	return fmt.Sprintf("%s\n\nOutput the generated content directly, without additional explanation.", safeInstruction)
 }
