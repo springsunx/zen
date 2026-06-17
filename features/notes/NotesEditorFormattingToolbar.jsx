@@ -1,8 +1,8 @@
 import { h } from "../../assets/preact.esm.js"
-import { BoldIcon, ItalicIcon, StrikethroughIcon, HighlightIcon, CodeIcon, CodeBlockIcon, Heading1Icon, Heading2Icon, Heading3Icon, ListIcon, ListOrderedIcon, ListTodoIcon, QuoteIcon, LinkIcon, NoteIcon, SeparatorIcon } from '../../commons/components/Icon.jsx';
+import { BoldIcon, ItalicIcon, StrikethroughIcon, HighlightIcon, CodeIcon, CodeBlockIcon, Heading1Icon, Heading2Icon, Heading3Icon, ListIcon, ListOrderedIcon, ListTodoIcon, QuoteIcon, LinkIcon, NoteIcon, SeparatorIcon, BrainCircuitIcon } from '../../commons/components/Icon.jsx';
 import { t } from "../../commons/i18n/index.js";
 
-export default function NotesEditorFormattingToolbar({ isEditable, onFormat, onInsertInternalLink }) {
+export default function NotesEditorFormattingToolbar({ isEditable, onFormat, onInsertInternalLink, onOpenAI }) {
   if (!isEditable) {
     return null;
   }
@@ -66,6 +66,9 @@ export default function NotesEditorFormattingToolbar({ isEditable, onFormat, onI
         </button>
         <button type="button" className="formatting-button" onClick={() => onFormat("hr")} title={t('notes.toolbar.hr')}>
           <SeparatorIcon />
+        </button>
+        <button type="button" className="formatting-button" onClick={() => onOpenAI()} title={t('notes.toolbar.ai')}>
+          <BrainCircuitIcon />
         </button>
       </div>
     </div>

@@ -15,6 +15,7 @@ import (
 	"zen/commons/session"
 	"zen/commons/sqlite"
 	"zen/features/canvas"
+	"zen/features/ai"
 	"zen/features/focus"
 	"zen/features/images"
 	"zen/features/intelligence"
@@ -153,6 +154,14 @@ func newRouter() *http.ServeMux {
 	addPrivateRoute(mux, "POST /api/intelligence/index/", intelligence.HandleIndexAllContent)
 	addPrivateRoute(mux, "GET /api/intelligence/queue/", intelligence.HandleQueueStats)
 	addPrivateRoute(mux, "GET /api/intelligence/similarity/images/{filename}/", intelligence.HandleSimilarImages)
+
+	// AI
+	addPrivateRoute(mux, "GET /api/ai/configs/", ai.HandleGetConfigs)
+	addPrivateRoute(mux, "POST /api/ai/configs/", ai.HandleCreateConfig)
+	addPrivateRoute(mux, "PUT /api/ai/configs/{configId}/", ai.HandleUpdateConfig)
+	addPrivateRoute(mux, "DELETE /api/ai/configs/{configId}/", ai.HandleDeleteConfig)
+	addPrivateRoute(mux, "PUT /api/ai/configs/{configId}/default/", ai.HandleSetDefault)
+	addPrivateRoute(mux, "POST /api/ai/process/", ai.HandleProcess)
 
 	addPrivateRoute(mux, "GET /api/templates/", templates.HandleGetTemplates)
 	addPrivateRoute(mux, "GET /api/templates/{templateId}/", templates.HandleGetTemplate)

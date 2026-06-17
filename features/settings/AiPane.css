@@ -1,0 +1,135 @@
+.ai-pane {
+    padding: var(--spacing-4);
+}
+
+.ai-pane-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-4);
+}
+
+.ai-pane-desc {
+    font: var(--sm);
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.ai-pane-empty {
+    font: var(--sm);
+    color: var(--text-secondary);
+    text-align: center;
+    padding: var(--spacing-8) 0;
+}
+
+.ai-pane-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-2);
+}
+
+.ai-pane-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-3);
+    border: 1px solid var(--neutral-200);
+    border-radius: 6px;
+    background: var(--bg-primary);
+}
+
+.ai-pane-item-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.ai-pane-item-name {
+    font-weight: 600;
+    font: var(--sm);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+}
+
+.ai-pane-default-badge {
+    font-size: 11px;
+    background: var(--primary-100, #dbeafe);
+    color: var(--primary-700, #1d4ed8);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+.ai-pane-item-detail {
+    font: var(--sm);
+    color: var(--text-secondary);
+    margin-top: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ai-pane-item-actions {
+    display: flex;
+    gap: var(--spacing-1);
+    flex-shrink: 0;
+}
+
+.ai-pane-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-3);
+}
+
+.ai-pane-field {
+    label {
+        display: block;
+        font: var(--sm);
+        font-weight: 600;
+        margin-bottom: var(--spacing-1);
+    }
+
+    input[type="text"],
+    input[type="password"] {
+        width: 100%;
+        padding: var(--spacing-2);
+        border: 1px solid var(--neutral-200);
+        border-radius: 4px;
+        font: var(--sm);
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        outline: none;
+        box-sizing: border-box;
+
+        &:focus {
+            border-color: var(--neutral-600);
+        }
+    }
+}
+
+.ai-pane-checkbox {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    cursor: pointer;
+
+    input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+    }
+}
+
+.ai-pane-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--spacing-2);
+    margin-top: var(--spacing-2);
+}
+
+.ghost-button.danger {
+    color: var(--red-600);
+
+    &:hover {
+        background: var(--red-50, #fef2f2);
+    }
+}

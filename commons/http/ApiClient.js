@@ -301,6 +301,32 @@ async function moveTag(tagId, parentId, parentName) {
   return await request('PATCH', `/api/tags/${tagId}/parent/`, { parentId, parentName });
 }
 
+// ─── AI ───
+
+async function getAIConfigs() {
+  return await request('GET', '/api/ai/configs/');
+}
+
+async function createAIConfig(config) {
+  return await request('POST', '/api/ai/configs/', config);
+}
+
+async function updateAIConfig(configId, config) {
+  return await request('PUT', `/api/ai/configs/${configId}/`, config);
+}
+
+async function deleteAIConfig(configId) {
+  return await request('DELETE', `/api/ai/configs/${configId}/`);
+}
+
+async function setDefaultAIConfig(configId) {
+  return await request('PUT', `/api/ai/configs/${configId}/default/`);
+}
+
+async function processWithAI(configId, instruction, fullContent, selectedText) {
+  return await request('POST', '/api/ai/process/', { configId, instruction, fullContent, selectedText });
+}
+
 // ─── Images ───
 
 async function getImages(tagId, focusId, page) {
@@ -471,6 +497,12 @@ export default {
   deleteTag,
   reorderTags,
   moveTag,
+  getAIConfigs,
+  createAIConfig,
+  updateAIConfig,
+  deleteAIConfig,
+  setDefaultAIConfig,
+  processWithAI,
   getImages,
   uploadImage,
   deleteImage,

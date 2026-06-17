@@ -7,6 +7,7 @@ import NotesEditorImageDropzone from './NotesEditorImageDropzone.jsx';
 import NoteLinkPicker from './NoteLinkPicker.jsx';
 import BacklinksPanel from './BacklinksPanel.jsx';
 import TemplatePicker from '../templates/TemplatePicker.jsx';
+import AIPanel from './AIPanel.jsx';
 import renderMarkdown from '../../commons/utils/renderMarkdown.js';
 import navigateTo from '../../commons/utils/navigateTo.js';
 import NoteDeleteModal from './NoteDeleteModal.jsx';
@@ -42,6 +43,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   const [showLinkPicker, setShowLinkPicker] = useState(false);
   const [backlinks, setBacklinks] = useState([]);
   const [isBacklinksLoading, setIsBacklinksLoading] = useState(false);
+  const [showAIModal, setShowAIModal] = useState(false);
 
   // ─── Refs ───
   const titleRef = useRef(null);
@@ -204,6 +206,29 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
       });
     }
     setShowLinkPicker(false);
+  }
+
+  function handleOpenAI() {
+    setShowAIModal(true);
+  }
+
+  function handleAIInsert(text) {
+    if (textareaRef.current) {
+      const ta = textareaRef.current;
+      const pos = ta.selectionStart;
+      const before = ta.value.substring(0, pos);
+      const after = ta.value.substring(ta.selectionEnd);
+      const newContent = before + text + after;
+      setContent(newContent);
+      onContentChange(newContent);
+    }
+    setShowAIModal(false);
+  }
+
+  function handleAIReplace(text) {
+    setContent(text);
+    onContentChange(text);
+    setShowAIModal(false);
   }
 
   const handleSaveClick = useCallback((closeAfter = false) => {
@@ -432,7 +457,16 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
           handleFileInputChange={handleFileInputChange}
         />
       )}
-      <NotesEditorFormattingToolbar isEditable={isEditable} onFormat={applyMarkdownFormat} onInsertInternalLink={handleShowLinkPicker} />
+      <NotesEditorFormattingToolbar isEditable={isEditable} onFormat={applyMarkdownFormat} onInsertInternalLink={handleShowLinkPicker} onOpenAI={handleOpenAI} />
+      {showAIModal && (
+        <AIPanel
+          fullContent={content}
+          selectedText={textareaRef.current ? textareaRef.current.value.substring(textareaRef.current.selectionStart, textareaRef.current.selectionEnd) : ""}
+          onInsert={handleAIInsert}
+          onReplace={handleAIReplace}
+          onClose={() => setShowAIModal(false)}
+        />
+      )}
       {showLinkPicker && (
         <div style={{ position: 'relative' }}>
           <div style={{ position: 'absolute', top: '0', left: '0', zIndex: 100 }}>
