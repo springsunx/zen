@@ -327,8 +327,8 @@ async function processWithAI(configId, instruction, fullContent, selectedText) {
   return await request('POST', '/api/ai/process/', { configId, instruction, fullContent, selectedText });
 }
 
-async function fetchAIModels(baseUrl, apiKey) {
-  return await request('POST', '/api/ai/models/', { baseUrl, apiKey });
+async function fetchAIModels(baseUrl, apiKey, skipTlsVerify) {
+  return await request('POST', '/api/ai/models/', { baseUrl, apiKey, skipTlsVerify: skipTlsVerify || false });
 }
 
 // ─── Images ───

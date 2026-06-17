@@ -15,6 +15,7 @@ export default function AiPane() {
   const [isDefault, setIsDefault] = useState(false);
   const [availableModels, setAvailableModels] = useState([]);
   const [isFetchingModels, setIsFetchingModels] = useState(false);
+  const [skipTlsVerify, setSkipTlsVerify] = useState(false);
 
   useEffect(() => {
     loadConfigs();
@@ -34,6 +35,7 @@ export default function AiPane() {
     setEditConfig(null);
     setAvailableModels([]);
     setIsFetchingModels(false);
+    setSkipTlsVerify(false);
   }
 
   function handleAdd() {
@@ -48,6 +50,7 @@ export default function AiPane() {
     setApiKey(config.apiKey === "***" ? "" : config.apiKey);
     setModel(config.model);
     setIsDefault(config.isDefault);
+    setSkipTlsVerify(config.skipTlsVerify || false);
     setIsEditing(true);
     setAvailableModels([]);
     // Auto-fetch models if both baseUrl and apiKey are available
@@ -63,7 +66,7 @@ export default function AiPane() {
   }
 
   function handleSave() {
-    const payload = { name, baseUrl, apiKey, model, isDefault };
+    const payload = { name, baseUrl, apiKey, model, isDefault, skipTlsVerify };
 
     if (editConfig && editConfig.configId > 0) {
       ApiClient.updateAIConfig(editConfig.configId, payload)
@@ -96,7 +99,7 @@ export default function AiPane() {
     if (!baseUrl) return;
     setIsFetchingModels(true);
     setAvailableModels([]);
-    ApiClient.fetchAIModels(baseUrl, apiKey)
+    ApiClient.fetchAIModels(baseUrl, apiKey, skipTlsVerify)
       .then(models => {
         setAvailableModels(models);
         if (models.length > 0 && !models.includes(model)) {
@@ -150,6 +153,12 @@ export default function AiPane() {
             <label className="ai-pane-checkbox">
               <input type="checkbox" checked={isDefault} onChange={e => setIsDefault(e.target.checked)} />
               {t('ai.config.isDefault')}
+            </label>
+          </div>
+          <div className="ai-pane-field">
+            <label className="ai-pane-checkbox">
+              <input type="checkbox" checked={skipTlsVerify} onChange={e => setSkipTlsVerify(e.target.checked)} />
+              {t('ai.config.skipTlsVerify')}
             </label>
           </div>
           <div className="ai-pane-actions">

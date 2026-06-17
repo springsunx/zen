@@ -292,6 +292,7 @@
   "ai.config.fetchModels": "获取模型",
   "ai.config.fetchModelsFailed": "获取模型列表失败",
   "ai.config.selectModel": "-- 选择模型 --",
+  "ai.config.skipTlsVerify": "跳过 TLS 证书验证（适用于 Docker/自建服务）",
   "ai.modal.title": "AI 助手",
   "ai.modal.placeholder": "输入指令... (Ctrl+Enter 发送)",
   "ai.modal.send": "发送",
