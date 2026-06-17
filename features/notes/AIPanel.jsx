@@ -157,7 +157,12 @@ export default function AIPanel({ fullContent, selectedText, onInsert, onReplace
           ref={inputRef}
           className="ai-panel-input"
           value={instruction}
-          onInput={e => setInstruction(e.target.value)}
+          onInput={e => {
+            setInstruction(e.target.value);
+            // Auto-resize
+            e.target.style.height = 'auto';
+            e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+          }}
           onKeyDown={handleKeyDown}
           placeholder={t('ai.modal.placeholder')}
           rows="1"
