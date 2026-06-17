@@ -13,7 +13,7 @@ import NoteDeleteModal from './NoteDeleteModal.jsx';
 import { showToast } from '../../commons/components/Toast.jsx';
 import { closeModal, openModal } from '../../commons/components/Modal.jsx';
 import { useNotes } from "../../commons/contexts/NotesContext.jsx";
-import { AppProvider } from '../../commons/contexts/AppContext.jsx';
+import { useAppContext } from '../../commons/contexts/AppContext.jsx';
 import { NotesProvider } from "../../commons/contexts/NotesContext.jsx";
 import NotesEditorModal from './NotesEditorModal.jsx';
 import { useLayout } from '../../commons/contexts/LayoutContext.jsx';
@@ -26,6 +26,7 @@ import { t } from "../../commons/i18n/index.js";
 
 export default function NotesEditor({ isNewNote, isModal, isExpandable = false, onClose, onEditModeChange = () => {}, onContentChange = () => {}, onSaved = () => {}, onToggleToc }) {
   const { selectedNote, handleNoteChange, patchNote, handlePinToggle } = useNotes();
+  const { refreshTags } = useAppContext();
   const { isEditorExpanded, toggleEditorExpanded } = useLayout();
 
   if (!isNewNote && selectedNote === null) {
@@ -85,7 +86,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
       setContent(selectedNote.content || "");
       setTags(selectedNote.tags || []);
     }
-  }, [selectedNote?.noteId, selectedNote?.content]);
+  }, [selectedNote?.noteId, selectedNote?.content, selectedNote?.tags]);
 
   useEffect(() => {
     if (isNewNote === true || (isEditable === true && titleRef.current?.textContent === "")) {
@@ -227,6 +228,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
         resetAttachments();
         if (closeAfter && isNewNote && !onClose) navigateTo(`/notes/${savedNote.noteId}`, true);
         patchNote(savedNote.noteId, { title: savedNote.title, content: savedNote.content, snippet: savedNote.snippet, tags: savedNote.tags });
+        refreshTags();
         onSaved(savedNote);
       })
       .finally(() => setIsSaveLoading(false));
