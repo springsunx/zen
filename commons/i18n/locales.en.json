@@ -291,7 +291,7 @@
   "ai.config.selectModel": "-- Select a model --",
   "ai.config.skipTlsVerify": "Skip TLS certificate verification (for Docker/self-hosted)",
   "ai.modal.title": "AI Assistant",
-  "ai.modal.placeholder": "Describe what you need... (Ctrl+Enter to send)",
+  "ai.modal.placeholder": "Describe what you need... (Enter to send, Shift+Enter for new line)",
   "ai.modal.send": "Send",
   "ai.modal.processing": "Processing...",
   "ai.modal.waiting": "AI is generating a response...",
