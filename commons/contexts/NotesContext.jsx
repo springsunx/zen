@@ -1,7 +1,6 @@
 import { h, createContext, useContext, useState, useCallback, useEffect } from '../../assets/preact.esm.js';
 import ApiClient from '../../commons/http/ApiClient.js';
 import useSearchParams from "../../commons/components/useSearchParams.jsx";
-import { useAppContext } from './AppContext.jsx';
 import { t } from "../i18n/index.js";
 
 const NotesContext = createContext();
@@ -16,8 +15,6 @@ export function NotesProvider({ children }) {
   const [imagesTotal, setImagesTotal] = useState(0);
   const [imagesPageNumber, setImagesPageNumber] = useState(1);
   const [isImagesLoading, setIsImagesLoading] = useState(true);
-
-  const { refreshTags, refreshFocusModes } = useAppContext();
 
   const searchParams = useSearchParams();
 
@@ -76,9 +73,7 @@ export function NotesProvider({ children }) {
 
     refreshNotes(selectedTagId, selectedFocusId, isArchivesPage, isTrashPage, 1, isUntagged);
     refreshImages(selectedTagId, selectedFocusId);
-    refreshTags(selectedFocusId, isArchivesPage, isTrashPage);
-    refreshFocusModes();
-  }, [searchParams, refreshNotes, refreshImages, refreshTags, refreshFocusModes]);
+  }, [searchParams, refreshNotes, refreshImages]);
 
   const handlePinToggle = useCallback((noteId, isPinned) => {
     const apiCall = isPinned ? ApiClient.unpinNote(noteId) : ApiClient.pinNote(noteId);
@@ -119,13 +114,6 @@ export function NotesProvider({ children }) {
     setImages([]);
     setSelectedNote(null);
   }, []);
-
-  // Listen for notes:refresh events (e.g., after tag rename)
-  useEffect(() => {
-    function handleRefresh() { handleNoteChange(); }
-    window.addEventListener('notes:refresh', handleRefresh);
-    return () => window.removeEventListener('notes:refresh', handleRefresh);
-  }, [handleNoteChange]);
 
   return (
     <NotesContext.Provider value={{

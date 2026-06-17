@@ -108,6 +108,17 @@ function NotesPageContent({ noteId }) {
     refreshImages(selectedTagId, selectedFocusId, imagesPageNumber);
   }, [imagesPageNumber, selectedTagId, selectedFocusId, refreshImages]);
 
+  // Listen for notes:refresh events (e.g., after tag rename in TagDetailModal)
+  useEffect(() => {
+    function handleRefresh() {
+      handleNoteChange();
+      refreshTags(selectedFocusId, isArchivesPage, isTrashPage);
+      refreshFocusModes();
+    }
+    window.addEventListener('notes:refresh', handleRefresh);
+    return () => window.removeEventListener('notes:refresh', handleRefresh);
+  }, [handleNoteChange, refreshTags, refreshFocusModes, selectedFocusId, isArchivesPage, isTrashPage]);
+
   // TODO: Move this to NotesEditor
   useEffect(() => {
     if (noteId === "new") {

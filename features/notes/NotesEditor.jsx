@@ -13,7 +13,7 @@ import NoteDeleteModal from './NoteDeleteModal.jsx';
 import { showToast } from '../../commons/components/Toast.jsx';
 import { closeModal, openModal } from '../../commons/components/Modal.jsx';
 import { useNotes } from "../../commons/contexts/NotesContext.jsx";
-import { useAppContext } from '../../commons/contexts/AppContext.jsx';
+import { useAppContext, AppProvider } from '../../commons/contexts/AppContext.jsx';
 import { NotesProvider } from "../../commons/contexts/NotesContext.jsx";
 import NotesEditorModal from './NotesEditorModal.jsx';
 import { useLayout } from '../../commons/contexts/LayoutContext.jsx';
