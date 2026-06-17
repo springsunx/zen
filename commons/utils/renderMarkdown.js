@@ -310,14 +310,19 @@ if (typeof window !== 'undefined' && !window._zenAnchorInitialized) {
               let arr = [idRaw];
               try { arr.push(decodeURIComponent(idRaw)); } catch (e) { }
               if (window.generateHeadingId) arr.push(window.generateHeadingId(idRaw));
+              // Strip anchorPrefix fallback: n123-philosophy → philosophy
+              const dashIdx = idRaw.indexOf('-');
+              if (dashIdx > 0 && idRaw.charAt(0) === 'n' && /^\d+$/.test(idRaw.substring(1, dashIdx))) {
+                arr.push(idRaw.substring(dashIdx + 1));
+              }
               return uniq(arr);
             })();
-            const all = root.querySelectorAll('[id]');
+            const all = document.querySelectorAll('[id]');
             const norm = (x) => String(x || '').trim().toLowerCase().replace(/[\s_]+/g, '-').replace(/[\.:]/g, '-').replace(/-+/g, '-').replace(/^-+|-+$/g, '');
             let element = null;
             for (const cid of candidates) {
               // Precise match (escaped selector)
-              try { const esc = (window.CSS && CSS.escape) ? CSS.escape(cid) : cid.replace(/["'\\\[\]#.:]/g, '\\$&'); element = root.querySelector('[id=+esc+]'); } catch (e) { }
+              try { const esc = (window.CSS && CSS.escape) ? CSS.escape(cid) : cid.replace(/["'\\\[\]#.:]/g, '\\$&'); element = document.querySelector('[id="' + esc + '"]'); } catch (e) { }
               if (element) break;
               // Normalized equality / prefix match
               const c = norm(cid);
