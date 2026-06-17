@@ -637,3 +637,120 @@
     height: 100%;
     min-height: 200px;
 }
+
+/* highlight.js dark mode overrides */
+@media (prefers-color-scheme: dark) {
+    .notes-editor-rendered .hljs {
+        color: var(--text-primary);
+        background: transparent;
+    }
+    .notes-editor-rendered .hljs-string,
+    .notes-editor-rendered .hljs-template-variable,
+    .notes-editor-rendered .hljs-addition {
+        color: #a5d6ff;
+    }
+    .notes-editor-rendered .hljs-comment,
+    .notes-editor-rendered .hljs-quote {
+        color: #8b949e;
+    }
+    .notes-editor-rendered .hljs-keyword,
+    .notes-editor-rendered .hljs-selector-tag,
+    .notes-editor-rendered .hljs-type {
+        color: #ff7b72;
+    }
+    .notes-editor-rendered .hljs-number,
+    .notes-editor-rendered .hljs-literal,
+    .notes-editor-rendered .hljs-symbol,
+    .notes-editor-rendered .hljs-bullet {
+        color: #79c0ff;
+    }
+    .notes-editor-rendered .hljs-title,
+    .notes-editor-rendered .hljs-section,
+    .notes-editor-rendered .hljs-selector-id {
+        color: #d2a8ff;
+    }
+    .notes-editor-rendered .hljs-attr,
+    .notes-editor-rendered .hljs-attribute {
+        color: #79c0ff;
+    }
+    .notes-editor-rendered .hljs-built_in,
+    .notes-editor-rendered .hljs-class .hljs-title {
+        color: #ffa657;
+    }
+    .notes-editor-rendered .hljs-meta {
+        color: #8b949e;
+    }
+    .notes-editor-rendered .hljs-deletion {
+        color: #ffa198;
+    }
+    .notes-editor-rendered .hljs-regexp,
+    .notes-editor-rendered .hljs-link {
+        color: #a5d6ff;
+    }
+    .notes-editor-rendered .hljs-tag {
+        color: #7ee787;
+    }
+    .notes-editor-rendered .hljs-variable {
+        color: #ffa657;
+    }
+    .notes-editor-rendered .hljs-name {
+        color: #7ee787;
+    }
+}
+
+[data-theme="dark"] .notes-editor-rendered .hljs {
+    color: var(--text-primary);
+    background: transparent;
+}
+[data-theme="dark"] .notes-editor-rendered .hljs-string,
+[data-theme="dark"] .notes-editor-rendered .hljs-template-variable,
+[data-theme="dark"] .notes-editor-rendered .hljs-addition {
+    color: #a5d6ff;
+}
+[data-theme="dark"] .notes-editor-rendered .hljs-comment,
+[data-theme="dark"] .notes-editor-rendered .hljs-quote {
+    color: #8b949e;
+}
+[data-theme="dark"] .notes-editor-rendered .hljs-keyword,
+[data-theme="dark"] .notes-editor-rendered .hljs-selector-tag,
+[data-theme="dark"] .notes-editor-rendered .hljs-type {
+    color: #ff7b72;
+}
+[data-theme="dark"] .notes-editor-rendered .hljs-number,
+[data-theme="dark"] .notes-editor-rendered .hljs-literal,
+[data-theme="dark"] .notes-editor-rendered .hljs-symbol,
+[data-theme="dark"] .notes-editor-rendered .hljs-bullet {
+    color: #79c0ff;
+}
+[data-theme="dark"] .notes-editor-rendered .hljs-title,
+[data-theme="dark"] .notes-editor-rendered .hljs-section,
+[data-theme="dark"] .notes-editor-rendered .hljs-selector-id {
+    color: #d2a8ff;
+}
+[data-theme="dark"] .notes-editor-rendered .hljs-attr,
+[data-theme="dark"] .notes-editor-rendered .hljs-attribute {
+    color: #79c0ff;
+}
+[data-theme="dark"] .notes-editor-rendered .hljs-built_in,
+[data-theme="dark"] .notes-editor-rendered .hljs-class .hljs-title {
+    color: #ffa657;
+}
+[data-theme="dark"] .notes-editor-rendered .hljs-meta {
+    color: #8b949e;
+}
+[data-theme="dark"] .notes-editor-rendered .hljs-deletion {
+    color: #ffa198;
+}
+[data-theme="dark"] .notes-editor-rendered .hljs-regexp,
+[data-theme="dark"] .notes-editor-rendered .hljs-link {
+    color: #a5d6ff;
+}
+[data-theme="dark"] .notes-editor-rendered .hljs-tag {
+    color: #7ee787;
+}
+[data-theme="dark"] .notes-editor-rendered .hljs-variable {
+    color: #ffa657;
+}
+[data-theme="dark"] .notes-editor-rendered .hljs-name {
+    color: #7ee787;
+}
