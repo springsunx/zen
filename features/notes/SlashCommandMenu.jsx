@@ -1,4 +1,4 @@
-import { h, useRef, useEffect } from "../../assets/preact.esm.js"
+import { h, useRef, useEffect, useState } from "../../assets/preact.esm.js"
 import { Heading1Icon, Heading2Icon, Heading3Icon, CodeBlockIcon, CodeIcon, ListTodoIcon, TableIcon, LinkIcon, NoteIcon, ListIcon, ListOrderedIcon, QuoteIcon, AlertTriangleIcon, InfoIcon, LightbulbIcon, ShieldAlertIcon, FlameIcon } from '../../commons/components/Icon.jsx';
 import { t } from "../../commons/i18n/index.js";
 import "./SlashCommandMenu.css";
@@ -13,7 +13,7 @@ const COMMANDS = [
   { id: 'code', icon: CodeBlockIcon, format: 'codeblock', label: () => t('slash.code'), desc: () => t('slash.code.desc') },
   { id: 'icode', icon: CodeIcon, format: 'code', label: () => t('slash.icode'), desc: () => t('slash.icode.desc') },
   { id: 'quote', icon: QuoteIcon, format: 'quote', label: () => t('slash.quote'), desc: () => t('slash.quote.desc') },
-  { id: 'table', icon: TableIcon, insert: () => '| Header | Header |\n| ------ | ------ |\n| Cell   | Cell   |', label: () => t('slash.table'), desc: () => t('slash.table.desc') },
+  { id: 'table', icon: TableIcon, hasForm: true, label: () => t('slash.table'), desc: () => t('slash.table.desc') },
   { id: 'v1', icon: InfoIcon, insert: () => '> [!note]\n> ', cursorOffset: 11, label: () => t('slash.note'), desc: () => t('slash.note.desc') },
   { id: 'v2', icon: ShieldAlertIcon, insert: () => '> [!important]\n> ', cursorOffset: 16, label: () => t('slash.important'), desc: () => t('slash.important.desc') },
   { id: 'v3', icon: LightbulbIcon, insert: () => '> [!tip]\n> ', cursorOffset: 10, label: () => t('slash.tip'), desc: () => t('slash.tip.desc') },
@@ -23,10 +23,20 @@ const COMMANDS = [
   { id: 'template', icon: NoteIcon, action: 'template', label: () => t('slash.template'), desc: () => t('slash.template.desc') },
 ];
 
+function generateTable(rows, cols) {
+  const header = '| ' + Array.from({ length: cols }, () => 'Header').join(' | ') + ' |';
+  const sep = '| ' + Array.from({ length: cols }, () => '------').join(' | ') + ' |';
+  const body = Array.from({ length: rows }, () =>
+    '| ' + Array.from({ length: cols }, () => '  ').join(' | ') + ' |'
+  ).join('\n');
+  return header + '\n' + sep + '\n' + body;
+}
+
 export default function SlashCommandMenu({ query, onSelect, onAction, selectedIndex, textareaRef }) {
   const menuRef = useRef(null);
+  const rowsRef = useRef(null);
+  const [tableForm, setTableForm] = useState(null); // { rows, cols } when table command is selected
 
-  // Calculate position at cursor
   const position = (() => {
     if (!textareaRef?.current) return { top: 0, left: 0, width: 280 };
     const ta = textareaRef.current;
@@ -63,7 +73,85 @@ export default function SlashCommandMenu({ query, onSelect, onAction, selectedIn
     if (selected) selected.scrollIntoView({ block: 'nearest' });
   }, [selectedIndex]);
 
+  // Focus rows input when table form appears
+  useEffect(() => {
+    if (tableForm && rowsRef.current) rowsRef.current.focus();
+  }, [tableForm]);
+
+  // Check if selected command is table
+  useEffect(() => {
+    const cmd = filtered[selectedIndex];
+    if (cmd && cmd.hasForm && !tableForm) {
+      setTableForm({ rows: 3, cols: 3 });
+    } else if (cmd && !cmd.hasForm && tableForm) {
+      setTableForm(null);
+    }
+  }, [selectedIndex, filtered]);
+
+  function handleTableKeyDown(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const text = generateTable(tableForm.rows, tableForm.cols);
+      onSelect({ insert: () => text, cursorOffset: 0 });
+      return;
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      setTableForm(null);
+      return;
+    }
+    // Tab switches between rows and cols
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      if (e.target === rowsRef.current) {
+        e.target.nextElementSibling?.focus();
+      } else {
+        rowsRef.current?.focus();
+      }
+    }
+  }
+
+  function handleTableSubmit() {
+    const text = generateTable(tableForm.rows, tableForm.cols);
+    onSelect({ insert: () => text, cursorOffset: 0 });
+  }
+
   if (filtered.length === 0) return null;
+
+  // If table form is showing, render the form instead of the command list
+  if (tableForm) {
+    return (
+      <div className="slash-command-menu" ref={menuRef} style={{ position: 'absolute', top: position.top + 'px', left: position.left + 'px', width: position.width + 'px' }}>
+        <div className="slash-command-table-form" onKeyDown={handleTableKeyDown}>
+          <div className="slash-command-table-row">
+            <label>{t('slash.table.rows')}</label>
+            <input
+              ref={rowsRef}
+              type="number"
+              min="1"
+              max="20"
+              value={tableForm.rows}
+              onInput={e => setTableForm(prev => ({ ...prev, rows: Math.max(1, Math.min(20, parseInt(e.target.value) || 1)) }))}
+            />
+          </div>
+          <div className="slash-command-table-row">
+            <label>{t('slash.table.cols')}</label>
+            <input
+              type="number"
+              min="1"
+              max="10"
+              value={tableForm.cols}
+              onInput={e => setTableForm(prev => ({ ...prev, cols: Math.max(1, Math.min(10, parseInt(e.target.value) || 1)) }))}
+            />
+          </div>
+          <div className="slash-command-table-actions">
+            <button type="button" className="slash-command-table-btn" onClick={handleTableSubmit}>{t('slash.table.generate')}</button>
+            <button type="button" className="slash-command-table-btn secondary" onClick={() => setTableForm(null)}>{t('common.cancel')}</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="slash-command-menu" ref={menuRef} style={{ position: 'absolute', top: position.top + 'px', left: position.left + 'px', width: position.width + 'px' }}>
@@ -75,7 +163,9 @@ export default function SlashCommandMenu({ query, onSelect, onAction, selectedIn
             className={`slash-command-item ${i === selectedIndex ? 'is-selected' : ''}`}
             onMouseDown={e => {
               e.preventDefault();
-              if (cmd.action) onAction(cmd.action);
+              if (cmd.hasForm) {
+                setTableForm({ rows: 3, cols: 3 });
+              } else if (cmd.action) onAction(cmd.action);
               else onSelect(cmd);
             }}
           >
