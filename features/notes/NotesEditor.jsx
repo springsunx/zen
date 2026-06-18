@@ -576,6 +576,9 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
             }}
           />
         )}
+        {showLinkPicker && (
+          <NoteLinkPicker onInsertLink={handleInsertInternalLink} onClose={() => setShowLinkPicker(false)} textareaRef={textareaRef} />
+        )}
       </div>
     );
   } else if (title === "" && content === "") {
@@ -649,9 +652,6 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
         <button type="button" className="ai-fab" onClick={handleOpenAI} title={t('notes.toolbar.ai')}>
           <BrainCircuitIcon />
         </button>
-      )}
-      {showLinkPicker && (
-        <NoteLinkPicker onInsertLink={handleInsertInternalLink} onClose={() => setShowLinkPicker(false)} textareaRef={textareaRef} />
       )}
       <div className="notes-editor-content">
         {contentArea}

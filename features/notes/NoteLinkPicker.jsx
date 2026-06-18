@@ -2,7 +2,6 @@ import { h, useState, useRef, useEffect } from "../../assets/preact.esm.js"
 import ApiClient from "../../commons/http/ApiClient.js";
 import { LinkIcon } from "../../commons/components/Icon.jsx";
 import { t } from "../../commons/i18n/index.js";
-import "./NoteLinkPicker.css";
 
 export default function NoteLinkPicker({ onInsertLink, onClose, textareaRef }) {
   const [query, setQuery] = useState("");
