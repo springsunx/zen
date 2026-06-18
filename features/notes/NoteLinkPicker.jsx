@@ -21,8 +21,20 @@ export default function NoteLinkPicker({ onInsertLink, onClose, textareaRef, cur
         onClose();
       }
     }
+    // Close on Escape
+    function handleEscape(e) {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        if (textareaRef?.current) textareaRef.current.focus();
+        onClose();
+      }
+    }
     document.addEventListener('mousedown', handleOutside);
-    return () => document.removeEventListener('mousedown', handleOutside);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
   }, []);
 
   // Position at cursor — calculated synchronously (no flash)
