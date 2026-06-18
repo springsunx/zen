@@ -348,35 +348,31 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
     const val = ta.value;
     const pos = ta.selectionStart;
     const lineStart = val.lastIndexOf('\n', pos - 1) + 1;
-    const before = val.substring(0, lineStart);
-    const after = val.substring(pos);
     setSlashMenu(null);
     skipSlashCheck.current = true;
+
     if (cmd.action === 'link') {
-      pendingCursorPos.current = { start: lineStart, end: lineStart };
-      setContent(before + after);
-      onContentChange(before + after);
+      // Select the /command text and replace with empty (preserves undo)
+      ta.setSelectionRange(lineStart, pos);
+      document.execCommand('insertText', false, '');
+      syncContentFromTextarea();
       setTimeout(() => { handleShowLinkPicker(); skipSlashCheck.current = false; }, 50);
       return;
     }
     if (cmd.action === 'template') {
-      pendingCursorPos.current = { start: lineStart, end: lineStart };
-      setContent(before + after);
-      onContentChange(before + after);
+      ta.setSelectionRange(lineStart, pos);
+      document.execCommand('insertText', false, '');
+      syncContentFromTextarea();
       setTimeout(() => { setShowTemplatePicker(true); skipSlashCheck.current = false; }, 50);
       return;
     }
-    // Remove the /query from content first
-    const cleanedContent = before + after;
-    skipSlashCheck.current = true;
     if (cmd.format) {
-      setContent(cleanedContent);
-      onContentChange(cleanedContent);
+      // Select the /command text, remove it, then apply format
+      ta.setSelectionRange(lineStart, pos);
+      document.execCommand('insertText', false, '');
+      syncContentFromTextarea();
       setTimeout(() => {
         if (textareaRef.current) {
-          textareaRef.current.value = cleanedContent;
-          textareaRef.current.selectionStart = lineStart;
-          textareaRef.current.selectionEnd = lineStart;
           applyMarkdownFormat(cmd.format);
           skipSlashCheck.current = false;
         }
@@ -386,10 +382,22 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
       const cursorOff = cmd.cursorOffset !== undefined ? cmd.cursorOffset : insertText.length;
       const finalText = cmd.postInsert ? insertText.substring(0, cursorOff) + cmd.postInsert + insertText.substring(cursorOff) : insertText;
       const finalCursorOff = cmd.postInsert ? cursorOff + cmd.postInsert.length + (cmd.cursorAfterPost || 0) : cursorOff;
+      // Select the /command text and replace with insertText (preserves undo)
+      ta.setSelectionRange(lineStart, pos);
+      document.execCommand('insertText', false, finalText);
+      syncContentFromTextarea();
+      // Set cursor position
       pendingCursorPos.current = { start: lineStart + finalCursorOff, end: lineStart + finalCursorOff };
-      setContent(before + finalText + after);
-      onContentChange(before + finalText + after);
       setTimeout(() => { skipSlashCheck.current = false; }, 50);
+    }
+  }
+
+  // Sync Preact state from textarea DOM value (after execCommand changes it)
+  function syncContentFromTextarea() {
+    if (textareaRef.current) {
+      const v = textareaRef.current.value;
+      setContent(v);
+      onContentChange(v);
     }
   }
 
