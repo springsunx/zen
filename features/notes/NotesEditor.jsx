@@ -562,16 +562,12 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
               }
               setSlashMenu(null);
               if (action === 'link') {
-                requestAnimationFrame(() => {
-                  handleShowLinkPicker();
-                  skipSlashCheck.current = false;
-                });
+                setShowLinkPicker(true);
+                skipSlashCheck.current = false;
               }
               if (action === 'template') {
-                requestAnimationFrame(() => {
-                  setShowTemplatePicker(true);
-                  skipSlashCheck.current = false;
-                });
+                setShowTemplatePicker(true);
+                skipSlashCheck.current = false;
               }
             }}
           />
