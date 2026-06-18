@@ -3,7 +3,7 @@ import ApiClient from "../../commons/http/ApiClient.js";
 import { LinkIcon } from "../../commons/components/Icon.jsx";
 import { t } from "../../commons/i18n/index.js";
 
-export default function NoteLinkPicker({ onInsertLink, onClose, textareaRef }) {
+export default function NoteLinkPicker({ onInsertLink, onClose, textareaRef, cursorPos }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -28,7 +28,7 @@ export default function NoteLinkPicker({ onInsertLink, onClose, textareaRef }) {
   const position = (() => {
     if (!textareaRef?.current) return { top: 0, left: 0 };
     const ta = textareaRef.current;
-    const pos = ta.selectionStart;
+    const pos = cursorPos != null ? cursorPos : ta.selectionStart;
     const style = window.getComputedStyle(ta);
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');

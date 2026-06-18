@@ -43,6 +43,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   const [tags, setTags] = useState(selectedNote?.tags || []);
   const [isSaveLoading, setIsSaveLoading] = useState(false);
   const [showLinkPicker, setShowLinkPicker] = useState(false);
+  const [linkPickerPos, setLinkPickerPos] = useState(null); // { lineStart, cursorX, cursorY } for slash command context
   const [backlinks, setBacklinks] = useState([]);
   const [isBacklinksLoading, setIsBacklinksLoading] = useState(false);
   const [showAIModal, setShowAIModal] = useState(false);
@@ -184,6 +185,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
       setContent(v);
       onContentChange(v);
     }
+    setLinkPickerPos(null);
     setShowLinkPicker(true);
   }
 
@@ -548,13 +550,14 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
             textareaRef={textareaRef}
             onSelect={executeSlashCommand}
             onAction={action => {
-              // Remove the /command text from content
+              // Remove the /command text from content, save cursor pos for picker
+              let savedLineStart = 0;
               if (textareaRef.current) {
                 const ta = textareaRef.current;
                 const val = ta.value;
                 const pos = ta.selectionStart;
-                const lineStart = val.lastIndexOf('\n', pos - 1) + 1;
-                const before = val.substring(0, lineStart);
+                savedLineStart = val.lastIndexOf('\n', pos - 1) + 1;
+                const before = val.substring(0, savedLineStart);
                 const after = val.substring(pos);
                 skipSlashCheck.current = true;
                 setContent(before + after);
@@ -562,6 +565,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
               }
               setSlashMenu(null);
               if (action === 'link') {
+                setLinkPickerPos(savedLineStart);
                 setShowLinkPicker(true);
                 skipSlashCheck.current = false;
               }
@@ -573,7 +577,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
           />
         )}
         {showLinkPicker && (
-          <NoteLinkPicker onInsertLink={handleInsertInternalLink} onClose={() => setShowLinkPicker(false)} textareaRef={textareaRef} />
+          <NoteLinkPicker onInsertLink={handleInsertInternalLink} onClose={() => setShowLinkPicker(false)} textareaRef={textareaRef} cursorPos={linkPickerPos} />
         )}
       </div>
     );
