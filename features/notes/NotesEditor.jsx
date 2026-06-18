@@ -314,19 +314,27 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
     if (cmd.action === 'link') {
       setContent(before + after);
       onContentChange(before + after);
-      requestAnimationFrame(() => {
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.selectionStart = lineStart;
+          textareaRef.current.selectionEnd = lineStart;
+        }
         handleShowLinkPicker();
         skipSlashCheck.current = false;
-      });
+      }, 0);
       return;
     }
     if (cmd.action === 'template') {
       setContent(before + after);
       onContentChange(before + after);
-      requestAnimationFrame(() => {
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.selectionStart = lineStart;
+          textareaRef.current.selectionEnd = lineStart;
+        }
         setShowTemplatePicker(true);
         skipSlashCheck.current = false;
-      });
+      }, 0);
       return;
     }
     // Remove the /query from content first
@@ -336,7 +344,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
       // Use existing applyMarkdownFormat — it handles cursor positioning
       setContent(cleanedContent);
       onContentChange(cleanedContent);
-      requestAnimationFrame(() => {
+      setTimeout(() => {
         if (textareaRef.current) {
           textareaRef.current.value = cleanedContent;
           textareaRef.current.selectionStart = lineStart;
@@ -344,7 +352,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
           applyMarkdownFormat(cmd.format);
           skipSlashCheck.current = false;
         }
-      });
+      }, 0);
     } else if (cmd.insert) {
       // Custom insert (table)
       const insertText = cmd.insert();
@@ -353,7 +361,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
       const finalCursorOff = cmd.postInsert ? cursorOff + cmd.postInsert.length + (cmd.cursorAfterPost || 0) : cursorOff;
       setContent(before + finalText + after);
       onContentChange(before + finalText + after);
-      requestAnimationFrame(() => {
+      setTimeout(() => {
         if (textareaRef.current) {
           const newPos = lineStart + finalCursorOff;
           textareaRef.current.selectionStart = newPos;
@@ -361,7 +369,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
           textareaRef.current.focus();
           skipSlashCheck.current = false;
         }
-      });
+      }, 0);
     }
   }
 
