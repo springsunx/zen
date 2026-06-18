@@ -199,6 +199,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
       setContent(v);
       onContentChange(v);
     }
+    pendingCursorPos.current = null;
     setLinkPickerPos(null);
     setShowLinkPicker(true);
   }
