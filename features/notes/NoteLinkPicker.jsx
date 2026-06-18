@@ -4,91 +4,98 @@ import { LinkIcon } from "../../commons/components/Icon.jsx";
 import { t } from "../../commons/i18n/index.js";
 import "./NoteLinkPicker.css";
 
-export default function NoteLinkPicker({ onInsertLink, onClose }) {
+export default function NoteLinkPicker({ onInsertLink, onClose, textareaRef }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [position, setPosition] = useState({ top: 0, left: 0 });
   const inputRef = useRef(null);
   const debounceRef = useRef(null);
 
   useEffect(() => {
-    if (inputRef.current) {
-      inputRef.current.focus();
-    }
+    if (inputRef.current) inputRef.current.focus();
   }, []);
+
+  // Calculate position at cursor
+  useEffect(() => {
+    if (!textareaRef?.current) return;
+    const ta = textareaRef.current;
+    const pos = ta.selectionStart;
+    const style = window.getComputedStyle(ta);
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    ctx.font = `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+    const paddingLeft = parseFloat(style.paddingLeft) || 0;
+    const paddingTop = parseFloat(style.paddingTop) || 0;
+    const lineHeight = parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.2;
+    const borderLeft = parseFloat(style.borderLeftWidth) || 0;
+    const borderTop = parseFloat(style.borderTopWidth) || 0;
+    const textBefore = ta.value.substring(0, pos);
+    const lines = textBefore.split('\n');
+    const lineIndex = lines.length - 1;
+    const cursorX = ctx.measureText(lines[lineIndex]).width;
+    const cursorY = lineIndex * lineHeight;
+    // Position relative to the textarea wrapper
+    const top = borderTop + paddingTop + cursorY - ta.scrollTop + lineHeight + 4;
+    const left = borderLeft + paddingLeft + cursorX - ta.scrollLeft;
+    setPosition({ top, left: Math.max(0, left) });
+  });
 
   function handleInput(e) {
     const value = e.target.value;
     setQuery(value);
     setSelectedIndex(0);
 
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-    }
-
-    if (value.trim() === "") {
-      setResults([]);
-      return;
-    }
-
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (!value.trim()) { setResults([]); setIsLoading(false); return; }
     setIsLoading(true);
+
     debounceRef.current = setTimeout(() => {
-      ApiClient.search(value.trim())
-        .then(data => {
-          // 只保留标题中包含搜索词的笔记
-          const query = value.trim().toLowerCase();
-          const noteResults = [
-            ...(data.lexical_notes || []),
-            ...(data.semantic_notes || [])
-          ];
-          // 标题过滤 + 去重
-          const seen = new Set();
-          const deduped = noteResults.filter(n => {
-            if (seen.has(n.noteId)) return false;
-            seen.add(n.noteId);
-            return n.title && n.title.toLowerCase().includes(query);
-          });
-          setResults(deduped);
-          setIsLoading(false);
-        })
-        .catch(() => {
-          setResults([]);
-          setIsLoading(false);
+      ApiClient.search(value.trim()).then(data => {
+        const queryLower = value.trim().toLowerCase();
+        const noteResults = [
+          ...(data.lexical_notes || []),
+          ...(data.semantic_notes || [])
+        ];
+        const seen = new Set();
+        const deduped = noteResults.filter(n => {
+          if (seen.has(n.noteId)) return false;
+          seen.add(n.noteId);
+          return n.title && n.title.toLowerCase().includes(queryLower);
         });
+        setResults(deduped);
+        setIsLoading(false);
+      }).catch(() => { setResults([]); setIsLoading(false); });
     }, 200);
   }
 
   function handleKeyDown(e) {
-    if (e.key === "ArrowDown") {
+    if (e.key === 'ArrowDown') {
       e.preventDefault();
       setSelectedIndex(prev => Math.min(prev + 1, results.length - 1));
-    } else if (e.key === "ArrowUp") {
+    } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       setSelectedIndex(prev => Math.max(prev - 1, 0));
-    } else if (e.key === "Enter" && results[selectedIndex]) {
+    } else if (e.key === 'Enter') {
       e.preventDefault();
-      insertLink(results[selectedIndex]);
-    } else if (e.key === "Escape") {
+      if (results[selectedIndex]) insertLink(results[selectedIndex]);
+    } else if (e.key === 'Escape') {
       e.preventDefault();
-      if (onClose) onClose();
-    }
-  }
-
-  function insertLink(note) {
-    const title = note.title || note.name || "Untitled";
-    const link = `[${title}](/notes/${note.noteId})`;
-    if (onInsertLink) {
-      onInsertLink(link);
-    }
-    if (onClose) {
       onClose();
     }
   }
 
+  function insertLink(note) {
+    const title = note.title || "Untitled";
+    const link = `[${title}](/notes/${note.noteId})`;
+    onInsertLink(link);
+    onClose();
+  }
+
   return (
-    <div className="note-link-picker">
-      <div className="note-link-picker-header">
+    <div className="note-link-picker" style={{ position: 'absolute', top: position.top + 'px', left: position.left + 'px' }}>
+      <div className="note-link-picker-input-row">
         <LinkIcon />
         <input
           ref={inputRef}
@@ -98,31 +105,27 @@ export default function NoteLinkPicker({ onInsertLink, onClose }) {
           value={query}
           onInput={handleInput}
           onKeyDown={handleKeyDown}
+          onBlur={() => setTimeout(onClose, 200)}
         />
-        <button className="note-link-picker-close" onClick={onClose}>&times;</button>
       </div>
-      {isLoading && (
-        <div className="note-link-picker-loading">{t('common.loading')}</div>
+      {isLoading && <div className="note-link-picker-loading">{t('common.loading')}</div>}
+      {!isLoading && query.trim() && results.length === 0 && (
+        <div className="note-link-picker-empty">{t('notes.linkPicker.noResults')}</div>
       )}
-      {!isLoading && results.length > 0 && (
+      {results.length > 0 && (
         <div className="note-link-picker-results">
-          {results.map((note, index) => (
+          {results.map((note, i) => (
             <div
               key={note.noteId}
-              className={`note-link-picker-item ${index === selectedIndex ? 'is-selected' : ''}`}
-              onClick={() => insertLink(note)}
-              onMouseEnter={() => setSelectedIndex(index)}
+              className={`note-link-picker-item ${i === selectedIndex ? 'selected' : ''}`}
+              onMouseDown={e => { e.preventDefault(); insertLink(note); }}
+              onMouseEnter={() => setSelectedIndex(i)}
             >
-              <div className="note-link-picker-item-title">{note.title || t('notes.editor.empty')}</div>
-              {note.snippet && (
-                <div className="note-link-picker-item-snippet">{note.snippet}</div>
-              )}
+              <span className="note-link-picker-item-title">{note.title}</span>
+              {note.snippet && <span className="note-link-picker-item-snippet">{note.snippet}</span>}
             </div>
           ))}
         </div>
-      )}
-      {!isLoading && query.trim() !== "" && results.length === 0 && (
-        <div className="note-link-picker-empty">{t('notes.linkPicker.noResults')}</div>
       )}
     </div>
   );

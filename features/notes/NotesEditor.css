@@ -526,9 +526,36 @@
     }
 }
 
+.ai-fab {
+    display: none;
+    position: fixed;
+    bottom: calc(var(--mobile-navbar-height) + var(--safe-area-bottom) + 16px);
+    right: 16px;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: none;
+    background: var(--neutral-900, #171717);
+    color: var(--neutral-50, #fafafa);
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 3;
+    box-shadow: 0 4px 12px rgba(0,0,0,.2);
+    transition: transform 0.15s, background 0.15s;
+
+    svg.lucide { width: 22px; height: 22px; }
+    &:hover { transform: scale(1.05); }
+    &:active { transform: scale(0.95); }
+}
+
 @media screen and (max-width: 948px) {
     .formatting-toolbar {
         display: none;
+    }
+
+    .ai-fab {
+        display: flex;
     }
 }
 /* Code block copy button styles */

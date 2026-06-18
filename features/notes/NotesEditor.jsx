@@ -8,6 +8,7 @@ import NoteLinkPicker from './NoteLinkPicker.jsx';
 import BacklinksPanel from './BacklinksPanel.jsx';
 import TemplatePicker from '../templates/TemplatePicker.jsx';
 import AIPanel from './AIPanel.jsx';
+import SlashCommandMenu, { COMMANDS } from './SlashCommandMenu.jsx';
 import renderMarkdown from '../../commons/utils/renderMarkdown.js';
 import navigateTo from '../../commons/utils/navigateTo.js';
 import NoteDeleteModal from './NoteDeleteModal.jsx';
@@ -17,6 +18,7 @@ import { useNotes } from "../../commons/contexts/NotesContext.jsx";
 import { useAppContext, AppProvider } from '../../commons/contexts/AppContext.jsx';
 import { NotesProvider } from "../../commons/contexts/NotesContext.jsx";
 import NotesEditorModal from './NotesEditorModal.jsx';
+import { BrainCircuitIcon } from '../../commons/components/Icon.jsx';
 import { useLayout } from '../../commons/contexts/LayoutContext.jsx';
 import { useVisibleHeadings } from "./useVisibleHeadings.js";
 import useEditorKeyboardShortcuts from "./useEditorKeyboardShortcuts.js";
@@ -45,6 +47,8 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   const [isBacklinksLoading, setIsBacklinksLoading] = useState(false);
   const [showAIModal, setShowAIModal] = useState(false);
   const [aiMessages, setAiMessages] = useState([]);
+  const [slashMenu, setSlashMenu] = useState(null); // { query, selectedIndex }
+  const skipSlashCheck = useRef(false);
 
   // ─── Refs ───
   const titleRef = useRef(null);
@@ -232,6 +236,126 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
     setShowAIModal(false);
   }
 
+  // ─── Slash Commands ───
+  function handleTextareaInput(e) {
+    if (skipSlashCheck.current) return;
+    const ta = e.target;
+    const val = ta.value;
+    const pos = ta.selectionStart;
+    const lineStart = val.lastIndexOf('\n', pos - 1) + 1;
+    const lineText = val.substring(lineStart, pos);
+    const slashMatch = lineText.match(/^\/([a-z0-9]*)$/);
+    if (slashMatch) {
+      setSlashMenu({ query: slashMatch[1], selectedIndex: 0 });
+    } else {
+      setSlashMenu(null);
+    }
+  }
+
+  function handleSlashKeyDown(e) {
+    if (!slashMenu) return false;
+    const filtered = COMMANDS.filter(cmd => {
+      const q = slashMenu.query.toLowerCase();
+      return cmd.id.includes(q) || cmd.label().toLowerCase().includes(q);
+    });
+    if (filtered.length === 0) { setSlashMenu(null); return false; }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSlashMenu(prev => ({ ...prev, selectedIndex: (prev.selectedIndex + 1) % filtered.length }));
+      return true;
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSlashMenu(prev => ({ ...prev, selectedIndex: (prev.selectedIndex - 1 + filtered.length) % filtered.length }));
+      return true;
+    }
+    if (e.key === 'Enter' || e.key === 'Tab') {
+      e.preventDefault();
+      const cmd = filtered[slashMenu.selectedIndex];
+      if (cmd) executeSlashCommand(cmd);
+      return true;
+    }
+    // Space after exact match → execute directly
+    if (e.key === ' ') {
+      const exact = COMMANDS.find(cmd => cmd.id === slashMenu.query.toLowerCase());
+      if (exact) {
+        e.preventDefault();
+        executeSlashCommand(exact);
+        return true;
+      }
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      setSlashMenu(null);
+      return true;
+    }
+    return false;
+  }
+
+  function executeSlashCommand(cmd) {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const val = ta.value;
+    const pos = ta.selectionStart;
+    const lineStart = val.lastIndexOf('\n', pos - 1) + 1;
+    const before = val.substring(0, lineStart);
+    const after = val.substring(pos);
+    setSlashMenu(null);
+    skipSlashCheck.current = true;
+    if (cmd.action === 'link') {
+      setContent(before + after);
+      onContentChange(before + after);
+      requestAnimationFrame(() => {
+        handleShowLinkPicker();
+        skipSlashCheck.current = false;
+      });
+      return;
+    }
+    if (cmd.action === 'template') {
+      setContent(before + after);
+      onContentChange(before + after);
+      requestAnimationFrame(() => {
+        setShowTemplatePicker(true);
+        skipSlashCheck.current = false;
+      });
+      return;
+    }
+    // Remove the /query from content first
+    const cleanedContent = before + after;
+    skipSlashCheck.current = true;
+    if (cmd.format) {
+      // Use existing applyMarkdownFormat — it handles cursor positioning
+      setContent(cleanedContent);
+      onContentChange(cleanedContent);
+      requestAnimationFrame(() => {
+        if (textareaRef.current) {
+          textareaRef.current.value = cleanedContent;
+          textareaRef.current.selectionStart = lineStart;
+          textareaRef.current.selectionEnd = lineStart;
+          applyMarkdownFormat(cmd.format);
+          skipSlashCheck.current = false;
+        }
+      });
+    } else if (cmd.insert) {
+      // Custom insert (table)
+      const insertText = cmd.insert();
+      const cursorOff = cmd.cursorOffset !== undefined ? cmd.cursorOffset : insertText.length;
+      const finalText = cmd.postInsert ? insertText.substring(0, cursorOff) + cmd.postInsert + insertText.substring(cursorOff) : insertText;
+      const finalCursorOff = cmd.postInsert ? cursorOff + cmd.postInsert.length + (cmd.cursorAfterPost || 0) : cursorOff;
+      setContent(before + finalText + after);
+      onContentChange(before + finalText + after);
+      requestAnimationFrame(() => {
+        if (textareaRef.current) {
+          const newPos = lineStart + finalCursorOff;
+          textareaRef.current.selectionStart = newPos;
+          textareaRef.current.selectionEnd = newPos;
+          textareaRef.current.focus();
+          skipSlashCheck.current = false;
+        }
+      });
+    }
+  }
+
   const handleSaveClick = useCallback((closeAfter = false) => {
     const currentTitle = titleRef.current?.textContent || "";
     const currentContent = textareaRef.current?.value || content;
@@ -392,16 +516,67 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   // ─── Content Area ───
   let contentArea = null;
   if (isEditable) {
+    const filteredSlashCommands = slashMenu ? COMMANDS.filter(cmd => {
+      const q = slashMenu.query.toLowerCase();
+      return cmd.id.includes(q) || cmd.label().toLowerCase().includes(q);
+    }) : [];
+
     contentArea = (
-      <textarea
-        className="notes-editor-textarea"
-        placeholder={t('notes.editor.placeholder')}
-        spellCheck="false"
-        ref={textareaRef}
-        value={content}
-        onInput={handleTextAreaHeight}
-        onBlur={e => { const v = e.target.value; setContent(v); onContentChange(v); }}
-      />
+      <div style={{ position: 'relative' }}>
+        <textarea
+          className="notes-editor-textarea"
+          placeholder={t('notes.editor.placeholder')}
+          spellCheck="false"
+          ref={textareaRef}
+          value={content}
+          onInput={e => {
+            const v = e.target.value;
+            setContent(v);
+            onContentChange(v);
+            handleTextAreaHeight(e);
+            handleTextareaInput(e);
+          }}
+          onKeyDown={e => {
+            if (handleSlashKeyDown(e)) return;
+          }}
+          onBlur={e => { const v = e.target.value; setContent(v); onContentChange(v); }}
+        />
+        {slashMenu && filteredSlashCommands.length > 0 && (
+          <SlashCommandMenu
+            query={slashMenu.query}
+            selectedIndex={slashMenu.selectedIndex}
+            textareaRef={textareaRef}
+            onSelect={executeSlashCommand}
+            onAction={action => {
+              // Remove the /command text from content
+              if (textareaRef.current) {
+                const ta = textareaRef.current;
+                const val = ta.value;
+                const pos = ta.selectionStart;
+                const lineStart = val.lastIndexOf('\n', pos - 1) + 1;
+                const before = val.substring(0, lineStart);
+                const after = val.substring(pos);
+                skipSlashCheck.current = true;
+                setContent(before + after);
+                onContentChange(before + after);
+              }
+              setSlashMenu(null);
+              if (action === 'link') {
+                requestAnimationFrame(() => {
+                  handleShowLinkPicker();
+                  skipSlashCheck.current = false;
+                });
+              }
+              if (action === 'template') {
+                requestAnimationFrame(() => {
+                  setShowTemplatePicker(true);
+                  skipSlashCheck.current = false;
+                });
+              }
+            }}
+          />
+        )}
+      </div>
     );
   } else if (title === "" && content === "") {
     contentArea = <div className="notes-editor-empty-text">{t('notes.editor.empty')}</div>;
@@ -470,12 +645,13 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
           onClose={() => setShowAIModal(false)}
         />
       )}
+      {isEditable && !showAIModal && (
+        <button type="button" className="ai-fab" onClick={handleOpenAI} title={t('notes.toolbar.ai')}>
+          <BrainCircuitIcon />
+        </button>
+      )}
       {showLinkPicker && (
-        <div style={{ position: 'relative' }}>
-          <div style={{ position: 'absolute', top: '0', left: '0', zIndex: 100 }}>
-            <NoteLinkPicker onInsertLink={handleInsertInternalLink} onClose={() => setShowLinkPicker(false)} />
-          </div>
-        </div>
+        <NoteLinkPicker onInsertLink={handleInsertInternalLink} onClose={() => setShowLinkPicker(false)} textareaRef={textareaRef} />
       )}
       <div className="notes-editor-content">
         {contentArea}

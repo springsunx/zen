@@ -388,9 +388,13 @@
 /* ─── Responsive ─── */
 @media screen and (max-width: 948px) {
     .ai-panel {
-        width: calc(100vw - 20px);
-        right: 10px;
-        bottom: 10px;
+        width: calc(100vw - 16px);
+        right: 8px;
+        bottom: calc(var(--mobile-navbar-height) + var(--safe-area-bottom) + 72px);
         max-height: 60vh;
+    }
+
+    .ai-fab {
+        display: flex;
     }
 }
