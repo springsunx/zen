@@ -562,6 +562,13 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
                 skipSlashCheck.current = true;
                 setContent(before + after);
                 onContentChange(before + after);
+                // Restore cursor position after state update
+                requestAnimationFrame(() => {
+                  if (textareaRef.current) {
+                    textareaRef.current.selectionStart = savedLineStart;
+                    textareaRef.current.selectionEnd = savedLineStart;
+                  }
+                });
               }
               setSlashMenu(null);
               if (action === 'link') {
