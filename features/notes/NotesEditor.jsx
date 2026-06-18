@@ -274,7 +274,14 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
     if (e.key === 'Enter' || e.key === 'Tab') {
       e.preventDefault();
       const cmd = filtered[slashMenu.selectedIndex];
-      if (cmd) executeSlashCommand(cmd);
+      if (cmd) {
+        // Tab on table command: focus the inline row input instead of executing
+        if (e.key === 'Tab' && cmd.hasForm) {
+          const rowsInput = document.querySelector('.slash-command-menu .table-row-input');
+          if (rowsInput) { rowsInput.focus(); return true; }
+        }
+        executeSlashCommand(cmd);
+      }
       return true;
     }
     // Space after exact match → execute directly

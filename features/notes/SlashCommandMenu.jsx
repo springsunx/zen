@@ -74,13 +74,16 @@ export default function SlashCommandMenu({ query, onSelect, onAction, selectedIn
     if (selected) selected.scrollIntoView({ block: 'nearest' });
   }, [selectedIndex]);
 
-  // Focus rows input when table item is selected
-  useEffect(() => {
-    const cmd = filtered[selectedIndex];
-    if (cmd && cmd.hasForm && rowsRef.current) {
-      rowsRef.current.focus();
+  // Focus rows input only when user explicitly tabs into table item
+  function handleGlobalKeyDown(e) {
+    if (e.key === 'Tab') {
+      const cmd = filtered[selectedIndex];
+      if (cmd && cmd.hasForm && rowsRef.current) {
+        e.preventDefault();
+        rowsRef.current.focus();
+      }
     }
-  }, [selectedIndex]);
+  }
 
   function handleTableKeyDown(e) {
     if (e.key === 'Enter') {
