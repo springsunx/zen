@@ -17,6 +17,7 @@ export default function NoteLinkPicker({ onInsertLink, onClose, textareaRef, cur
     // Close on outside click
     function handleOutside(e) {
       if (pickerRef.current && !pickerRef.current.contains(e.target)) {
+        if (textareaRef?.current) textareaRef.current.focus();
         onClose();
       }
     }
@@ -86,6 +87,7 @@ export default function NoteLinkPicker({ onInsertLink, onClose, textareaRef, cur
       if (results[selectedIndex]) insertLink(results[selectedIndex]);
     } else if (e.key === 'Escape') {
       e.preventDefault();
+      if (textareaRef?.current) textareaRef.current.focus();
       onClose();
     }
   }
