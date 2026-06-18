@@ -8,17 +8,25 @@ export default function NoteLinkPicker({ onInsertLink, onClose, textareaRef }) {
   const [results, setResults] = useState([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
-  const [position, setPosition] = useState({ top: 0, left: 0 });
   const inputRef = useRef(null);
   const debounceRef = useRef(null);
+  const pickerRef = useRef(null);
 
   useEffect(() => {
     if (inputRef.current) inputRef.current.focus();
+    // Close on outside click
+    function handleOutside(e) {
+      if (pickerRef.current && !pickerRef.current.contains(e.target)) {
+        onClose();
+      }
+    }
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
   }, []);
 
-  // Calculate position at cursor
-  useEffect(() => {
-    if (!textareaRef?.current) return;
+  // Position at cursor — calculated synchronously (no flash)
+  const position = (() => {
+    if (!textareaRef?.current) return { top: 0, left: 0 };
     const ta = textareaRef.current;
     const pos = ta.selectionStart;
     const style = window.getComputedStyle(ta);
@@ -35,21 +43,18 @@ export default function NoteLinkPicker({ onInsertLink, onClose, textareaRef }) {
     const lineIndex = lines.length - 1;
     const cursorX = ctx.measureText(lines[lineIndex]).width;
     const cursorY = lineIndex * lineHeight;
-    // Position relative to the textarea wrapper
     const top = borderTop + paddingTop + cursorY - ta.scrollTop + lineHeight + 4;
     const left = borderLeft + paddingLeft + cursorX - ta.scrollLeft;
-    setPosition({ top, left: Math.max(0, left) });
-  });
+    return { top, left: Math.max(0, left) };
+  })();
 
   function handleInput(e) {
     const value = e.target.value;
     setQuery(value);
     setSelectedIndex(0);
-
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (!value.trim()) { setResults([]); setIsLoading(false); return; }
     setIsLoading(true);
-
     debounceRef.current = setTimeout(() => {
       ApiClient.search(value.trim()).then(data => {
         const queryLower = value.trim().toLowerCase();
@@ -93,7 +98,7 @@ export default function NoteLinkPicker({ onInsertLink, onClose, textareaRef }) {
   }
 
   return (
-    <div className="note-link-picker" style={{ position: 'absolute', top: position.top + 'px', left: position.left + 'px' }}>
+    <div className="note-link-picker" ref={pickerRef} style={{ position: 'absolute', top: position.top + 'px', left: position.left + 'px' }}>
       <div className="note-link-picker-input-row">
         <LinkIcon />
         <input
@@ -104,7 +109,6 @@ export default function NoteLinkPicker({ onInsertLink, onClose, textareaRef }) {
           value={query}
           onInput={handleInput}
           onKeyDown={handleKeyDown}
-          onBlur={() => setTimeout(onClose, 200)}
         />
       </div>
       {isLoading && <div className="note-link-picker-loading">{t('common.loading')}</div>}
