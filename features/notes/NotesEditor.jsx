@@ -708,7 +708,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
           setMessages={setAiMessages}
           onInsert={handleAIInsert}
           onReplace={handleAIReplace}
-          onClose={() => setShowAIModal(false)}
+          onClose={() => { setShowAIModal(false); setTimeout(() => { if (textareaRef.current) textareaRef.current.focus(); }, 50); }}
         />
       )}
       {isEditable && !showAIModal && (
