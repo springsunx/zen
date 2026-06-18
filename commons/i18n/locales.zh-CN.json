@@ -1,4 +1,4 @@
-{
+﻿{
   "nav.new": "新建",
   "nav.search": "搜索",
   "nav.settings": "设置",
@@ -328,6 +328,16 @@
   "slash.quote.desc": "引用文本",
   "slash.table": "表格",
   "slash.table.desc": "带表头的表格",
+  "slash.note": "注释",
+  "slash.note.desc": "注释提示块",
+  "slash.important": "重要",
+  "slash.important.desc": "重要提示块",
+  "slash.tip": "提示",
+  "slash.tip.desc": "提示信息块",
+  "slash.warning": "注意",
+  "slash.warning.desc": "注意警告块",
+  "slash.caution": "警告",
+  "slash.caution.desc": "警告提示块",
   "slash.link": "内部链接",
   "slash.link.desc": "链接到其他笔记",
   "slash.template": "模板",

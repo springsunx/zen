@@ -1,5 +1,5 @@
 import { h, useRef, useEffect } from "../../assets/preact.esm.js"
-import { Heading1Icon, Heading2Icon, Heading3Icon, CodeBlockIcon, CodeIcon, ListTodoIcon, TableIcon, LinkIcon, NoteIcon, ListIcon, ListOrderedIcon, QuoteIcon } from '../../commons/components/Icon.jsx';
+import { Heading1Icon, Heading2Icon, Heading3Icon, CodeBlockIcon, CodeIcon, ListTodoIcon, TableIcon, LinkIcon, NoteIcon, ListIcon, ListOrderedIcon, QuoteIcon, AlertTriangleIcon, InfoIcon, LightbulbIcon, ShieldAlertIcon, FlameIcon } from '../../commons/components/Icon.jsx';
 import { t } from "../../commons/i18n/index.js";
 import "./SlashCommandMenu.css";
 
@@ -14,6 +14,11 @@ const COMMANDS = [
   { id: 'icode', icon: CodeIcon, format: 'code', label: () => t('slash.icode'), desc: () => t('slash.icode.desc') },
   { id: 'quote', icon: QuoteIcon, format: 'quote', label: () => t('slash.quote'), desc: () => t('slash.quote.desc') },
   { id: 'table', icon: TableIcon, insert: () => '| Header | Header |\n| ------ | ------ |\n| Cell   | Cell   |', label: () => t('slash.table'), desc: () => t('slash.table.desc') },
+  { id: 'note', icon: InfoIcon, insert: () => '> [!note]\n> ', cursorOffset: 11, label: () => t('slash.note'), desc: () => t('slash.note.desc') },
+  { id: 'important', icon: ShieldAlertIcon, insert: () => '> [!important]\n> ', cursorOffset: 16, label: () => t('slash.important'), desc: () => t('slash.important.desc') },
+  { id: 'tip', icon: LightbulbIcon, insert: () => '> [!tip]\n> ', cursorOffset: 10, label: () => t('slash.tip'), desc: () => t('slash.tip.desc') },
+  { id: 'warning', icon: AlertTriangleIcon, insert: () => '> [!warning]\n> ', cursorOffset: 14, label: () => t('slash.warning'), desc: () => t('slash.warning.desc') },
+  { id: 'caution', icon: FlameIcon, insert: () => '> [!caution]\n> ', cursorOffset: 14, label: () => t('slash.caution'), desc: () => t('slash.caution.desc') },
   { id: 'link', icon: LinkIcon, action: 'link', label: () => t('slash.link'), desc: () => t('slash.link.desc') },
   { id: 'template', icon: NoteIcon, action: 'template', label: () => t('slash.template'), desc: () => t('slash.template.desc') },
 ];

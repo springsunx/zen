@@ -1,4 +1,4 @@
-{
+﻿{
   "nav.new": "New",
   "nav.search": "Search",
   "nav.settings": "Settings",
@@ -325,6 +325,16 @@
   "slash.quote.desc": "Quoted text",
   "slash.table": "Table",
   "slash.table.desc": "Table with headers",
+  "slash.note": "Note",
+  "slash.note.desc": "Note callout block",
+  "slash.important": "Important",
+  "slash.important.desc": "Important callout block",
+  "slash.tip": "Tip",
+  "slash.tip.desc": "Tip callout block",
+  "slash.warning": "Warning",
+  "slash.warning.desc": "Warning callout block",
+  "slash.caution": "Caution",
+  "slash.caution.desc": "Caution callout block",
   "slash.link": "Internal Link",
   "slash.link.desc": "Link to another note",
   "slash.template": "Template",
