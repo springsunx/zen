@@ -116,7 +116,7 @@ export default function SlashCommandMenu({ query, onSelect, onAction, selectedIn
               onMouseDown={e => {
                 e.preventDefault();
                 const text = generateTable(tableRows, tableCols);
-                onSelect({ insert: () => text, cursorOffset: 0 });
+                onSelect({ insert: () => text });
               }}
             >
               <div className="slash-command-icon"><cmd.icon /></div>

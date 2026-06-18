@@ -304,7 +304,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
           const header = '| ' + Array.from({ length: cols }, () => 'Header').join(' | ') + ' |';
           const sep = '| ' + Array.from({ length: cols }, () => '------').join(' | ') + ' |';
           const body = Array.from({ length: rows }, () => '| ' + Array.from({ length: cols }, () => '  ').join(' | ') + ' |').join('\n');
-          executeSlashCommand({ insert: () => header + '\n' + sep + '\n' + body, cursorOffset: 0 });
+          executeSlashCommand({ insert: () => header + '\n' + sep + '\n' + body });
           return true;
         }
         executeSlashCommand(cmd);
