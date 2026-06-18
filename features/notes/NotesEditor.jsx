@@ -50,6 +50,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   const [aiMessages, setAiMessages] = useState([]);
   const [slashMenu, setSlashMenu] = useState(null); // { query, selectedIndex }
   const skipSlashCheck = useRef(false);
+  const pendingCursorPos = useRef(null); // { start, end } to restore after re-render
 
   // ─── Refs ───
   const titleRef = useRef(null);
@@ -58,6 +59,17 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   const savedNoteRef = useRef(null);
 
   // ─── Hooks ───
+
+  // Restore pending cursor position after re-render (controlled textarea resets cursor on setContent)
+  useEffect(() => {
+    if (pendingCursorPos.current && textareaRef.current) {
+      const { start, end } = pendingCursorPos.current;
+      textareaRef.current.selectionStart = start;
+      textareaRef.current.selectionEnd = end;
+      textareaRef.current.focus();
+      pendingCursorPos.current = null;
+    }
+  });
   const visibleHeadings = useVisibleHeadings(contentRef, content, isEditable, isEditorExpanded);
 
   const { insertAtCursor, applyMarkdownFormat } = useMarkdownFormatter({
@@ -312,36 +324,24 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
     setSlashMenu(null);
     skipSlashCheck.current = true;
     if (cmd.action === 'link') {
+      pendingCursorPos.current = { start: lineStart, end: lineStart };
       setContent(before + after);
       onContentChange(before + after);
-      setTimeout(() => {
-        if (textareaRef.current) {
-          textareaRef.current.selectionStart = lineStart;
-          textareaRef.current.selectionEnd = lineStart;
-        }
-        handleShowLinkPicker();
-        skipSlashCheck.current = false;
-      }, 0);
+      setTimeout(() => { handleShowLinkPicker(); skipSlashCheck.current = false; }, 50);
       return;
     }
     if (cmd.action === 'template') {
+      pendingCursorPos.current = { start: lineStart, end: lineStart };
       setContent(before + after);
       onContentChange(before + after);
-      setTimeout(() => {
-        if (textareaRef.current) {
-          textareaRef.current.selectionStart = lineStart;
-          textareaRef.current.selectionEnd = lineStart;
-        }
-        setShowTemplatePicker(true);
-        skipSlashCheck.current = false;
-      }, 0);
+      setTimeout(() => { setShowTemplatePicker(true); skipSlashCheck.current = false; }, 50);
       return;
     }
     // Remove the /query from content first
     const cleanedContent = before + after;
     skipSlashCheck.current = true;
     if (cmd.format) {
-      // Use existing applyMarkdownFormat — it handles cursor positioning
+      pendingCursorPos.current = { start: lineStart, end: lineStart };
       setContent(cleanedContent);
       onContentChange(cleanedContent);
       setTimeout(() => {
@@ -354,22 +354,14 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
         }
       }, 0);
     } else if (cmd.insert) {
-      // Custom insert (table)
       const insertText = cmd.insert();
       const cursorOff = cmd.cursorOffset !== undefined ? cmd.cursorOffset : insertText.length;
       const finalText = cmd.postInsert ? insertText.substring(0, cursorOff) + cmd.postInsert + insertText.substring(cursorOff) : insertText;
       const finalCursorOff = cmd.postInsert ? cursorOff + cmd.postInsert.length + (cmd.cursorAfterPost || 0) : cursorOff;
+      pendingCursorPos.current = { start: lineStart + finalCursorOff, end: lineStart + finalCursorOff };
       setContent(before + finalText + after);
       onContentChange(before + finalText + after);
-      setTimeout(() => {
-        if (textareaRef.current) {
-          const newPos = lineStart + finalCursorOff;
-          textareaRef.current.selectionStart = newPos;
-          textareaRef.current.selectionEnd = newPos;
-          textareaRef.current.focus();
-          skipSlashCheck.current = false;
-        }
-      }, 0);
+      setTimeout(() => { skipSlashCheck.current = false; }, 50);
     }
   }
 
