@@ -52,6 +52,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   const [slashMenu, setSlashMenu] = useState(null); // { query, selectedIndex }
   const skipSlashCheck = useRef(false);
   const pendingCursorPos = useRef(null); // { start, end } to restore after re-render
+  const slashUndoStack = useRef([]); // custom undo stack for slash commands: [{content, pos}]
   const lastCtrlPress = useRef(0); // for double-Ctrl detection
 
   // ─── Refs ───
@@ -371,56 +372,62 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
     const val = ta.value;
     const pos = ta.selectionStart;
     const lineStart = val.lastIndexOf('\n', pos - 1) + 1;
-    setSlashMenu(null);
+    // Save state for custom undo
+    slashUndoStack.current.push({ content: val, pos: pos });
+    if (slashUndoStack.current.length > 100) slashUndoStack.current.shift();
     skipSlashCheck.current = true;
 
     if (cmd.action === 'link') {
-      // Select the /command text and replace with empty (preserves undo)
-      ta.setSelectionRange(lineStart, pos);
-      document.execCommand('insertText', false, '');
-      syncContentFromTextarea();
+      setSlashMenu(null);
+      const before = val.substring(0, lineStart);
+      const after = val.substring(pos);
+      setContent(before + after);
+      onContentChange(before + after);
+      pendingCursorPos.current = { start: lineStart, end: lineStart };
       setTimeout(() => { handleShowLinkPicker(); skipSlashCheck.current = false; }, 50);
       return;
     }
     if (cmd.action === 'template') {
-      ta.setSelectionRange(lineStart, pos);
-      document.execCommand('insertText', false, '');
-      syncContentFromTextarea();
+      setSlashMenu(null);
+      const before = val.substring(0, lineStart);
+      const after = val.substring(pos);
+      setContent(before + after);
+      onContentChange(before + after);
+      pendingCursorPos.current = { start: lineStart, end: lineStart };
       setTimeout(() => { setShowTemplatePicker(true); skipSlashCheck.current = false; }, 50);
       return;
     }
     if (cmd.format) {
-      // Select the /command text, remove it, then apply format
-      ta.setSelectionRange(lineStart, pos);
-      document.execCommand('insertText', false, '');
-      syncContentFromTextarea();
-      setTimeout(() => {
-        if (textareaRef.current) {
-          applyMarkdownFormat(cmd.format);
-          skipSlashCheck.current = false;
-        }
-      }, 0);
+      const formatPrefixMap = {
+        'h1': { text: '# ', cursor: 2 },
+        'h2': { text: '## ', cursor: 3 },
+        'h3': { text: '### ', cursor: 4 },
+        'ul': { text: '- ', cursor: 2 },
+        'ol': { text: '1. ', cursor: 3 },
+        'todo': { text: '- [ ] ', cursor: 6 },
+        'quote': { text: '> ', cursor: 2 },
+        'codeblock': { text: '```\n\n```', cursor: 4 },
+        'hr': { text: '\n---\n', cursor: 5 },
+      };
+      const fmt = formatPrefixMap[cmd.format];
+      if (!fmt) return;
+      const newVal = val.substring(0, lineStart) + fmt.text + val.substring(pos);
+      setContent(newVal);
+      onContentChange(newVal);
+      setSlashMenu(null);
+      pendingCursorPos.current = { start: lineStart + fmt.cursor, end: lineStart + fmt.cursor };
+      setTimeout(() => { skipSlashCheck.current = false; }, 50);
     } else if (cmd.insert) {
       const insertText = cmd.insert();
       const cursorOff = cmd.cursorOffset !== undefined ? cmd.cursorOffset : insertText.length;
       const finalText = cmd.postInsert ? insertText.substring(0, cursorOff) + cmd.postInsert + insertText.substring(cursorOff) : insertText;
       const finalCursorOff = cmd.postInsert ? cursorOff + cmd.postInsert.length + (cmd.cursorAfterPost || 0) : cursorOff;
-      // Select the /command text and replace with insertText (preserves undo)
-      ta.setSelectionRange(lineStart, pos);
-      document.execCommand('insertText', false, finalText);
-      syncContentFromTextarea();
-      // Set cursor position
+      const newVal = val.substring(0, lineStart) + finalText + val.substring(pos);
+      setContent(newVal);
+      onContentChange(newVal);
+      setSlashMenu(null);
       pendingCursorPos.current = { start: lineStart + finalCursorOff, end: lineStart + finalCursorOff };
       setTimeout(() => { skipSlashCheck.current = false; }, 50);
-    }
-  }
-
-  // Sync Preact state from textarea DOM value (after execCommand changes it)
-  function syncContentFromTextarea() {
-    if (textareaRef.current) {
-      const v = textareaRef.current.value;
-      setContent(v);
-      onContentChange(v);
     }
   }
 
@@ -645,7 +652,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
             onContentChange(v);
             handleTextAreaHeight(e);
             handleTextareaInput(e);
-            pendingCursorPos.current = null;
+            if (!skipSlashCheck.current) pendingCursorPos.current = null;
           }}
           onKeyDown={e => {
             // Double Ctrl detection: activate AI assistant
@@ -661,6 +668,17 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
               return;
             }
             if (handleSlashKeyDown(e)) return;
+            // Custom undo for slash commands (Ctrl+Z)
+            if ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 'z' || e.key === 'Z')) {
+              if (slashUndoStack.current.length > 0) {
+                e.preventDefault();
+                const state = slashUndoStack.current.pop();
+                setContent(state.content);
+                onContentChange(state.content);
+                pendingCursorPos.current = { start: state.pos, end: state.pos };
+                return;
+              }
+            }
           }}
           onBlur={e => { const v = e.target.value; setContent(v); onContentChange(v); }}
           style={{ position: 'relative', zIndex: 1 }}

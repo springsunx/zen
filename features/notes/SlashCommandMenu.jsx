@@ -88,7 +88,7 @@ export default function SlashCommandMenu({ query, onSelect, onAction, selectedIn
     if (e.key === 'Enter') {
       e.preventDefault();
       const text = generateTable(tableRows, tableCols);
-      onSelect({ insert: () => text, cursorOffset: 0 });
+      onSelect({ insert: () => text });
       return;
     }
     if (e.key === 'Tab') {
