@@ -51,6 +51,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   const [slashMenu, setSlashMenu] = useState(null); // { query, selectedIndex }
   const skipSlashCheck = useRef(false);
   const pendingCursorPos = useRef(null); // { start, end } to restore after re-render
+  const lastCtrlPress = useRef(0); // for double-Ctrl detection
 
   // ─── Refs ───
   const titleRef = useRef(null);
@@ -561,6 +562,36 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
             pendingCursorPos.current = null;
           }}
           onKeyDown={e => {
+            // Double Ctrl detection: activate slash command menu inline
+            if (e.key === 'Control' && !e.shiftKey && !e.altKey && !e.metaKey) {
+              const now = Date.now();
+              if (now - lastCtrlPress.current < 400) {
+                e.preventDefault();
+                lastCtrlPress.current = 0;
+                // Insert / at cursor and activate menu
+                const ta = textareaRef.current;
+                if (ta) {
+                  const pos = ta.selectionStart;
+                  const val = ta.value;
+                  const newVal = val.substring(0, pos) + '/' + val.substring(ta.selectionEnd);
+                  skipSlashCheck.current = true;
+                  setContent(newVal);
+                  onContentChange(newVal);
+                  pendingCursorPos.current = { start: pos + 1, end: pos + 1 };
+                  setTimeout(() => {
+                    if (textareaRef.current) {
+                      textareaRef.current.selectionStart = pos + 1;
+                      textareaRef.current.selectionEnd = pos + 1;
+                    }
+                    setSlashMenu({ query: '', selectedIndex: 0 });
+                    skipSlashCheck.current = false;
+                  }, 0);
+                }
+                return;
+              }
+              lastCtrlPress.current = now;
+              return;
+            }
             if (handleSlashKeyDown(e)) return;
           }}
           onBlur={e => { const v = e.target.value; setContent(v); onContentChange(v); }}
