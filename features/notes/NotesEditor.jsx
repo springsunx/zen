@@ -323,6 +323,19 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
     }
     if (e.key === 'Escape') {
       e.preventDefault();
+      // Remove the /command text from content
+      if (textareaRef.current) {
+        const ta = textareaRef.current;
+        const val = ta.value;
+        const pos = ta.selectionStart;
+        const lineStart = val.lastIndexOf('\n', pos - 1) + 1;
+        const before = val.substring(0, lineStart);
+        const after = val.substring(pos);
+        const cleaned = before + after;
+        pendingCursorPos.current = { start: lineStart, end: lineStart };
+        setContent(cleaned);
+        onContentChange(cleaned);
+      }
       setSlashMenu(null);
       return true;
     }
@@ -562,31 +575,13 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
             pendingCursorPos.current = null;
           }}
           onKeyDown={e => {
-            // Double Ctrl detection: activate slash command menu inline
-            if (e.key === 'Control' && !e.shiftKey && !e.altKey && !e.metaKey) {
+            // Double Ctrl detection: activate AI assistant
+            if (e.key === 'Control' && !e.shiftKey && !e.altKey && !e.metaKey && !e.repeat) {
               const now = Date.now();
               if (now - lastCtrlPress.current < 400) {
                 e.preventDefault();
                 lastCtrlPress.current = 0;
-                // Insert / at cursor and activate menu
-                const ta = textareaRef.current;
-                if (ta) {
-                  const pos = ta.selectionStart;
-                  const val = ta.value;
-                  const newVal = val.substring(0, pos) + '/' + val.substring(ta.selectionEnd);
-                  skipSlashCheck.current = true;
-                  setContent(newVal);
-                  onContentChange(newVal);
-                  pendingCursorPos.current = { start: pos + 1, end: pos + 1 };
-                  setTimeout(() => {
-                    if (textareaRef.current) {
-                      textareaRef.current.selectionStart = pos + 1;
-                      textareaRef.current.selectionEnd = pos + 1;
-                    }
-                    setSlashMenu({ query: '', selectedIndex: 0 });
-                    skipSlashCheck.current = false;
-                  }, 0);
-                }
+                handleOpenAI();
                 return;
               }
               lastCtrlPress.current = now;

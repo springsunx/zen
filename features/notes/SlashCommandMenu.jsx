@@ -11,7 +11,6 @@ const COMMANDS = [
   { id: 'numbered', icon: ListOrderedIcon, format: 'ol', label: () => t('slash.numbered'), desc: () => t('slash.numbered.desc') },
   { id: 'task', icon: ListTodoIcon, format: 'todo', label: () => t('slash.task'), desc: () => t('slash.task.desc') },
   { id: 'code', icon: CodeBlockIcon, format: 'codeblock', label: () => t('slash.code'), desc: () => t('slash.code.desc') },
-  { id: 'icode', icon: CodeIcon, format: 'code', label: () => t('slash.icode'), desc: () => t('slash.icode.desc') },
   { id: 'quote', icon: QuoteIcon, format: 'quote', label: () => t('slash.quote'), desc: () => t('slash.quote.desc') },
   { id: 'table', icon: TableIcon, hasForm: true, label: () => t('slash.table'), desc: () => t('slash.table.desc') },
   { id: 'v1', icon: InfoIcon, insert: () => '> [!note]\n> ', cursorOffset: 12, label: () => t('slash.note'), desc: () => t('slash.note.desc') },
