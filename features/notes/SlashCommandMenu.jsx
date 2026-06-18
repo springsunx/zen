@@ -35,7 +35,8 @@ function generateTable(rows, cols) {
 export default function SlashCommandMenu({ query, onSelect, onAction, selectedIndex, textareaRef }) {
   const menuRef = useRef(null);
   const rowsRef = useRef(null);
-  const [tableForm, setTableForm] = useState(null); // { rows, cols } when table command is selected
+  const [tableRows, setTableRows] = useState(3);
+  const [tableCols, setTableCols] = useState(3);
 
   const position = (() => {
     if (!textareaRef?.current) return { top: 0, left: 0, width: 280 };
@@ -73,89 +74,80 @@ export default function SlashCommandMenu({ query, onSelect, onAction, selectedIn
     if (selected) selected.scrollIntoView({ block: 'nearest' });
   }, [selectedIndex]);
 
-  // Focus rows input when table form appears
-  useEffect(() => {
-    if (tableForm && rowsRef.current) rowsRef.current.focus();
-  }, [tableForm]);
-
-  // Check if selected command is table
+  // Focus rows input when table item is selected
   useEffect(() => {
     const cmd = filtered[selectedIndex];
-    if (cmd && cmd.hasForm && !tableForm) {
-      setTableForm({ rows: 3, cols: 3 });
-    } else if (cmd && !cmd.hasForm && tableForm) {
-      setTableForm(null);
+    if (cmd && cmd.hasForm && rowsRef.current) {
+      rowsRef.current.focus();
     }
-  }, [selectedIndex, filtered]);
+  }, [selectedIndex]);
 
   function handleTableKeyDown(e) {
     if (e.key === 'Enter') {
       e.preventDefault();
-      const text = generateTable(tableForm.rows, tableForm.cols);
+      const text = generateTable(tableRows, tableCols);
       onSelect({ insert: () => text, cursorOffset: 0 });
       return;
     }
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      setTableForm(null);
-      return;
-    }
-    // Tab switches between rows and cols
     if (e.key === 'Tab') {
       e.preventDefault();
       if (e.target === rowsRef.current) {
-        e.target.nextElementSibling?.focus();
+        e.target.parentElement.querySelector('.table-col-input')?.focus();
       } else {
         rowsRef.current?.focus();
       }
     }
   }
 
-  function handleTableSubmit() {
-    const text = generateTable(tableForm.rows, tableForm.cols);
-    onSelect({ insert: () => text, cursorOffset: 0 });
-  }
-
   if (filtered.length === 0) return null;
-
-  // If table form is showing, render the form instead of the command list
-  if (tableForm) {
-    return (
-      <div className="slash-command-menu" ref={menuRef} style={{ position: 'absolute', top: position.top + 'px', left: position.left + 'px', width: position.width + 'px' }}>
-        <div className="slash-command-table-form" onKeyDown={handleTableKeyDown}>
-          <div className="slash-command-table-row">
-            <label>{t('slash.table.rows')}</label>
-            <input
-              ref={rowsRef}
-              type="number"
-              min="1"
-              max="20"
-              value={tableForm.rows}
-              onInput={e => setTableForm(prev => ({ ...prev, rows: Math.max(1, Math.min(20, parseInt(e.target.value) || 1)) }))}
-            />
-          </div>
-          <div className="slash-command-table-row">
-            <label>{t('slash.table.cols')}</label>
-            <input
-              type="number"
-              min="1"
-              max="10"
-              value={tableForm.cols}
-              onInput={e => setTableForm(prev => ({ ...prev, cols: Math.max(1, Math.min(10, parseInt(e.target.value) || 1)) }))}
-            />
-          </div>
-          <div className="slash-command-table-actions">
-            <button type="button" className="slash-command-table-btn" onClick={handleTableSubmit}>{t('slash.table.generate')}</button>
-            <button type="button" className="slash-command-table-btn secondary" onClick={() => setTableForm(null)}>{t('common.cancel')}</button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="slash-command-menu" ref={menuRef} style={{ position: 'absolute', top: position.top + 'px', left: position.left + 'px', width: position.width + 'px' }}>
       {filtered.map((cmd, i) => {
+        if (cmd.hasForm) {
+          // Table command: inline row/col inputs
+          return (
+            <div
+              key={cmd.id}
+              className={`slash-command-item ${i === selectedIndex ? 'is-selected' : ''}`}
+              onMouseDown={e => {
+                e.preventDefault();
+                const text = generateTable(tableRows, tableCols);
+                onSelect({ insert: () => text, cursorOffset: 0 });
+              }}
+            >
+              <div className="slash-command-icon"><cmd.icon /></div>
+              <div className="slash-command-info">
+                <span className="slash-command-label">{cmd.label()}</span>
+                <div className="slash-command-table-inline" onKeyDown={handleTableKeyDown}>
+                  <label>{t('slash.table.rows')}</label>
+                  <input
+                    ref={rowsRef}
+                    type="number"
+                    className="table-row-input"
+                    min="1"
+                    max="20"
+                    value={tableRows}
+                    onMouseDown={e => e.stopPropagation()}
+                    onClick={e => e.stopPropagation()}
+                    onInput={e => { e.stopPropagation(); setTableRows(Math.max(1, Math.min(20, parseInt(e.target.value) || 1))); }}
+                  />
+                  <label>{t('slash.table.cols')}</label>
+                  <input
+                    type="number"
+                    className="table-col-input"
+                    min="1"
+                    max="10"
+                    value={tableCols}
+                    onMouseDown={e => e.stopPropagation()}
+                    onClick={e => e.stopPropagation()}
+                    onInput={e => { e.stopPropagation(); setTableCols(Math.max(1, Math.min(10, parseInt(e.target.value) || 1))); }}
+                  />
+                </div>
+              </div>
+            </div>
+          );
+        }
         const IconComp = cmd.icon;
         return (
           <div
@@ -163,9 +155,7 @@ export default function SlashCommandMenu({ query, onSelect, onAction, selectedIn
             className={`slash-command-item ${i === selectedIndex ? 'is-selected' : ''}`}
             onMouseDown={e => {
               e.preventDefault();
-              if (cmd.hasForm) {
-                setTableForm({ rows: 3, cols: 3 });
-              } else if (cmd.action) onAction(cmd.action);
+              if (cmd.action) onAction(cmd.action);
               else onSelect(cmd);
             }}
           >
