@@ -295,6 +295,18 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
           const rowsInput = document.querySelector('.slash-command-menu .table-row-input');
           if (rowsInput) { rowsInput.focus(); return true; }
         }
+        // Enter on table command: read values from inline inputs and generate
+        if (e.key === 'Enter' && cmd.hasForm) {
+          const rowsInput = document.querySelector('.slash-command-menu .table-row-input');
+          const colsInput = document.querySelector('.slash-command-menu .table-col-input');
+          const rows = rowsInput ? Math.max(1, Math.min(20, parseInt(rowsInput.value) || 3)) : 3;
+          const cols = colsInput ? Math.max(1, Math.min(10, parseInt(colsInput.value) || 3)) : 3;
+          const header = '| ' + Array.from({ length: cols }, () => 'Header').join(' | ') + ' |';
+          const sep = '| ' + Array.from({ length: cols }, () => '------').join(' | ') + ' |';
+          const body = Array.from({ length: rows }, () => '| ' + Array.from({ length: cols }, () => '  ').join(' | ') + ' |').join('\n');
+          executeSlashCommand({ insert: () => header + '\n' + sep + '\n' + body, cursorOffset: 0 });
+          return true;
+        }
         executeSlashCommand(cmd);
       }
       return true;
