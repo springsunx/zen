@@ -48,6 +48,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   const [isBacklinksLoading, setIsBacklinksLoading] = useState(false);
   const [showAIModal, setShowAIModal] = useState(false);
   const [aiMessages, setAiMessages] = useState([]);
+  const aiSavedSelection = useRef(null); // { start, end } saved before opening AI panel
   const [slashMenu, setSlashMenu] = useState(null); // { query, selectedIndex }
   const skipSlashCheck = useRef(false);
   const pendingCursorPos = useRef(null); // { start, end } to restore after re-render
@@ -232,6 +233,13 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   }
 
   function handleOpenAI() {
+    // Save current textarea selection before AI panel takes focus
+    if (textareaRef.current) {
+      aiSavedSelection.current = {
+        start: textareaRef.current.selectionStart,
+        end: textareaRef.current.selectionEnd,
+      };
+    }
     setShowAIModal(true);
   }
 
@@ -249,9 +257,24 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   }
 
   function handleAIReplace(text) {
-    setContent(text);
-    onContentChange(text);
+    // Replace selected text (saved when AI panel opened) with AI result
+    const sel = aiSavedSelection.current;
+    if (textareaRef.current && sel && sel.start !== sel.end) {
+      const ta = textareaRef.current;
+      const before = ta.value.substring(0, sel.start);
+      const after = ta.value.substring(sel.end);
+      const newContent = before + text + after;
+      setContent(newContent);
+      onContentChange(newContent);
+      pendingCursorPos.current = { start: sel.start + text.length, end: sel.start + text.length };
+    } else {
+      // No selection — replace entire content
+      setContent(text);
+      onContentChange(text);
+    }
+    aiSavedSelection.current = null;
     setShowAIModal(false);
+    setTimeout(() => { if (textareaRef.current) textareaRef.current.focus(); }, 50);
   }
 
   // ─── Slash Commands ───
