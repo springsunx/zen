@@ -67,6 +67,9 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
       textareaRef.current.selectionStart = start;
       textareaRef.current.selectionEnd = end;
       textareaRef.current.focus();
+      // Clear after delay to handle multiple re-renders from onContentChange
+      const pos = pendingCursorPos.current;
+      setTimeout(() => { if (pendingCursorPos.current === pos) pendingCursorPos.current = null; }, 200);
     }
   });
   const visibleHeadings = useVisibleHeadings(contentRef, content, isEditable, isEditorExpanded);
@@ -340,7 +343,6 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
     const cleanedContent = before + after;
     skipSlashCheck.current = true;
     if (cmd.format) {
-      pendingCursorPos.current = { start: lineStart, end: lineStart };
       setContent(cleanedContent);
       onContentChange(cleanedContent);
       setTimeout(() => {
