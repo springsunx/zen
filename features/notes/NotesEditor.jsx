@@ -581,6 +581,93 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
     return renderMarkdown(content, { anchorPrefix: selectedNote ? `n${selectedNote.noteId}-` : '' });
   }, [content, isEditable, title, selectedNote?.noteId]);
 
+  // ─── Selection Highlight (gray overlay when AI panel is open) ───
+  function SelectionHighlight({ textareaRef: taRef, selection }) {
+    const [rects, setRects] = useState([]);
+
+    useEffect(() => {
+      const ta = taRef.current;
+      if (!ta || !selection) return;
+
+      const style = window.getComputedStyle(ta);
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      ctx.font = `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+
+      const paddingLeft = parseFloat(style.paddingLeft) || 0;
+      const paddingTop = parseFloat(style.paddingTop) || 0;
+      const lineHeight = parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.2;
+      const borderLeft = parseFloat(style.borderLeftWidth) || 0;
+      const borderTop = parseFloat(style.borderTopWidth) || 0;
+      const taRect = ta.getBoundingClientRect();
+
+      const text = ta.value;
+      const selStart = selection.start;
+      const selEnd = selection.end;
+      const textBefore = text.substring(0, selStart);
+      const selectedText = text.substring(selStart, selEnd);
+
+      const linesBefore = textBefore.split('\n');
+      const selectedLines = selectedText.split('\n');
+
+      const highlightRects = [];
+      for (let i = 0; i < selectedLines.length; i++) {
+        const lineIdx = linesBefore.length - 1 + i;
+        const lineY = paddingTop + lineIdx * lineHeight - ta.scrollTop;
+
+        let lineStartX, lineEndX;
+        if (i === 0) {
+          lineStartX = ctx.measureText(linesBefore[linesBefore.length - 1]).width;
+          lineEndX = lineStartX + ctx.measureText(selectedLines[0]).width;
+        } else {
+          lineStartX = 0;
+          lineEndX = ctx.measureText(selectedLines[i]).width;
+        }
+
+        // Handle last line where selEnd might be mid-line
+        if (i === selectedLines.length - 1 && selectedLines.length > 1) {
+          lineEndX = ctx.measureText(selectedLines[i]).width;
+        }
+
+        highlightRects.push({
+          x: borderLeft + lineStartX - ta.scrollLeft,
+          y: borderTop + lineY,
+          w: lineEndX - lineStartX,
+          h: lineHeight,
+        });
+      }
+
+      setRects(highlightRects);
+    }, [taRef, selection]);
+
+    if (rects.length === 0) return null;
+
+    return (
+      <div style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        pointerEvents: 'none',
+        overflow: 'hidden',
+        zIndex: 0,
+      }}>
+        {rects.map((r, i) => (
+          <div key={i} style={{
+            position: 'absolute',
+            left: r.x + 'px',
+            top: r.y + 'px',
+            width: r.w + 'px',
+            height: r.h + 'px',
+            background: 'rgba(128, 128, 128, 0.2)',
+            borderRadius: '2px',
+          }} />
+        ))}
+      </div>
+    );
+  }
+
   // ─── Content Area ───
   let contentArea = null;
   if (isEditable) {
@@ -621,7 +708,11 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
             if (handleSlashKeyDown(e)) return;
           }}
           onBlur={e => { const v = e.target.value; setContent(v); onContentChange(v); }}
+          style={{ position: 'relative', zIndex: 1 }}
         />
+        {showAIModal && aiSavedSelection.current && aiSavedSelection.current.start !== aiSavedSelection.current.end && (
+          <SelectionHighlight textareaRef={textareaRef} selection={aiSavedSelection.current} />
+        )}
         {slashMenu && filteredSlashCommands.length > 0 && (
           <SlashCommandMenu
             query={slashMenu.query}
