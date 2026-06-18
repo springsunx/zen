@@ -67,7 +67,6 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
       textareaRef.current.selectionStart = start;
       textareaRef.current.selectionEnd = end;
       textareaRef.current.focus();
-      pendingCursorPos.current = null;
     }
   });
   const visibleHeadings = useVisibleHeadings(contentRef, content, isEditable, isEditorExpanded);
@@ -544,6 +543,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
             onContentChange(v);
             handleTextAreaHeight(e);
             handleTextareaInput(e);
+            pendingCursorPos.current = null;
           }}
           onKeyDown={e => {
             if (handleSlashKeyDown(e)) return;
