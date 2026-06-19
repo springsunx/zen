@@ -21,19 +21,23 @@ function isCanvas() {
 }
 
 function buildTagUrl(tagId) {
-  const p = new URLSearchParams(window.location.search);
+  const currentParams = new URLSearchParams(window.location.search);
+  const focusId = currentParams.get('focusId');
+  const p = new URLSearchParams();
+  if (focusId) p.set('focusId', focusId);
   p.set('tagId', tagId);
-  p.delete('isUntagged');
   const q = p.toString();
-  return window.location.pathname + (q ? '?' + q : '');
+  return '/notes/' + (q ? '?' + q : '');
 }
 
 function buildUntaggedUrl() {
-  const p = new URLSearchParams(window.location.search);
+  const currentParams = new URLSearchParams(window.location.search);
+  const focusId = currentParams.get('focusId');
+  const p = new URLSearchParams();
+  if (focusId) p.set('focusId', focusId);
   p.set('isUntagged', 'true');
-  p.delete('tagId');
   const q = p.toString();
-  return window.location.pathname + (q ? '?' + q : '');
+  return '/notes/' + (q ? '?' + q : '');
 }
 
 function TagTreeNode({ tag, depth, onEditClick, onMove, dragState, onDragStart, onDragOver, onDrop, expandedTagIds, onToggle }) {
