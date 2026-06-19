@@ -277,7 +277,8 @@ async function getTags(focusId, isArchived, isDeleted, section) {
     window.__untaggedCount = resp.untaggedCount;
     return resp.tags;
   }
-  return resp;
+  window.__untaggedCount = resp?.untaggedCount || 0;
+  return [];
 }
 
 async function searchTags(query) {

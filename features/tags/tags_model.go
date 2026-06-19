@@ -313,7 +313,7 @@ func BuildTagTree(tags []Tag) []Tag {
 	}
 
 	// Fourth pass: collect root tags
-	var roots []Tag
+	roots := []Tag{}
 	for i := range tags {
 		if tags[i].ParentID == nil {
 			roots = append(roots, *tagMap[tags[i].TagID])
