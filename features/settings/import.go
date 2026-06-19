@@ -222,11 +222,31 @@ func importTagsFromZip(tagFile *zip.File, tagNameToID map[string]int) {
 		return
 	}
 
+	// Phase 1: Create all tags (name, color, sortOrder) without parentId
+	// Also build oldID->newID mapping for parent resolution
+	oldIDToNewID := make(map[int]int)
 	for _, t := range exportedTags {
-		id := getOrCreateTag(t.Name)
+		id := getOrCreateTagWithMeta(t.Name, t.Color, t.SortOrder)
 		if id > 0 {
 			tagNameToID[t.Name] = id
+			oldIDToNewID[t.TagID] = id
 		}
+	}
+
+	// Phase 2: Update parentId using old->new ID mapping
+	for _, t := range exportedTags {
+		if t.ParentID == nil {
+			continue
+		}
+		newID, ok := oldIDToNewID[t.TagID]
+		if !ok || newID == 0 {
+			continue
+		}
+		newParentID, ok := oldIDToNewID[*t.ParentID]
+		if !ok || newParentID == 0 {
+			continue
+		}
+		_, _ = sqlite.DB.Exec("UPDATE tags SET parent_id = ? WHERE tag_id = ?", newParentID, newID)
 	}
 }
 
@@ -238,6 +258,7 @@ type importNote struct {
 	UpdatedAt  time.Time `json:"updatedAt"`
 	Tags       []string  `json:"tags"`
 	IsArchived bool      `json:"isArchived"`
+	IsPinned   bool      `json:"isPinned"`
 	IsDeleted  bool      `json:"isDeleted"`
 }
 
@@ -304,19 +325,23 @@ func createNoteFromExport(en importNote, noteTags []tags.Tag) (int, error) {
 	if en.IsDeleted {
 		deletedAt = en.CreatedAt
 	}
+	var pinnedAt interface{} = nil
+	if en.IsPinned {
+		pinnedAt = en.CreatedAt
+	}
 
 	var noteID int
 	var createdAt, updatedAt time.Time
 
 	query := `
 		INSERT INTO
-			notes (title, content, created_at, updated_at, archived_at, deleted_at)
+			notes (title, content, created_at, updated_at, archived_at, deleted_at, pinned_at)
 		VALUES
-			(?, ?, ?, ?, ?, ?)
+			(?, ?, ?, ?, ?, ?, ?)
 		RETURNING
 			note_id, created_at, updated_at
 	`
-	err = tx.QueryRow(query, en.Title, en.Content, en.CreatedAt, en.UpdatedAt, archivedAt, deletedAt).Scan(&noteID, &createdAt, &updatedAt)
+	err = tx.QueryRow(query, en.Title, en.Content, en.CreatedAt, en.UpdatedAt, archivedAt, deletedAt, pinnedAt).Scan(&noteID, &createdAt, &updatedAt)
 	if err != nil {
 		return 0, fmt.Errorf("error creating note: %w", err)
 	}
@@ -368,7 +393,11 @@ func importImagesFromZip(files map[string]*zip.File, result *ImportResult) {
 			continue
 		}
 
-		filename := fmt.Sprintf("%d%s", time.Now().UnixNano(), filepath.Ext(relPath))
+		// Use original filename; skip if already exists
+		filename := relPath
+		if _, err := os.Stat(filepath.Join("images", filename)); err == nil {
+			continue
+		}
 		imagePath := filepath.Join("images", filename)
 
 		if err := os.MkdirAll("images", 0755); err != nil {
@@ -402,6 +431,10 @@ func importImagesFromZip(files map[string]*zip.File, result *ImportResult) {
 }
 
 func getOrCreateTag(name string) int {
+	return getOrCreateTagWithMeta(name, nil, nil)
+}
+
+func getOrCreateTagWithMeta(name string, color *string, sortOrder *int) int {
 	if name == "" {
 		return 0
 	}
@@ -411,6 +444,10 @@ func getOrCreateTag(name string) int {
 	if err == nil {
 		for _, t := range existingTags {
 			if t.Name == name {
+				// Update color and sortOrder if provided
+				if color != nil || sortOrder != nil {
+					_, _ = sqlite.DB.Exec("UPDATE tags SET color = COALESCE(?, color), sort_order = COALESCE(?, sort_order) WHERE tag_id = ?", color, sortOrder, t.TagID)
+				}
 				return t.TagID
 			}
 		}
@@ -419,14 +456,14 @@ func getOrCreateTag(name string) int {
 	// Create new tag
 	query := `
 		INSERT INTO
-			tags (name)
+			tags (name, color, sort_order)
 		VALUES
-			(?)
+			(?, ?, ?)
 		RETURNING
 			tag_id
 	`
 	var tagID int
-	err = sqlite.DB.QueryRow(query, name).Scan(&tagID)
+	err = sqlite.DB.QueryRow(query, name, color, sortOrder).Scan(&tagID)
 	if err != nil {
 		return 0
 	}

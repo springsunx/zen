@@ -13,6 +13,7 @@ type Tag struct {
 	Name      string `json:"name"`
 	ParentID  *int   `json:"parentId,omitempty"`
 	Color     *string `json:"color,omitempty"`
+	SortOrder *int   `json:"sortOrder,omitempty"`
 	NoteCount int    `json:"noteCount"`
 	Children  []Tag  `json:"children,omitempty"`
 }
@@ -30,6 +31,7 @@ func GetAllTags() ([]Tag, error) {
 			t.name,
 			t.color,
 			t.parent_id,
+			t.sort_order,
 			COUNT(nt.note_id) AS note_count
 		FROM
 			tags t
@@ -52,7 +54,7 @@ func GetAllTags() ([]Tag, error) {
 
 	for rows.Next() {
 		var tag Tag
-		err = rows.Scan(&tag.TagID, &tag.Name, &tag.Color, &tag.ParentID, &tag.NoteCount)
+		err = rows.Scan(&tag.TagID, &tag.Name, &tag.Color, &tag.ParentID, &tag.SortOrder, &tag.NoteCount)
 		if err != nil {
 			err = fmt.Errorf("error scanning tag: %w", err)
 			slog.Error(err.Error())
@@ -72,6 +74,7 @@ func SearchTags(term string) ([]Tag, error) {
 			t.name,
 			t.color,
 			t.parent_id,
+			t.sort_order,
 			COUNT(nt.note_id) AS note_count
 		FROM
 			tags t
@@ -101,7 +104,7 @@ func SearchTags(term string) ([]Tag, error) {
 
 	for rows.Next() {
 		var tag Tag
-		err = rows.Scan(&tag.TagID, &tag.Name, &tag.Color, &tag.ParentID, &tag.NoteCount)
+		err = rows.Scan(&tag.TagID, &tag.Name, &tag.Color, &tag.ParentID, &tag.SortOrder, &tag.NoteCount)
 		if err != nil {
 			err = fmt.Errorf("error scanning tag: %w", err)
 			slog.Error(err.Error())
@@ -121,6 +124,7 @@ func GetTagsByFocusModeID(focusModeID int) ([]Tag, error) {
 			t.name,
 			t.color,
 			t.parent_id,
+			t.sort_order,
 			COUNT(nt.note_id) AS note_count
 		FROM
 			tags t
@@ -146,7 +150,7 @@ func GetTagsByFocusModeID(focusModeID int) ([]Tag, error) {
 
 	for rows.Next() {
 		var tag Tag
-		err = rows.Scan(&tag.TagID, &tag.Name, &tag.Color, &tag.ParentID, &tag.NoteCount)
+		err = rows.Scan(&tag.TagID, &tag.Name, &tag.Color, &tag.ParentID, &tag.SortOrder, &tag.NoteCount)
 		if err != nil {
 			err = fmt.Errorf("error scanning tag: %w", err)
 			slog.Error(err.Error())
@@ -193,6 +197,7 @@ func GetFilteredTags(focusModeID int, isArchived, isDeleted bool, section string
 				t.name,
 				t.color,
 				t.parent_id,
+				t.sort_order,
 				COUNT(tt.template_id) AS note_count
 			FROM
 				tags t
@@ -223,6 +228,7 @@ func GetFilteredTags(focusModeID int, isArchived, isDeleted bool, section string
 					t.name,
 					t.color,
 					t.parent_id,
+					t.sort_order,
 					COUNT(n.note_id) AS note_count
 				FROM
 					tags t
@@ -242,6 +248,7 @@ func GetFilteredTags(focusModeID int, isArchived, isDeleted bool, section string
 					t.name,
 					t.color,
 					t.parent_id,
+					t.sort_order,
 					COUNT(n.note_id) AS note_count
 				FROM
 					tags t
@@ -266,7 +273,7 @@ func GetFilteredTags(focusModeID int, isArchived, isDeleted bool, section string
 
 	for rows.Next() {
 		var tag Tag
-		err = rows.Scan(&tag.TagID, &tag.Name, &tag.Color, &tag.ParentID, &tag.NoteCount)
+		err = rows.Scan(&tag.TagID, &tag.Name, &tag.Color, &tag.ParentID, &tag.SortOrder, &tag.NoteCount)
 		if err != nil {
 			err = fmt.Errorf("error scanning tag: %w", err)
 			slog.Error(err.Error())
