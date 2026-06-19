@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"unicode"
+	"github.com/mozillazg/go-pinyin"
 	"zen/commons/sqlite"
 )
 
@@ -66,8 +68,59 @@ func GetAllTags() ([]Tag, error) {
 	return tags, nil
 }
 
-func SearchTags(term string) ([]Tag, error) {
+// matchesPinyin checks if a tag name matches the search query via pinyin.
+// Supports full pinyin ("gongzuo" matches "工作") and initials ("gz" matches "工作").
+func matchesPinyin(name, query string) bool {
+	query = strings.ToLower(strings.TrimSpace(query))
+	if query == "" {
+		return false
+	}
+
+	args := pinyin.NewArgs()
+	var fullPinyin strings.Builder
+	var initials strings.Builder
+
+	for _, r := range name {
+		if unicode.Is(unicode.Han, r) {
+			pys := pinyin.Pinyin(string(r), args)
+			if len(pys) > 0 && len(pys[0]) > 0 {
+				fullPinyin.WriteString(pys[0][0])
+				initials.WriteByte(pys[0][0][0])
+			}
+		} else {
+			fullPinyin.WriteRune(unicode.ToLower(r))
+			initials.WriteRune(unicode.ToLower(r))
+		}
+	}
+
+	full := fullPinyin.String()
+	init := initials.String()
+
+	return strings.Contains(full, query) || strings.Contains(init, query)
+}
+
+// getAllTagsForSearch loads all tags for runtime pinyin matching.
+func getAllTagsForSearch() ([]Tag, error) {
 	tags := []Tag{}
+	rows, err := sqlite.DB.Query("SELECT tag_id, name, color, parent_id, sort_order, 0 FROM tags")
+	if err != nil {
+		return tags, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var tag Tag
+		if err := rows.Scan(&tag.TagID, &tag.Name, &tag.Color, &tag.ParentID, &tag.SortOrder, &tag.NoteCount); err != nil {
+			continue
+		}
+		tags = append(tags, tag)
+	}
+	return tags, nil
+}
+
+func SearchTags(term string) ([]Tag, error) {
+	// Phase 1: SQL LIKE search for Chinese name match
+	sqlTags := []Tag{}
 	query := `
 		SELECT
 			t.tag_id,
@@ -98,7 +151,7 @@ func SearchTags(term string) ([]Tag, error) {
 	if err != nil {
 		err = fmt.Errorf("error retrieving tags: %w", err)
 		slog.Error(err.Error())
-		return tags, err
+		return sqlTags, err
 	}
 	defer rows.Close()
 
@@ -108,12 +161,31 @@ func SearchTags(term string) ([]Tag, error) {
 		if err != nil {
 			err = fmt.Errorf("error scanning tag: %w", err)
 			slog.Error(err.Error())
-			return tags, err
+			return sqlTags, err
 		}
-		tags = append(tags, tag)
+		sqlTags = append(sqlTags, tag)
 	}
 
-	return tags, nil
+	// Phase 2: pinyin matching for Chinese tags
+	seen := make(map[int]bool)
+	for _, t := range sqlTags {
+		seen[t.TagID] = true
+	}
+
+	allTags, err := getAllTagsForSearch()
+	if err == nil {
+		for _, t := range allTags {
+			if seen[t.TagID] {
+				continue
+			}
+			if matchesPinyin(t.Name, term) {
+				sqlTags = append(sqlTags, t)
+				seen[t.TagID] = true
+			}
+		}
+	}
+
+	return sqlTags, nil
 }
 
 func GetTagsByFocusModeID(focusModeID int) ([]Tag, error) {
