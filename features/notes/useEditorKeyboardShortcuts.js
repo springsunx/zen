@@ -55,7 +55,7 @@ export default function useEditorKeyboardShortcuts({
       onInsertInternalLink();
     }
 
-    if (isTextAreaFocused && e.key === 'Tab' && !e.shiftKey) {
+    if (isTextAreaFocused && e.key === 'Tab' && !e.shiftKey && !e.defaultPrevented) {
       e.preventDefault();
       onInsertAtCursor('  ');
     }

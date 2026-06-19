@@ -84,6 +84,7 @@
         a.sidebar-tag-link {
             display: flex;
             justify-content: space-between;
+            width: 100%;
             padding: var(--spacing-1) 0;
             cursor: pointer;
             text-decoration: none;
@@ -102,18 +103,13 @@
                 transition: transform var(--transition-fast) ease-out;
             }
 
-            &:hover {
-                svg.lucide {
-                    display: block;
-                }
-            }
-
             svg.lucide {
-                display: none;
+                opacity: 0;
                 width: 20px;
                 height: 20px;
                 padding: var(--spacing-1);
-                transition: background-color var(--transition-normal);
+                flex-shrink: 0;
+                transition: opacity var(--transition-normal), background-color var(--transition-normal);
 
                 line,
                 circle,
@@ -132,6 +128,52 @@
                     transition: transform var(--transition-fast) ease-out;
                 }
             }
+
+            &:hover svg.lucide {
+                opacity: 1;
+            }
+        }
+    }
+
+    .tag-tree-node {
+        .tag-tree-row {
+            display: flex;
+            align-items: center;
+        }
+
+        .tag-color-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 6px;
+            flex-shrink: 0;
+        }
+
+        .tag-tree-toggle {
+            display: inline-flex;
+            align-items: center;
+            cursor: pointer;
+            padding: 2px;
+            margin-right: 2px;
+            transition: transform var(--transition-fast);
+            flex-shrink: 0;
+
+            svg.lucide {
+                width: 16px;
+                height: 16px;
+                padding: 0;
+            }
+
+            &.is-expanded {
+                transform: rotate(90deg);
+            }
+        }
+
+        .tag-tree-toggle-placeholder {
+            display: inline-block;
+            width: 20px;
+            flex-shrink: 0;
         }
     }
 }

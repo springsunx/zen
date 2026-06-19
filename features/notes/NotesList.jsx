@@ -16,6 +16,7 @@ import { openModal } from '../../commons/components/Modal.jsx';
 import EmptyState from '../../commons/components/EmptyState.jsx';
 import "./NotesList.css";
 import { t } from "../../commons/i18n/index.js";
+import { TAG_COLORS } from "../tags/TagDetailModal.jsx";
 
 export default function NotesList({ notes = [], total, isLoading, images = [], imagesTotal, isImagesLoading, view, onViewChange, onLoadMoreClick, onLoadMoreImagesClick, isMultiSelect, selectedIds, onMultiSelectStart, onToggleSelect, cardSize = 240, onCardSizeChange = () => {} }) {
   let listClassName = "notes-list";
@@ -65,7 +66,13 @@ function NotesListItem({ note, isMultiSelect, isSelected, onMultiSelectStart, on
   const updatedAtDate = new Date(note.updatedAt);
   const shortUpdatedAt = formatDate(updatedAtDate);
   const fullUpdatedAt = updatedAtDate.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
-  const tags = note.tags?.map(tag => <div className="notes-list-item-tag" key={tag.name}>{tag.name}</div>);
+  const tags = note.tags?.map(tag => {
+    const tagColor = tag.color ? (TAG_COLORS.find(c => c.value === tag.color)?.hex || null) : null;
+    const style = tagColor
+      ? `background-color: ${tagColor}22; color: ${tagColor}; padding: 1px 8px; border-radius: 10px;`
+      : `background-color: var(--neutral-100); padding: 1px 8px; border-radius: 10px;`;
+    return <div className="notes-list-item-tag" key={tag.tagId} style={style}>{tag.name}</div>;
+  });
   const longPress = useLongPress(() => onMultiSelectStart(note.noteId));
   let title = <div className="notes-list-item-title">{note.title}</div>
 
@@ -131,7 +138,13 @@ function NotesGridItem({ note, index, cardHeight }) {
     p.delete('isUntagged');
     return `/notes/?${p.toString()}`;
   }
-  const tags = note.tags?.map(tag => (<Link className="tag" key={tag.tagId} to={tagUrl(tag.tagId)}>{tag.name}</Link>));
+  const tags = note.tags?.map(tag => {
+    const tagColor = tag.color ? (TAG_COLORS.find(c => c.value === tag.color)?.hex || null) : null;
+    const style = tagColor
+      ? { backgroundColor: `${tagColor}22`, color: tagColor, padding: '1px 8px', borderRadius: '10px' }
+      : { backgroundColor: 'var(--neutral-100)', padding: '1px 8px', borderRadius: '10px' };
+    return (<Link className="tag" key={tag.tagId} to={tagUrl(tag.tagId)} style={style}>{tag.name}</Link>);
+  });
   let title = <div className="notes-grid-item-title">{note.title}</div>
 
   if (note.title === "") {

@@ -94,6 +94,8 @@ export function extractHeadingsFromMarkdown(markdown) {
       continue;
     }
     if (inCode) continue;
+
+    // Markdown heading: ### Title or ### Title {#custom-id}
     const m = line.match(/^(#{1,3})\s+(.+)$/);
     if (m) {
       const level = m[1].length;
@@ -101,6 +103,21 @@ export function extractHeadingsFromMarkdown(markdown) {
       const { cleanedText, customId } = extractCustomId(text);
       text = cleanMarkdownLinks(cleanedText);
       out.push({ level, text, customId });
+      continue;
+    }
+
+    // Raw HTML heading: <h1 id="xxx">text</h1>, <h2>text</h2>, etc.
+    const hm = line.match(/^<h([1-3])\b([^>]*)>(.*?)<\/h[1-3]>\s*$/i);
+    if (hm) {
+      const level = parseInt(hm[1], 10);
+      const attrs = hm[2] || '';
+      let text = hm[3].replace(/<[^>]+>/g, '').trim(); // strip inner HTML tags
+      const idMatch = attrs.match(/\bid\s*=\s*["']([^"']+)["']/);
+      const customId = idMatch ? cleanCustomId(idMatch[1]) : null;
+      text = cleanMarkdownLinks(text);
+      if (text) {
+        out.push({ level, text, customId });
+      }
     }
   }
   return out;

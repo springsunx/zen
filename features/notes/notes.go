@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 	"zen/commons/queue"
+	"zen/commons/sqlite"
 	"zen/commons/utils"
 	"zen/features/tags"
 )
@@ -300,6 +301,75 @@ func HandleBulkArchiveNotes(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+func HandleBulkAddTag(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		IDs      []int  `json:"ids"`
+		TagID    int    `json:"tagId"`
+		TagName  string `json:"tagName"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		utils.SendErrorResponse(w, "INVALID_REQUEST_BODY", "Invalid request data", err, http.StatusBadRequest)
+		return
+	}
+
+	if len(input.IDs) == 0 {
+		utils.SendErrorResponse(w, "INVALID_IDS", "No note IDs provided.", nil, http.StatusBadRequest)
+		return
+	}
+
+	// Resolve tag ID: use provided tagId, or find/create by name
+	tagID := input.TagID
+	if tagID == 0 && input.TagName != "" {
+		id, err := tags.GetOrCreateParentTag(input.TagName, sqlite.DB)
+		if err != nil {
+			utils.SendErrorResponse(w, "TAG_CREATE_FAILED", "Error finding or creating tag.", err, http.StatusInternalServerError)
+			return
+		}
+		tagID = id
+	}
+
+	if tagID == 0 {
+		utils.SendErrorResponse(w, "INVALID_TAG", "No tag specified.", nil, http.StatusBadRequest)
+		return
+	}
+
+	for _, noteID := range input.IDs {
+		_, err := sqlite.DB.Exec("INSERT OR IGNORE INTO note_tags (note_id, tag_id) VALUES (?, ?)", noteID, tagID)
+		if err != nil {
+			utils.SendErrorResponse(w, "BULK_ADD_TAG_FAILED", "Error adding tag to notes.", err, http.StatusInternalServerError)
+			return
+		}
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func HandleBulkRemoveTag(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		IDs   []int `json:"ids"`
+		TagID int   `json:"tagId"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		utils.SendErrorResponse(w, "INVALID_REQUEST_BODY", "Invalid request data", err, http.StatusBadRequest)
+		return
+	}
+
+	if len(input.IDs) == 0 || input.TagID == 0 {
+		utils.SendErrorResponse(w, "INVALID_INPUT", "No note IDs or tag ID provided.", nil, http.StatusBadRequest)
+		return
+	}
+
+	for _, noteID := range input.IDs {
+		_, err := sqlite.DB.Exec("DELETE FROM note_tags WHERE note_id = ? AND tag_id = ?", noteID, input.TagID)
+		if err != nil {
+			utils.SendErrorResponse(w, "BULK_REMOVE_TAG_FAILED", "Error removing tag from notes.", err, http.StatusInternalServerError)
+			return
+		}
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
 func HandleUnarchiveNote(w http.ResponseWriter, r *http.Request) {
 	noteIDStr := r.PathValue("noteId")
 	noteID, err := strconv.Atoi(noteIDStr)
@@ -366,4 +436,23 @@ func HandleDeleteNotes(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+
+func HandleGetBacklinks(w http.ResponseWriter, r *http.Request) {
+	noteIDStr := r.PathValue("noteId")
+	noteID, err := strconv.Atoi(noteIDStr)
+	if err != nil {
+		utils.SendErrorResponse(w, "INVALID_NOTE_ID", "Invalid note ID", err, http.StatusBadRequest)
+		return
+	}
+
+	backlinks, err := GetBacklinks(noteID)
+	if err != nil {
+		utils.SendErrorResponse(w, "BACKLINKS_READ_FAILED", "Error fetching backlinks.", err, http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(backlinks)
 }

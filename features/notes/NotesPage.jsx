@@ -108,6 +108,17 @@ function NotesPageContent({ noteId }) {
     refreshImages(selectedTagId, selectedFocusId, imagesPageNumber);
   }, [imagesPageNumber, selectedTagId, selectedFocusId, refreshImages]);
 
+  // Listen for notes:refresh events (e.g., after tag rename in TagDetailModal)
+  useEffect(() => {
+    function handleRefresh() {
+      handleNoteChange();
+      refreshTags(selectedFocusId, isArchivesPage, isTrashPage);
+      refreshFocusModes();
+    }
+    window.addEventListener('notes:refresh', handleRefresh);
+    return () => window.removeEventListener('notes:refresh', handleRefresh);
+  }, [handleNoteChange, refreshTags, refreshFocusModes, selectedFocusId, isArchivesPage, isTrashPage]);
+
   // TODO: Move this to NotesEditor
   useEffect(() => {
     if (noteId === "new") {
@@ -182,12 +193,12 @@ function NotesPageContent({ noteId }) {
 
   let editorContent = <NotesEditor isNewNote={noteId === "new"} isExpandable={isEditorExpandable} onToggleToc={() => setShowToc(prev => { const next = !prev; try { localStorage.setItem('zen.showToc', String(next)); } catch {} return next; })} key={selectedNote?.noteId} />;
   if (isMultiSelect === true) {
-    editorContent = <BulkActionsPanel selectedIds={selectedIds} allIds={notes.map(n => n.noteId)} onClose={handleClearSelection} onSelectAll={() => setSelectedIds(notes.map(n => n.noteId))} />;
+    editorContent = <BulkActionsPanel selectedIds={selectedIds} allIds={notes.map(n => n.noteId)} selectedNotes={notes.filter(n => selectedIds.includes(n.noteId))} onClose={handleClearSelection} onSelectAll={() => setSelectedIds(notes.map(n => n.noteId))} />;
   }
 
   let bulkToolbar = null;
   if (isMultiSelect === true) {
-    bulkToolbar = <BulkActionsToolbar selectedIds={selectedIds} allIds={notes.map(n => n.noteId)} onClose={handleClearSelection} onSelectAll={() => setSelectedIds(notes.map(n => n.noteId))} />;
+    bulkToolbar = <BulkActionsToolbar selectedIds={selectedIds} allIds={notes.map(n => n.noteId)} selectedNotes={notes.filter(n => selectedIds.includes(n.noteId))} onClose={handleClearSelection} onSelectAll={() => setSelectedIds(notes.map(n => n.noteId))} />;
   }
 
   if (selectedView === "list") {

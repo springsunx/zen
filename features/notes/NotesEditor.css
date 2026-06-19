@@ -217,6 +217,7 @@
 .notes-editor-rendered {
     display: block;
     overflow-x: auto;
+    color: var(--text-primary);
 
     strong {
         font-weight: 600;
@@ -259,7 +260,7 @@
     }
 
     a {
-        color: #0366d6;
+        color: var(--primary-600, #0366d6);
         text-decoration: none;
     }
     
@@ -295,6 +296,7 @@
     code {
         font: var(--code);
         background-color: var(--neutral-150);
+        color: var(--text-primary);
         border-radius: 4px;
         padding: var(--spacing-1) var(--spacing-2);
     }
@@ -524,9 +526,36 @@
     }
 }
 
+.ai-fab {
+    display: none;
+    position: fixed;
+    bottom: calc(var(--mobile-navbar-height) + var(--safe-area-bottom) + 16px);
+    right: 16px;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: none;
+    background: var(--neutral-900, #171717);
+    color: var(--neutral-50, #fafafa);
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 3;
+    box-shadow: 0 4px 12px rgba(0,0,0,.2);
+    transition: transform 0.15s, background 0.15s;
+
+    svg.lucide { width: 22px; height: 22px; }
+    &:hover { transform: scale(1.05); }
+    &:active { transform: scale(0.95); }
+}
+
 @media screen and (max-width: 948px) {
     .formatting-toolbar {
         display: none;
+    }
+
+    .ai-fab {
+        display: flex;
     }
 }
 /* Code block copy button styles */
@@ -534,7 +563,7 @@
   margin: 16px 0;
   border-radius: 6px;
   overflow: hidden;
-  border: 1px solid #d1d9e0;
+  border: 1px solid var(--neutral-200);
 }
 .code-block-header {
   display: flex;
@@ -542,29 +571,29 @@
   align-items: center;
   padding: 6px 12px;
   background-color: var(--neutral-100);
-  border-bottom: 1px solid #e1e4e8;  /* GitHub border color */
+  border-bottom: 1px solid var(--neutral-200);
   font-size: 12px;
-  color: #586069;  /* GitHub text color */
+  color: var(--text-secondary);
 }
 .code-block-lang {
   font-weight: 600;
-  color: #24292e;
-  margin-left: auto;  /* 确保靠右对齐 */
-  padding-right: 4px; /* 添加一些间距 */
+  color: var(--text-primary);
+  margin-left: auto;
+  padding-right: 4px;
 }
 .copy-code-button {
-  background-color: #e1e4e8;  /* GitHub button background */
-  border: 1px solid #d1d5da;  /* GitHub button border */
+  background-color: var(--neutral-200);
+  border: 1px solid var(--neutral-300);
   border-radius: 4px;
   padding: 4px 8px;
   font-size: 12px;
   font-weight: 500;
-  color: #24292e;  /* GitHub button text color */
+  color: var(--text-primary);
   cursor: pointer;
   transition: background-color 0.2s ease;
 }
 .copy-code-button:hover {
-  background-color: #d1d5da;  /* GitHub button hover */
+  background-color: var(--neutral-300);
 }
 .code-block-content {
   padding: 12px;
@@ -636,3 +665,208 @@
     min-height: 200px;
 }
 
+/* highlight.js dark mode overrides */
+@media (prefers-color-scheme: dark) {
+    .notes-editor-rendered .hljs {
+        color: var(--text-primary);
+        background: transparent;
+    }
+    .notes-editor-rendered .hljs-string,
+    .notes-editor-rendered .hljs-template-variable,
+    .notes-editor-rendered .hljs-addition {
+        color: #a5d6ff;
+    }
+    .notes-editor-rendered .hljs-comment,
+    .notes-editor-rendered .hljs-quote {
+        color: #8b949e;
+    }
+    .notes-editor-rendered .hljs-keyword,
+    .notes-editor-rendered .hljs-selector-tag,
+    .notes-editor-rendered .hljs-type {
+        color: #ff7b72;
+    }
+    .notes-editor-rendered .hljs-number,
+    .notes-editor-rendered .hljs-literal,
+    .notes-editor-rendered .hljs-symbol,
+    .notes-editor-rendered .hljs-bullet {
+        color: #79c0ff;
+    }
+    .notes-editor-rendered .hljs-title,
+    .notes-editor-rendered .hljs-section,
+    .notes-editor-rendered .hljs-selector-id {
+        color: #d2a8ff;
+    }
+    .notes-editor-rendered .hljs-attr,
+    .notes-editor-rendered .hljs-attribute {
+        color: #79c0ff;
+    }
+    .notes-editor-rendered .hljs-built_in,
+    .notes-editor-rendered .hljs-class .hljs-title {
+        color: #ffa657;
+    }
+    .notes-editor-rendered .hljs-meta {
+        color: #8b949e;
+    }
+    .notes-editor-rendered .hljs-deletion {
+        color: #ffa198;
+    }
+    .notes-editor-rendered .hljs-regexp,
+    .notes-editor-rendered .hljs-link {
+        color: #a5d6ff;
+    }
+    .notes-editor-rendered .hljs-tag {
+        color: #7ee787;
+    }
+    .notes-editor-rendered .hljs-variable {
+        color: #ffa657;
+    }
+    .notes-editor-rendered .hljs-name {
+        color: #7ee787;
+    }
+}
+
+[data-theme="dark"] .notes-editor-rendered .hljs {
+    color: var(--text-primary);
+    background: transparent;
+}
+[data-theme="dark"] .notes-editor-rendered .hljs-string,
+[data-theme="dark"] .notes-editor-rendered .hljs-template-variable,
+[data-theme="dark"] .notes-editor-rendered .hljs-addition {
+    color: #a5d6ff;
+}
+[data-theme="dark"] .notes-editor-rendered .hljs-comment,
+[data-theme="dark"] .notes-editor-rendered .hljs-quote {
+    color: #8b949e;
+}
+[data-theme="dark"] .notes-editor-rendered .hljs-keyword,
+[data-theme="dark"] .notes-editor-rendered .hljs-selector-tag,
+[data-theme="dark"] .notes-editor-rendered .hljs-type {
+    color: #ff7b72;
+}
+[data-theme="dark"] .notes-editor-rendered .hljs-number,
+[data-theme="dark"] .notes-editor-rendered .hljs-literal,
+[data-theme="dark"] .notes-editor-rendered .hljs-symbol,
+[data-theme="dark"] .notes-editor-rendered .hljs-bullet {
+    color: #79c0ff;
+}
+[data-theme="dark"] .notes-editor-rendered .hljs-title,
+[data-theme="dark"] .notes-editor-rendered .hljs-section,
+[data-theme="dark"] .notes-editor-rendered .hljs-selector-id {
+    color: #d2a8ff;
+}
+[data-theme="dark"] .notes-editor-rendered .hljs-attr,
+[data-theme="dark"] .notes-editor-rendered .hljs-attribute {
+    color: #79c0ff;
+}
+[data-theme="dark"] .notes-editor-rendered .hljs-built_in,
+[data-theme="dark"] .notes-editor-rendered .hljs-class .hljs-title {
+    color: #ffa657;
+}
+[data-theme="dark"] .notes-editor-rendered .hljs-meta {
+    color: #8b949e;
+}
+[data-theme="dark"] .notes-editor-rendered .hljs-deletion {
+    color: #ffa198;
+}
+[data-theme="dark"] .notes-editor-rendered .hljs-regexp,
+[data-theme="dark"] .notes-editor-rendered .hljs-link {
+    color: #a5d6ff;
+}
+[data-theme="dark"] .notes-editor-rendered .hljs-tag {
+    color: #7ee787;
+}
+[data-theme="dark"] .notes-editor-rendered .hljs-variable {
+    color: #ffa657;
+}
+[data-theme="dark"] .notes-editor-rendered .hljs-name {
+    color: #7ee787;
+}
+
+.note-link-picker {
+  position: absolute;
+  z-index: 10;
+  width: 360px;
+  max-height: 320px;
+  background: var(--bg-primary);
+  border: 1px solid var(--neutral-200);
+  border-radius: 8px;
+  box-shadow: var(--shadow-4);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.note-link-picker .note-link-picker-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--neutral-100);
+}
+
+.note-link-picker .note-link-picker-input-row svg.lucide {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.note-link-picker .note-link-picker-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 14px;
+  color: var(--text-primary);
+  background: transparent;
+}
+
+.note-link-picker .note-link-picker-input::placeholder {
+  color: var(--text-muted);
+}
+
+.note-link-picker .note-link-picker-loading,
+.note-link-picker .note-link-picker-empty {
+  padding: 16px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.note-link-picker .note-link-picker-results {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.note-link-picker .note-link-picker-item {
+  padding: 10px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--neutral-50);
+}
+
+.note-link-picker .note-link-picker-item:hover,
+.note-link-picker .note-link-picker-item.selected {
+  background: var(--neutral-100);
+}
+
+.note-link-picker .note-link-picker-item:last-child {
+  border-bottom: none;
+}
+
+.note-link-picker .note-link-picker-item-title {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.note-link-picker .note-link-picker-item-snippet {
+  display: block;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

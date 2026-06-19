@@ -47,5 +47,24 @@
         .bulk-actions-panel-row-label {
             font: var(--sm);
         }
+
+        &.primary {
+            color: var(--primary-600, #2563eb);
+
+            &:hover {
+                background-color: var(--primary-50, #eff6ff);
+            }
+        }
+    }
+
+    .bulk-actions-panel-tags {
+        margin-bottom: var(--spacing-4);
+
+        label {
+            display: block;
+            font: var(--sm);
+            font-weight: 600;
+            margin-bottom: var(--spacing-2);
+        }
     }
 }

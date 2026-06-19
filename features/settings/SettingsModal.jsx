@@ -6,6 +6,7 @@ import ExportPane from "./ExportPane.jsx";
 import AppearancePane from "./AppearancePane.jsx";
 import McpPane from "./McpPane.jsx";
 import SecurityPane from "./SecurityPane.jsx";
+import AiPane from "./AiPane.jsx";
 import { t } from "../../commons/i18n/index.js";
 import "./SettingsModal.css";
 
@@ -23,7 +24,8 @@ export default function SettingsModal() {
     { id: "account", label: t("settings.tabs.security"), icon: <SecurityIcon className="settings-tab-icon" />, content: <SecurityPane /> },
     { id: "import", label: t("settings.tabs.import"), icon: <UploadIcon className="settings-tab-icon" />, content: <ImportPane /> },
     { id: "export", label: t("settings.tabs.export"), icon: <DownloadIcon className="settings-tab-icon" />, content: <ExportPane /> },
-    { id: "mcp", label: t("settings.tabs.mcp"), icon: <BrainCircuitIcon className="settings-tab-icon" />, content: <McpPane /> }
+    { id: "mcp", label: t("settings.tabs.mcp"), icon: <BrainCircuitIcon className="settings-tab-icon" />, content: <McpPane /> },
+    { id: "ai", label: t("settings.tabs.ai"), icon: <BrainCircuitIcon className="settings-tab-icon" />, content: <AiPane /> }
   ];
 
   function handleCloseModal() {

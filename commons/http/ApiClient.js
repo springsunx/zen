@@ -233,8 +233,20 @@ async function bulkArchiveNotes(ids) {
   return await request('PUT', '/api/notes/bulk/archive/', { ids });
 }
 
+async function bulkAddTag(ids, tagId, tagName) {
+  return await request('PUT', '/api/notes/bulk/tag/', { ids, tagId, tagName });
+}
+
+async function bulkRemoveTag(ids, tagId) {
+  return await request('DELETE', '/api/notes/bulk/tag/', { ids, tagId });
+}
+
 async function unarchiveNote(noteId) {
   return await request('PUT', `/api/notes/${noteId}/unarchive/`);
+}
+
+async function getBacklinks(noteId) {
+  return await request('GET', `/api/notes/${noteId}/backlinks/`);
 }
 
 async function pinNote(noteId) {
@@ -265,12 +277,14 @@ async function getTags(focusId, isArchived, isDeleted, section) {
     window.__untaggedCount = resp.untaggedCount;
     return resp.tags;
   }
-  return resp;
+  window.__untaggedCount = resp?.untaggedCount || 0;
+  return [];
 }
 
 async function searchTags(query) {
   const resp = await request('GET', `/api/tags?query=${query}`);
-  return resp?.tags && Array.isArray(resp.tags) ? resp.tags : resp;
+  if (resp?.tags && Array.isArray(resp.tags)) return resp.tags;
+  return [];
 }
 
 async function updateTag(tag) {
@@ -283,6 +297,40 @@ async function deleteTag(tagId) {
 
 async function reorderTags(order) {
   return await request('PUT', '/api/tags/reorder/', { order });
+}
+
+async function moveTag(tagId, parentId, parentName) {
+  return await request('PATCH', `/api/tags/${tagId}/parent/`, { parentId, parentName });
+}
+
+// ─── AI ───
+
+async function getAIConfigs() {
+  return await request('GET', '/api/ai/configs/');
+}
+
+async function createAIConfig(config) {
+  return await request('POST', '/api/ai/configs/', config);
+}
+
+async function updateAIConfig(configId, config) {
+  return await request('PUT', `/api/ai/configs/${configId}/`, config);
+}
+
+async function deleteAIConfig(configId) {
+  return await request('DELETE', `/api/ai/configs/${configId}/`);
+}
+
+async function setDefaultAIConfig(configId) {
+  return await request('PUT', `/api/ai/configs/${configId}/default/`);
+}
+
+async function processWithAI(configId, instruction, fullContent, selectedText) {
+  return await request('POST', '/api/ai/process/', { configId, instruction, fullContent, selectedText });
+}
+
+async function fetchAIModels(baseUrl, apiKey, skipTlsVerify) {
+  return await request('POST', '/api/ai/models/', { baseUrl, apiKey, skipTlsVerify: skipTlsVerify || false });
 }
 
 // ─── Images ───
@@ -442,7 +490,10 @@ export default {
   restoreNote,
   archiveNote,
   bulkArchiveNotes,
+  bulkAddTag,
+  bulkRemoveTag,
   unarchiveNote,
+  getBacklinks,
   pinNote,
   unpinNote,
   clearTrash,
@@ -451,6 +502,14 @@ export default {
   updateTag,
   deleteTag,
   reorderTags,
+  moveTag,
+  getAIConfigs,
+  createAIConfig,
+  updateAIConfig,
+  deleteAIConfig,
+  setDefaultAIConfig,
+  processWithAI,
+  fetchAIModels,
   getImages,
   uploadImage,
   deleteImage,

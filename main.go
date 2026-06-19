@@ -2,6 +2,7 @@ package main
 
 import (
 	"embed"
+	"flag"
 	"fmt"
 	"io/fs"
 	"log/slog"
@@ -14,6 +15,7 @@ import (
 	"zen/commons/session"
 	"zen/commons/sqlite"
 	"zen/features/canvas"
+	"zen/features/ai"
 	"zen/features/focus"
 	"zen/features/images"
 	"zen/features/intelligence"
@@ -32,7 +34,28 @@ var assets embed.FS
 //go:embed migrations/*.sql
 var migrations embed.FS
 
+// Version can be set via ZEN_VERSION env var or -ldflags
+var version = getEnv("ZEN_VERSION", "dev")
+
 func main() {
+	// ─── CLI Flags ───
+	port := flag.String("port", getEnv("PORT", "8080"), "server port")
+	dataFolder := flag.String("data", getEnv("DATA_FOLDER", "."), "database directory")
+	imagesFolder := flag.String("images", getEnv("IMAGES_FOLDER", "./images"), "image storage directory")
+	showVersion := flag.Bool("version", false, "print version and exit")
+	flag.Parse()
+
+	// ─── Subcommands ───
+	if *showVersion {
+		fmt.Printf("zen %s\n", version)
+		return
+	}
+
+	// Apply flag values back to env so existing code works unchanged
+	os.Setenv("PORT", *port)
+	os.Setenv("DATA_FOLDER", *dataFolder)
+	os.Setenv("IMAGES_FOLDER", *imagesFolder)
+
 	defer func() {
 		if r := recover(); r != nil {
 			slog.Error("killing server", "error", r)
@@ -67,14 +90,9 @@ func main() {
 
 	go runBackgroundTasks()
 
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
-	port = ":" + port
-
-	slog.Info("starting server", "port", port)
-	err := http.ListenAndServe(port, newRouter())
+	addr := ":" + *port
+	slog.Info("starting server", "port", *port)
+	err := http.ListenAndServe(addr, newRouter())
 	if err != nil {
 		panic(err)
 	}
@@ -98,16 +116,20 @@ func newRouter() *http.ServeMux {
 	addPrivateRoute(mux, "DELETE /api/notes/{noteId}/", notes.HandleSoftDeleteNote)
 	addPrivateRoute(mux, "DELETE /api/notes/", notes.HandleDeleteNotes)
 	addPrivateRoute(mux, "PUT /api/notes/bulk/archive/", notes.HandleBulkArchiveNotes)
+	addPrivateRoute(mux, "PUT /api/notes/bulk/tag/", notes.HandleBulkAddTag)
+	addPrivateRoute(mux, "DELETE /api/notes/bulk/tag/", notes.HandleBulkRemoveTag)
 	addPrivateRoute(mux, "PUT /api/notes/{noteId}/archive/", notes.HandleArchiveNote)
 	addPrivateRoute(mux, "PUT /api/notes/{noteId}/unarchive/", notes.HandleUnarchiveNote)
 	addPrivateRoute(mux, "PUT /api/notes/{noteId}/restore/", notes.HandleRestoreDeletedNote)
 	addPrivateRoute(mux, "PUT /api/notes/{noteId}/pin/", notes.HandlePinNote)
 	addPrivateRoute(mux, "PUT /api/notes/{noteId}/unpin/", notes.HandleUnpinNote)
+	addPrivateRoute(mux, "GET /api/notes/{noteId}/backlinks/", notes.HandleGetBacklinks)
 
 	addPrivateRoute(mux, "GET /api/tags/", tags.HandleGetTags)
 	addPrivateRoute(mux, "PUT /api/tags/", tags.HandleUpdateTag)
 	addPrivateRoute(mux, "PUT /api/tags/reorder/", tags.HandleReorderTags)
 	addPrivateRoute(mux, "DELETE /api/tags/{tagId}/", tags.HandleDeleteTag)
+	addPrivateRoute(mux, "PATCH /api/tags/{tagId}/parent/", tags.HandleMoveTag)
 
 	addPrivateRoute(mux, "GET /api/focus/", focus.HandleGetAllFocusModes)
 	addPrivateRoute(mux, "POST /api/focus/", focus.HandleCreateFocusMode)
@@ -132,6 +154,15 @@ func newRouter() *http.ServeMux {
 	addPrivateRoute(mux, "POST /api/intelligence/index/", intelligence.HandleIndexAllContent)
 	addPrivateRoute(mux, "GET /api/intelligence/queue/", intelligence.HandleQueueStats)
 	addPrivateRoute(mux, "GET /api/intelligence/similarity/images/{filename}/", intelligence.HandleSimilarImages)
+
+	// AI
+	addPrivateRoute(mux, "GET /api/ai/configs/", ai.HandleGetConfigs)
+	addPrivateRoute(mux, "POST /api/ai/configs/", ai.HandleCreateConfig)
+	addPrivateRoute(mux, "PUT /api/ai/configs/{configId}/", ai.HandleUpdateConfig)
+	addPrivateRoute(mux, "DELETE /api/ai/configs/{configId}/", ai.HandleDeleteConfig)
+	addPrivateRoute(mux, "PUT /api/ai/configs/{configId}/default/", ai.HandleSetDefault)
+	addPrivateRoute(mux, "POST /api/ai/process/", ai.HandleProcess)
+	addPrivateRoute(mux, "POST /api/ai/models/", ai.HandleFetchModels)
 
 	addPrivateRoute(mux, "GET /api/templates/", templates.HandleGetTemplates)
 	addPrivateRoute(mux, "GET /api/templates/{templateId}/", templates.HandleGetTemplate)
@@ -239,6 +270,13 @@ func runBackgroundTasks() {
 			intelligence.ProcessQueues()
 		}
 	}()
+}
+
+func getEnv(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
 }
 
 func handleServiceWorker(w http.ResponseWriter, r *http.Request) {

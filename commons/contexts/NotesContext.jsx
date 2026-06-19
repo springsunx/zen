@@ -1,7 +1,6 @@
-import { h, createContext, useContext, useState, useCallback } from '../../assets/preact.esm.js';
+import { h, createContext, useContext, useState, useCallback, useEffect } from '../../assets/preact.esm.js';
 import ApiClient from '../../commons/http/ApiClient.js';
 import useSearchParams from "../../commons/components/useSearchParams.jsx";
-import { useAppContext } from './AppContext.jsx';
 import { t } from "../i18n/index.js";
 
 const NotesContext = createContext();
@@ -17,8 +16,6 @@ export function NotesProvider({ children }) {
   const [imagesPageNumber, setImagesPageNumber] = useState(1);
   const [isImagesLoading, setIsImagesLoading] = useState(true);
 
-  const { refreshTags, refreshFocusModes } = useAppContext();
-
   const searchParams = useSearchParams();
 
   const refreshNotes = useCallback((tagId, focusId, isArchived, isDeleted, pageNumber = 1, isUntagged = false) => {
@@ -30,6 +27,12 @@ export function NotesProvider({ children }) {
           setNotes(prevNotes => [...prevNotes, ...res.notes]);
         } else {
           setNotes(res.notes);
+          // Sync selectedNote with refreshed data (e.g., updated tag names/colors)
+          setSelectedNote(prev => {
+            if (!prev) return prev;
+            const updated = res.notes.find(n => n.noteId === prev.noteId);
+            return updated ? { ...prev, ...updated } : prev;
+          });
         }
         setNotesTotal(res.total);
       })
@@ -70,9 +73,7 @@ export function NotesProvider({ children }) {
 
     refreshNotes(selectedTagId, selectedFocusId, isArchivesPage, isTrashPage, 1, isUntagged);
     refreshImages(selectedTagId, selectedFocusId);
-    refreshTags(selectedFocusId, isArchivesPage, isTrashPage);
-    refreshFocusModes();
-  }, [searchParams, refreshNotes, refreshImages, refreshTags, refreshFocusModes]);
+  }, [searchParams, refreshNotes, refreshImages]);
 
   const handlePinToggle = useCallback((noteId, isPinned) => {
     const apiCall = isPinned ? ApiClient.unpinNote(noteId) : ApiClient.pinNote(noteId);
