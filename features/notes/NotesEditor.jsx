@@ -1,4 +1,4 @@
-import { h, useState, useRef, useEffect, useCallback, useMemo } from "../../assets/preact.esm.js"
+import { h, useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from "../../assets/preact.esm.js"
 import ApiClient from '../../commons/http/ApiClient.js';
 import NotesEditorTags from "../tags/NotesEditorTags.jsx";
 import NotesEditorFormattingToolbar from './NotesEditorFormattingToolbar.jsx';
@@ -8,7 +8,7 @@ import NoteLinkPicker from './NoteLinkPicker.jsx';
 import BacklinksPanel from './BacklinksPanel.jsx';
 import TemplatePicker from '../templates/TemplatePicker.jsx';
 import AIPanel from './AIPanel.jsx';
-import SlashCommandMenu, { COMMANDS } from './SlashCommandMenu.jsx';
+import SlashCommandMenu from './SlashCommandMenu.jsx';
 import renderMarkdown from '../../commons/utils/renderMarkdown.js';
 import navigateTo from '../../commons/utils/navigateTo.js';
 import NoteDeleteModal from './NoteDeleteModal.jsx';
@@ -24,6 +24,8 @@ import { useVisibleHeadings } from "./useVisibleHeadings.js";
 import useEditorKeyboardShortcuts from "./useEditorKeyboardShortcuts.js";
 import useImageUpload from "./useImageUpload.js";
 import useMarkdownFormatter from "./useMarkdownFormatter.js";
+import useAIPanel from "./useAIPanel.js";
+import useSlashCommands from "./useSlashCommands.js";
 import "./NotesEditor.css";
 import { t } from "../../commons/i18n/index.js";
 
@@ -43,17 +45,16 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   const [tags, setTags] = useState(selectedNote?.tags || []);
   const [isSaveLoading, setIsSaveLoading] = useState(false);
   const [showLinkPicker, setShowLinkPicker] = useState(false);
-  const [linkPickerPos, setLinkPickerPos] = useState(null); // { lineStart, cursorX, cursorY } for slash command context
+  const [linkPickerPos, setLinkPickerPos] = useState(null);
   const [backlinks, setBacklinks] = useState([]);
   const [isBacklinksLoading, setIsBacklinksLoading] = useState(false);
-  const [showAIModal, setShowAIModal] = useState(false);
-  const [aiMessages, setAiMessages] = useState([]);
-  const aiSavedSelection = useRef(null); // { start, end } saved before opening AI panel
-  const [slashMenu, setSlashMenu] = useState(null); // { query, selectedIndex }
-  const skipSlashCheck = useRef(false);
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const pendingCursorPos = useRef(null); // { start, end } to restore after re-render
-  const slashUndoStack = useRef([]); // custom undo stack for slash commands: [{content, pos}]
-  const lastCtrlPress = useRef(0); // for double-Ctrl detection
+
+  // Extract stable values for useEffect dependencies (avoid optional chaining in dep arrays)
+  const noteId = selectedNote?.noteId;
+  const noteContent = selectedNote?.content;
+  const noteTags = selectedNote?.tags;
 
   // ─── Refs ───
   const titleRef = useRef(null);
@@ -61,10 +62,20 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   const contentRef = useRef(null);
   const savedNoteRef = useRef(null);
 
+  // ─── Derived state ───
+  const lastCtrlPress = useRef(0); // for double-Ctrl detection
+
+  function updateContent(value) {
+    setContent(value);
+    onContentChange(value);
+  }
+
   // ─── Hooks ───
 
   // Restore pending cursor position after re-render (controlled textarea resets cursor on setContent)
-  useEffect(() => {
+  // useLayoutEffect runs synchronously before paint to avoid visual flicker.
+  // Depends on [content] because setContent triggers the re-render that resets the cursor.
+  useLayoutEffect(() => {
     if (pendingCursorPos.current && textareaRef.current) {
       const { start, end } = pendingCursorPos.current;
       textareaRef.current.selectionStart = start;
@@ -74,6 +85,30 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
       const pos = pendingCursorPos.current;
       setTimeout(() => { if (pendingCursorPos.current === pos) pendingCursorPos.current = null; }, 200);
     }
+  }, [content]);
+
+  const {
+    showAIModal, aiMessages, setAiMessages, aiSavedSelection,
+    handleOpenAI, handleAIInsert, handleAIReplace, handleCloseAI,
+  } = useAIPanel({ textareaRef, updateContent, pendingCursorPos });
+
+  function handleShowLinkPicker() {
+    if (textareaRef.current) {
+      const v = textareaRef.current.value;
+      updateContent(v);
+    }
+    pendingCursorPos.current = null;
+    setLinkPickerPos(null);
+    setShowLinkPicker(true);
+  }
+
+  const {
+    slashMenu, setSlashMenu, skipSlashCheck, filteredCommands,
+    handleTextareaInput, handleSlashKeyDown, executeSlashCommand, handleSlashUndo,
+  } = useSlashCommands({
+    textareaRef, updateContent, pendingCursorPos,
+    onLinkPicker: handleShowLinkPicker,
+    onTemplatePicker: () => setShowTemplatePicker(true),
   });
   const visibleHeadings = useVisibleHeadings(contentRef, content, isEditable, isEditorExpanded);
 
@@ -111,7 +146,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
       setContent(selectedNote.content || "");
       setTags(selectedNote.tags || []);
     }
-  }, [selectedNote?.noteId, selectedNote?.content, selectedNote?.tags]);
+  }, [noteId, noteContent, noteTags]);
 
   useEffect(() => {
     if (isNewNote === true || (isEditable === true && titleRef.current?.textContent === "")) {
@@ -176,7 +211,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
     } else {
       setBacklinks([]);
     }
-  }, [selectedNote?.noteId, isNewNote]);
+  }, [noteId, isNewNote]);
 
   // Setup anchor links after markdown is rendered
   useEffect(() => {
@@ -196,17 +231,6 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
     textarea.style.height = `${textarea.scrollHeight + 2}px`;
   }
 
-  function handleShowLinkPicker() {
-    if (textareaRef.current) {
-      const v = textareaRef.current.value;
-      setContent(v);
-      onContentChange(v);
-    }
-    pendingCursorPos.current = null;
-    setLinkPickerPos(null);
-    setShowLinkPicker(true);
-  }
-
   function handleInsertInternalLink(link) {
     if (textareaRef.current) {
       const textarea = textareaRef.current;
@@ -216,8 +240,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
       const endPos = textarea.selectionEnd;
       const beforeText = textarea.value.substring(0, startPos);
       const afterText = textarea.value.substring(endPos);
-      setContent(beforeText + link + afterText);
-      onContentChange(beforeText + link + afterText);
+      updateContent(beforeText + link + afterText);
       requestAnimationFrame(() => {
         textarea.focus({ preventScroll: true });
         const newPos = startPos + link.length;
@@ -233,211 +256,12 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
     setShowLinkPicker(false);
   }
 
-  function handleOpenAI() {
-    // Save current textarea selection before AI panel takes focus
-    if (textareaRef.current) {
-      aiSavedSelection.current = {
-        start: textareaRef.current.selectionStart,
-        end: textareaRef.current.selectionEnd,
-      };
-    }
-    setShowAIModal(true);
-  }
-
-  function handleAIInsert(text) {
-    if (textareaRef.current) {
-      const ta = textareaRef.current;
-      const pos = ta.selectionStart;
-      const before = ta.value.substring(0, pos);
-      const after = ta.value.substring(ta.selectionEnd);
-      const newContent = before + text + after;
-      setContent(newContent);
-      onContentChange(newContent);
-    }
-    setShowAIModal(false);
-  }
-
-  function handleAIReplace(text) {
-    // Replace selected text (saved when AI panel opened) with AI result
-    const sel = aiSavedSelection.current;
-    if (textareaRef.current && sel && sel.start !== sel.end) {
-      const ta = textareaRef.current;
-      const before = ta.value.substring(0, sel.start);
-      const after = ta.value.substring(sel.end);
-      const newContent = before + text + after;
-      setContent(newContent);
-      onContentChange(newContent);
-      pendingCursorPos.current = { start: sel.start + text.length, end: sel.start + text.length };
-    } else {
-      // No selection — replace entire content
-      setContent(text);
-      onContentChange(text);
-    }
-    aiSavedSelection.current = null;
-    setShowAIModal(false);
-    setTimeout(() => { if (textareaRef.current) textareaRef.current.focus(); }, 50);
-  }
-
-  // ─── Slash Commands ───
-  function handleTextareaInput(e) {
-    if (skipSlashCheck.current) return;
-    const ta = e.target;
-    const val = ta.value;
-    const pos = ta.selectionStart;
-    const lineStart = val.lastIndexOf('\n', pos - 1) + 1;
-    const lineText = val.substring(lineStart, pos);
-    const slashMatch = lineText.match(/^\/([a-z0-9]*)$/);
-    if (slashMatch) {
-      setSlashMenu({ query: slashMatch[1], selectedIndex: 0 });
-    } else {
-      setSlashMenu(null);
-    }
-  }
-
-  function handleSlashKeyDown(e) {
-    if (!slashMenu) return false;
-    const filtered = COMMANDS.filter(cmd => {
-      const q = slashMenu.query.toLowerCase();
-      return cmd.id.includes(q) || cmd.label().toLowerCase().includes(q);
-    });
-    if (filtered.length === 0) { setSlashMenu(null); return false; }
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setSlashMenu(prev => ({ ...prev, selectedIndex: (prev.selectedIndex + 1) % filtered.length }));
-      return true;
-    }
-    if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setSlashMenu(prev => ({ ...prev, selectedIndex: (prev.selectedIndex - 1 + filtered.length) % filtered.length }));
-      return true;
-    }
-    if (e.key === 'Enter' || e.key === 'Tab') {
-      e.preventDefault();
-      const cmd = filtered[slashMenu.selectedIndex];
-      if (cmd) {
-        // Tab on table command: focus the inline row input instead of executing
-        if (e.key === 'Tab' && cmd.hasForm) {
-          const rowsInput = document.querySelector('.slash-command-menu .table-row-input');
-          if (rowsInput) { rowsInput.focus(); return true; }
-        }
-        // Enter on table command: read values from inline inputs and generate
-        if (e.key === 'Enter' && cmd.hasForm) {
-          const rowsInput = document.querySelector('.slash-command-menu .table-row-input');
-          const colsInput = document.querySelector('.slash-command-menu .table-col-input');
-          const rows = rowsInput ? Math.max(1, Math.min(20, parseInt(rowsInput.value) || 3)) : 3;
-          const cols = colsInput ? Math.max(1, Math.min(10, parseInt(colsInput.value) || 3)) : 3;
-          const header = '| ' + Array.from({ length: cols }, () => 'Header').join(' | ') + ' |';
-          const sep = '| ' + Array.from({ length: cols }, () => '------').join(' | ') + ' |';
-          const body = Array.from({ length: rows }, () => '| ' + Array.from({ length: cols }, () => '  ').join(' | ') + ' |').join('\n');
-          executeSlashCommand({ insert: () => header + '\n' + sep + '\n' + body });
-          return true;
-        }
-        executeSlashCommand(cmd);
-      }
-      return true;
-    }
-    // Space after exact match → execute directly
-    if (e.key === ' ') {
-      const exact = COMMANDS.find(cmd => cmd.id === slashMenu.query.toLowerCase());
-      if (exact) {
-        e.preventDefault();
-        executeSlashCommand(exact);
-        return true;
-      }
-    }
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      // Remove the /command text from content
-      if (textareaRef.current) {
-        const ta = textareaRef.current;
-        const val = ta.value;
-        const pos = ta.selectionStart;
-        const lineStart = val.lastIndexOf('\n', pos - 1) + 1;
-        const before = val.substring(0, lineStart);
-        const after = val.substring(pos);
-        const cleaned = before + after;
-        pendingCursorPos.current = { start: lineStart, end: lineStart };
-        setContent(cleaned);
-        onContentChange(cleaned);
-      }
-      setSlashMenu(null);
-      return true;
-    }
-    return false;
-  }
-
-  function executeSlashCommand(cmd) {
-    const ta = textareaRef.current;
-    if (!ta) return;
-    const val = ta.value;
-    const pos = ta.selectionStart;
-    const lineStart = val.lastIndexOf('\n', pos - 1) + 1;
-    // Save state for custom undo
-    slashUndoStack.current.push({ content: val, pos: pos });
-    if (slashUndoStack.current.length > 100) slashUndoStack.current.shift();
-    skipSlashCheck.current = true;
-
-    if (cmd.action === 'link') {
-      setSlashMenu(null);
-      const before = val.substring(0, lineStart);
-      const after = val.substring(pos);
-      setContent(before + after);
-      onContentChange(before + after);
-      pendingCursorPos.current = { start: lineStart, end: lineStart };
-      setTimeout(() => { handleShowLinkPicker(); skipSlashCheck.current = false; }, 50);
-      return;
-    }
-    if (cmd.action === 'template') {
-      setSlashMenu(null);
-      const before = val.substring(0, lineStart);
-      const after = val.substring(pos);
-      setContent(before + after);
-      onContentChange(before + after);
-      pendingCursorPos.current = { start: lineStart, end: lineStart };
-      setTimeout(() => { setShowTemplatePicker(true); skipSlashCheck.current = false; }, 50);
-      return;
-    }
-    if (cmd.format) {
-      const formatPrefixMap = {
-        'h1': { text: '# ', cursor: 2 },
-        'h2': { text: '## ', cursor: 3 },
-        'h3': { text: '### ', cursor: 4 },
-        'ul': { text: '- ', cursor: 2 },
-        'ol': { text: '1. ', cursor: 3 },
-        'todo': { text: '- [ ] ', cursor: 6 },
-        'quote': { text: '> ', cursor: 2 },
-        'codeblock': { text: '```\n\n```', cursor: 4 },
-        'hr': { text: '\n---\n', cursor: 5 },
-      };
-      const fmt = formatPrefixMap[cmd.format];
-      if (!fmt) return;
-      const newVal = val.substring(0, lineStart) + fmt.text + val.substring(pos);
-      setContent(newVal);
-      onContentChange(newVal);
-      setSlashMenu(null);
-      pendingCursorPos.current = { start: lineStart + fmt.cursor, end: lineStart + fmt.cursor };
-      setTimeout(() => { skipSlashCheck.current = false; }, 50);
-    } else if (cmd.insert) {
-      const insertText = cmd.insert();
-      const cursorOff = cmd.cursorOffset !== undefined ? cmd.cursorOffset : insertText.length;
-      const finalText = cmd.postInsert ? insertText.substring(0, cursorOff) + cmd.postInsert + insertText.substring(cursorOff) : insertText;
-      const finalCursorOff = cmd.postInsert ? cursorOff + cmd.postInsert.length + (cmd.cursorAfterPost || 0) : cursorOff;
-      const newVal = val.substring(0, lineStart) + finalText + val.substring(pos);
-      setContent(newVal);
-      onContentChange(newVal);
-      setSlashMenu(null);
-      pendingCursorPos.current = { start: lineStart + finalCursorOff, end: lineStart + finalCursorOff };
-      setTimeout(() => { skipSlashCheck.current = false; }, 50);
-    }
-  }
-
   const handleSaveClick = useCallback((closeAfter = false) => {
     const currentTitle = titleRef.current?.textContent || "";
     const currentContent = textareaRef.current?.value || content;
     const note = { title: currentTitle, content: currentContent, tags };
     setTitle(currentTitle);
-    setContent(currentContent);
-    onContentChange(currentContent);
+    updateContent(currentContent);
     setIsSaveLoading(true);
 
     const promise = isNewNote
@@ -497,8 +321,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
     } else {
       const latest = savedNoteRef.current || selectedNote;
       setTitle(latest?.title || "");
-      setContent(latest?.content || "");
-      onContentChange(latest?.content || "");
+      updateContent(latest?.content || "");
       setTags(latest?.tags || []);
       setIsEditable(false);
     }
@@ -570,8 +393,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
 
   function handleTemplateApply(templateTitle, templateContent, templateTags) {
     if (templateTitle && templateTitle.trim() !== "") setTitle(templateTitle);
-    setContent(templateContent);
-    onContentChange(templateContent);
+    updateContent(templateContent);
     if (templateTags && templateTags.length > 0) setTags(templateTags);
     setTimeout(() => {
       if (textareaRef.current) {
@@ -633,11 +455,6 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   // ─── Content Area ───
   let contentArea = null;
   if (isEditable) {
-    const filteredSlashCommands = slashMenu ? COMMANDS.filter(cmd => {
-      const q = slashMenu.query.toLowerCase();
-      return cmd.id.includes(q) || cmd.label().toLowerCase().includes(q);
-    }) : [];
-
     contentArea = (
       <div style={{ position: 'relative' }}>
         <textarea
@@ -648,8 +465,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
           value={content}
           onInput={e => {
             const v = e.target.value;
-            setContent(v);
-            onContentChange(v);
+            updateContent(v);
             handleTextAreaHeight(e);
             handleTextareaInput(e);
             if (!skipSlashCheck.current) pendingCursorPos.current = null;
@@ -668,25 +484,15 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
               return;
             }
             if (handleSlashKeyDown(e)) return;
-            // Custom undo for slash commands (Ctrl+Z)
-            if ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 'z' || e.key === 'Z')) {
-              if (slashUndoStack.current.length > 0) {
-                e.preventDefault();
-                const state = slashUndoStack.current.pop();
-                setContent(state.content);
-                onContentChange(state.content);
-                pendingCursorPos.current = { start: state.pos, end: state.pos };
-                return;
-              }
-            }
+            if (handleSlashUndo(e)) return;
           }}
-          onBlur={e => { const v = e.target.value; setContent(v); onContentChange(v); }}
+          onBlur={e => { const v = e.target.value; updateContent(v); }}
           style={{ position: 'relative', zIndex: 1 }}
         />
         {showAIModal && aiSavedSelection.current && aiSavedSelection.current.start !== aiSavedSelection.current.end && (
           <SelectionHighlight textareaRef={textareaRef} selection={aiSavedSelection.current} />
         )}
-        {slashMenu && filteredSlashCommands.length > 0 && (
+        {slashMenu && filteredCommands.length > 0 && (
           <SlashCommandMenu
             query={slashMenu.query}
             selectedIndex={slashMenu.selectedIndex}
@@ -703,8 +509,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
                 const before = val.substring(0, savedLineStart);
                 const after = val.substring(pos);
                 skipSlashCheck.current = true;
-                setContent(before + after);
-                onContentChange(before + after);
+                updateContent(before + after);
                 // Restore cursor position after state update
                 requestAnimationFrame(() => {
                   if (textareaRef.current) {
@@ -743,7 +548,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   }
 
   const showImageDropzone = isEditable === true;
-  const showTemplatePicker = isNewNote === true && isEditable === true && title === "" && content === "";
+  const shouldShowTemplatePicker = showTemplatePicker && isNewNote === true && isEditable === true && title === "" && content === "";
 
   // ─── Render ───
   return (
@@ -795,7 +600,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
           setMessages={setAiMessages}
           onInsert={handleAIInsert}
           onReplace={handleAIReplace}
-          onClose={() => { setShowAIModal(false); setTimeout(() => { if (textareaRef.current) textareaRef.current.focus(); }, 50); }}
+          onClose={handleCloseAI}
         />
       )}
       {isEditable && !showAIModal && (
@@ -806,7 +611,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
       <div className="notes-editor-content">
         {contentArea}
       </div>
-      {showTemplatePicker && <TemplatePicker onTemplateApply={handleTemplateApply} />}
+      {shouldShowTemplatePicker && <TemplatePicker onTemplateApply={handleTemplateApply} />}
       {!isNewNote && !isEditable && (backlinks.length > 0 || isBacklinksLoading) && (
         <BacklinksPanel backlinks={backlinks} isLoading={isBacklinksLoading} />
       )}

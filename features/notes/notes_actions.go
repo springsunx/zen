@@ -154,72 +154,35 @@ func UnarchiveNote(noteID int) error {
 }
 
 func EmptyTrash(shouldOnlyClearExpired bool) error {
-	var rows_query string
+	query := `SELECT note_id FROM notes WHERE deleted_at IS NOT NULL`
+	var args []interface{}
 
 	if shouldOnlyClearExpired {
-		rows_query = `
-			SELECT note_id FROM notes 
-			WHERE deleted_at IS NOT NULL 
-			AND deleted_at < ?
-		`
-	} else {
-		rows_query = `
-			SELECT note_id FROM notes 
-			WHERE deleted_at IS NOT NULL
-		`
+		query += ` AND deleted_at < ?`
+		args = append(args, time.Now().AddDate(0, 0, -30))
 	}
 
-	var rows_result *[]int
-	var err error
+	rows, err := sqlite.DB.Query(query, args...)
+	if err != nil {
+		err = fmt.Errorf("error querying trashed notes: %w", err)
+		slog.Error(err.Error())
+		return err
+	}
+	defer rows.Close()
 
-	if shouldOnlyClearExpired {
-		expiry := time.Now().AddDate(0, 0, -30)
-		rows, err := sqlite.DB.Query(rows_query, expiry)
-		if err != nil {
-			err = fmt.Errorf("error querying trashed notes: %w", err)
+	var noteIDs []int
+	for rows.Next() {
+		var noteID int
+		if err := rows.Scan(&noteID); err != nil {
+			err = fmt.Errorf("error scanning note ID: %w", err)
 			slog.Error(err.Error())
 			return err
 		}
-		defer rows.Close()
-
-		var noteIDs []int
-		for rows.Next() {
-			var noteID int
-			err = rows.Scan(&noteID)
-			if err != nil {
-				err = fmt.Errorf("error scanning note ID: %w", err)
-				slog.Error(err.Error())
-				return err
-			}
-			noteIDs = append(noteIDs, noteID)
-		}
-		rows_result = &noteIDs
-	} else {
-		rows, err := sqlite.DB.Query(rows_query)
-		if err != nil {
-			err = fmt.Errorf("error querying trashed notes: %w", err)
-			slog.Error(err.Error())
-			return err
-		}
-		defer rows.Close()
-
-		var noteIDs []int
-		for rows.Next() {
-			var noteID int
-			err = rows.Scan(&noteID)
-			if err != nil {
-				err = fmt.Errorf("error scanning note ID: %w", err)
-				slog.Error(err.Error())
-				return err
-			}
-			noteIDs = append(noteIDs, noteID)
-		}
-		rows_result = &noteIDs
+		noteIDs = append(noteIDs, noteID)
 	}
 
-	for _, noteID := range *rows_result {
-		err = ForceDeleteNote(noteID)
-		if err != nil {
+	for _, noteID := range noteIDs {
+		if err := ForceDeleteNote(noteID); err != nil {
 			err = fmt.Errorf("error deleting trashed note %d: %w", noteID, err)
 			slog.Error(err.Error())
 			return err

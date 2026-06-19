@@ -382,10 +382,12 @@ export default function SidebarTagsList() {
 
   if (isCanvas()) return null;
 
-  if (!orderedTags || orderedTags.length === 0) {
-    if (!tags || tags.length === 0) {
-      return (
-        <div>
+  const safeTags = Array.isArray(tags) ? tags : [];
+  const safeOrderedTags = Array.isArray(orderedTags) ? orderedTags : [];
+
+  if (safeOrderedTags.length === 0 && safeTags.length === 0) {
+    return (
+      <div>
           <div className="sidebar-section-title">{title}</div>
           <Link
             to={buildUntaggedUrl()}
@@ -393,13 +395,12 @@ export default function SidebarTagsList() {
             activeClassName="is-active"
           >
             {t('tags.untagged')}{untaggedCount > 0 ? ` (${untaggedCount})` : ""}
-          </Link>
-        </div>
-      );
-    }
+      </Link>
+    </div>
+    );
   }
 
-  const displayTags = orderedTags.length > 0 ? orderedTags : tags;
+  const displayTags = safeOrderedTags.length > 0 ? safeOrderedTags : safeTags;
 
   const treeItems = displayTags.map(tag =>
     h(TagTreeNode, {

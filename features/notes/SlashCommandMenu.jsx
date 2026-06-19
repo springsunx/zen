@@ -31,6 +31,17 @@ function generateTable(rows, cols) {
   return header + '\n' + sep + '\n' + body;
 }
 
+// Reusable offscreen canvas for text measurement (avoids creating one per render)
+let _measureCanvas = null;
+let _measureCtx = null;
+function getMeasureContext() {
+  if (!_measureCanvas) {
+    _measureCanvas = document.createElement('canvas');
+    _measureCtx = _measureCanvas.getContext('2d');
+  }
+  return _measureCtx;
+}
+
 export default function SlashCommandMenu({ query, onSelect, onAction, selectedIndex, textareaRef }) {
   const menuRef = useRef(null);
   const rowsRef = useRef(null);
@@ -42,8 +53,7 @@ export default function SlashCommandMenu({ query, onSelect, onAction, selectedIn
     const ta = textareaRef.current;
     const pos = ta.selectionStart;
     const style = window.getComputedStyle(ta);
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
+    const ctx = getMeasureContext();
     ctx.font = `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
     const paddingLeft = parseFloat(style.paddingLeft) || 0;
     const paddingTop = parseFloat(style.paddingTop) || 0;
@@ -173,4 +183,4 @@ export default function SlashCommandMenu({ query, onSelect, onAction, selectedIn
   );
 }
 
-export { COMMANDS };
+export { COMMANDS, generateTable };
