@@ -147,7 +147,8 @@ async function logout() {
 // ─── Focus Modes ───
 
 async function getFocusModes() {
-  return await request('GET', '/api/focus');
+  const resp = await request('GET', '/api/focus');
+  return Array.isArray(resp) ? resp : [];
 }
 
 async function createFocusMode(focusMode) {
@@ -306,7 +307,8 @@ async function moveTag(tagId, parentId, parentName) {
 // ─── AI ───
 
 async function getAIConfigs() {
-  return await request('GET', '/api/ai/configs/');
+  const resp = await request('GET', '/api/ai/configs/');
+  return Array.isArray(resp) ? resp : [];
 }
 
 async function createAIConfig(config) {
@@ -330,7 +332,8 @@ async function processWithAI(configId, instruction, fullContent, selectedText) {
 }
 
 async function fetchAIModels(baseUrl, apiKey, skipTlsVerify) {
-  return await request('POST', '/api/ai/models/', { baseUrl, apiKey, skipTlsVerify: skipTlsVerify || false });
+  const resp = await request('POST', '/api/ai/models/', { baseUrl, apiKey, skipTlsVerify: skipTlsVerify || false });
+  return Array.isArray(resp) ? resp : [];
 }
 
 // ─── Images ───
