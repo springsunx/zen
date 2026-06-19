@@ -388,7 +388,14 @@ func GetOrCreateParentTag(name string, q querier) (int, error) {
 func ParseAndCreateTagHierarchy(name string, q querier) (int, string, error) {
 	parts := strings.Split(name, "/")
 	if len(parts) <= 1 {
-		// No hierarchy, just create the tag directly
+		// No hierarchy — find existing or create
+		var existingID int
+		err := q.QueryRow("SELECT tag_id FROM tags WHERE name = ? AND parent_id IS NULL", name).Scan(&existingID)
+		if err == nil {
+			return existingID, name, nil
+		}
+
+		// Not found, create
 		result, err := q.Exec("INSERT INTO tags (name) VALUES (?)", name)
 		if err != nil {
 			return 0, "", fmt.Errorf("error creating tag: %w", err)
@@ -413,6 +420,14 @@ func ParseAndCreateTagHierarchy(name string, q querier) (int, string, error) {
 
 	// Create leaf tag with parent_id
 	leafName := strings.Join(parts, "/") // keep full path as name for display
+
+	// Check if leaf already exists with same parent
+	var existingLeafID int
+	err := q.QueryRow("SELECT tag_id FROM tags WHERE name = ? AND parent_id = ?", leafName, currentParentID).Scan(&existingLeafID)
+	if err == nil {
+		return existingLeafID, leafName, nil
+	}
+
 	result, err := q.Exec("INSERT INTO tags (name, parent_id) VALUES (?, ?)", leafName, currentParentID)
 	if err != nil {
 		return 0, "", fmt.Errorf("error creating leaf tag: %w", err)

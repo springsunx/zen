@@ -250,6 +250,8 @@
   "bulk.selectAll": "Select All",
   "bulk.archive": "Archive",
   "bulk.delete": "Delete",
+  "bulk.delete.title": "Delete",
+  "bulk.delete.desc": "will be moved to the Trash and <b>permanently deleted</b> after 30 days.",
   "bulk.addTag": "Add Tag",
   "bulk.addTagDesc": "Select or create a tag to add to {count} notes",
   "bulk.tags": "Tags",

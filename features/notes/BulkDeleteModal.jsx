@@ -2,6 +2,7 @@ import { h } from "../../assets/preact.esm.js"
 import { ModalBackdrop, ModalContainer, ModalHeader, ModalContent, ModalFooter } from "../../commons/components/Modal.jsx";
 import Button from "../../commons/components/Button.jsx";
 import pluralize from "../../commons/utils/pluralize.js";
+import { t } from "../../commons/i18n/index.js";
 
 export default function BulkDeleteModal({ count, onDeleteClick, onCloseClick }) {
   const label = pluralize(count, 'note');
@@ -9,13 +10,13 @@ export default function BulkDeleteModal({ count, onDeleteClick, onCloseClick }) 
   return (
     <ModalBackdrop onClose={onCloseClick}>
       <ModalContainer className="note-delete-modal">
-        <ModalHeader title={`Delete ${count} ${label}`} onClose={onCloseClick} />
+        <ModalHeader title={`${t('bulk.delete.title')} ${count} ${label}`} onClose={onCloseClick} />
         <ModalContent>
-          <p className="modal-description">{count} {label} will be moved to the Trash and <b>permanently deleted</b> after 30 days.</p>
+          <p className="modal-description">{count} {label} {t('bulk.delete.desc')}</p>
         </ModalContent>
         <ModalFooter isRightAligned>
-          <Button onClick={onCloseClick}>Cancel</Button>
-          <Button variant="danger" onClick={onDeleteClick}>Delete</Button>
+          <Button onClick={onCloseClick}>{t('common.cancel')}</Button>
+          <Button variant="danger" onClick={onDeleteClick}>{t('common.delete')}</Button>
         </ModalFooter>
       </ModalContainer>
     </ModalBackdrop>

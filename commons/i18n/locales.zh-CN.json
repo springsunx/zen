@@ -253,6 +253,8 @@
   "bulk.selectAll": "全选",
   "bulk.archive": "归档",
   "bulk.delete": "删除",
+  "bulk.delete.title": "删除",
+  "bulk.delete.desc": "将被移至回收站，30天后<b>永久删除</b>。",
   "bulk.addTag": "添加标签",
   "bulk.addTagDesc": "选择或创建标签，添加到 {count} 条笔记",
   "bulk.tags": "标签",

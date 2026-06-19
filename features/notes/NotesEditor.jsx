@@ -264,9 +264,11 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
     updateContent(currentContent);
     setIsSaveLoading(true);
 
-    const promise = isNewNote
-      ? ApiClient.createNote(note)
-      : ApiClient.updateNote(selectedNote.noteId, note);
+    // Use savedNoteRef to detect if we already created (prevents duplicate on repeated Ctrl+S)
+    const existingNote = savedNoteRef.current;
+    const promise = existingNote && existingNote.noteId
+      ? ApiClient.updateNote(existingNote.noteId, note)
+      : ApiClient.createNote(note);
 
     promise
       .then(savedNote => {
@@ -352,6 +354,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
     ApiClient.deleteNote(selectedNote.noteId).then(() => {
       closeModal();
       handleNoteChange();
+      refreshTags();
       if (onClose) onClose(); else navigateTo("/", true);
     });
   }
@@ -360,6 +363,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
     ApiClient.archiveNote(selectedNote.noteId).then(() => {
       showToast(t('notes.toast.archived'));
       handleNoteChange();
+      refreshTags();
     });
   }
 
@@ -367,11 +371,15 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
     ApiClient.unarchiveNote(selectedNote.noteId).then(() => {
       showToast(t('notes.toast.unarchived'));
       handleNoteChange();
+      refreshTags();
     });
   }
 
   function handleRestoreClick() {
-    ApiClient.restoreNote(selectedNote.noteId).then(() => handleNoteChange());
+    ApiClient.restoreNote(selectedNote.noteId).then(() => {
+      handleNoteChange();
+      refreshTags();
+    });
   }
 
   function handleInternalNoteLinkClick(e) {
