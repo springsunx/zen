@@ -275,6 +275,7 @@ func importNotesFromZip(notesFile *zip.File, tagNameToID map[string]int, result 
 	}
 
 	var archivedTitles []string
+	oldIDToNewID := make(map[int]int)
 
 	for _, en := range exportNotes {
 		// Resolve tag IDs
@@ -300,14 +301,47 @@ func importNotesFromZip(notesFile *zip.File, tagNameToID map[string]int, result 
 		} else {
 			result.ImportedMD = append(result.ImportedMD, en.Title+".md")
 			result.Imported++
+			oldIDToNewID[en.NoteID] = nid
 			if en.IsArchived {
 				archivedTitles = append(archivedTitles, en.Title)
 			}
-			_ = nid
 		}
 	}
 
+	// Fix internal links: replace old note IDs with new IDs
+	fixInternalLinks(oldIDToNewID)
+
 	return archivedTitles
+}
+
+// fixInternalLinks updates internal note links (/notes/oldID -> /notes/newID) in all notes.
+func fixInternalLinks(oldIDToNewID map[int]int) {
+	if len(oldIDToNewID) == 0 {
+		return
+	}
+
+	// Build replacement pairs, sorted by ID length descending to avoid partial replacements
+	type pair struct {
+		old string
+		new string
+	}
+	var pairs []pair
+	for oldID, newID := range oldIDToNewID {
+		if oldID != newID {
+			pairs = append(pairs, pair{
+				old: fmt.Sprintf("/notes/%d)", oldID),
+				new: fmt.Sprintf("/notes/%d)", newID),
+			})
+		}
+	}
+	if len(pairs) == 0 {
+		return
+	}
+
+	// Update each note's content
+	for _, p := range pairs {
+		_, _ = sqlite.DB.Exec("UPDATE notes SET content = REPLACE(content, ?, ?) WHERE content LIKE '%' || ? || '%'", p.old, p.new, p.old)
+	}
 }
 
 func createNoteFromExport(en importNote, noteTags []tags.Tag) (int, error) {
