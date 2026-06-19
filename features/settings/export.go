@@ -34,6 +34,7 @@ type ExportNote struct {
 	UpdatedAt  time.Time `json:"updatedAt"`
 	Tags       []string  `json:"tags"`
 	IsArchived bool      `json:"isArchived"`
+	IsPinned   bool      `json:"isPinned"`
 	IsDeleted  bool      `json:"isDeleted"`
 }
 
@@ -209,6 +210,7 @@ func createNotesJSONFile(zipWriter *zip.Writer, allNotes []notes.Note) error {
 			UpdatedAt:  note.UpdatedAt,
 			Tags:       tagNames,
 			IsArchived: note.IsArchived,
+			IsPinned:   note.IsPinned,
 			IsDeleted:  note.IsDeleted,
 		}
 
