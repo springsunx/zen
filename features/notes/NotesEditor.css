@@ -310,7 +310,7 @@
         padding: var(--spacing-3);
         background-color: var(--neutral-150);
         border-radius: 4px;
-        overflow: scroll;
+        overflow: hidden;
 
         &::-webkit-scrollbar {
             display: none;
@@ -321,6 +321,7 @@
             border-radius: 0;
             padding: 0;
             white-space: pre-wrap;
+            word-break: break-all;
         }
 
         * {
@@ -575,6 +576,9 @@
 .code-block-wrapper {
   margin: 16px 0;
   border-radius: 6px;
+  width: fit-content;
+  max-width: 100%;
+  min-width: 600px;
   overflow: hidden;
   border: 1px solid var(--neutral-200);
 }
@@ -617,7 +621,8 @@
   margin: 0;
   padding: 0;
   background-color: transparent;
-  white-space: pre;
+  white-space: pre-wrap;
+  word-break: break-all;
 }
 /* 确保工具栏在滚动时固定 */
 .notes-editor-container .notes-editor-toolbar {
