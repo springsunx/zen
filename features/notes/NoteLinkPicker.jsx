@@ -53,10 +53,21 @@ export default function NoteLinkPicker({ onInsertLink, onClose, textareaRef, cur
     const borderTop = parseFloat(style.borderTopWidth) || 0;
     const textBefore = ta.value.substring(0, pos);
     const lines = textBefore.split('\n');
-    const lineIndex = lines.length - 1;
-    const cursorX = ctx.measureText(lines[lineIndex]).width;
-    const cursorY = lineIndex * lineHeight;
-    const top = borderTop + paddingTop + cursorY - ta.scrollTop + lineHeight + 4;
+    const contentWidth = ta.clientWidth - paddingLeft - parseFloat(style.paddingRight || 0);
+
+    // Calculate visual Y by counting wrapped lines
+    let visualY = 0;
+    for (let i = 0; i < lines.length - 1; i++) {
+      const w = ctx.measureText(lines[i]).width;
+      visualY += Math.max(1, Math.ceil(w / contentWidth)) * lineHeight;
+    }
+    // Current line (up to cursor) may also wrap
+    const currentLine = lines[lines.length - 1];
+    const cursorX = ctx.measureText(currentLine).width;
+    if (contentWidth > 0) {
+      visualY += (Math.ceil(cursorX / contentWidth) - 1) * lineHeight;
+    }
+    const top = borderTop + paddingTop + visualY - ta.scrollTop + lineHeight + 4;
     const left = borderLeft + paddingLeft + cursorX - ta.scrollLeft;
     return { top, left: Math.max(0, left) };
   })();
