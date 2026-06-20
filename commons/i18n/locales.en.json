@@ -244,6 +244,8 @@
   "notes.editor.copyMarkdown.failed": "Failed to copy Markdown",
   "notes.editor.expand": "Expand editor",
   "notes.editor.collapse": "Collapse editor",
+  "notes.editor.fitToWindow": "Fit to window",
+  "notes.editor.fitToWindow.exit": "Restore default width",
   "notes.toolbar.codeblock": "Code block",
   "templates.empty.desc": "Create a template to speed up note creation",
   "bulk.selectEverything": "Select Everything",

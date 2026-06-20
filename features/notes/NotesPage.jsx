@@ -35,6 +35,9 @@ function NotesPageContent({ noteId }) {
   const [showToc, setShowToc] = useState(() => {
     try { return localStorage.getItem('zen.showToc') === 'true'; } catch { return false; }
   });
+  const [isFitToWindow, setIsFitToWindow] = useState(() => {
+    try { return localStorage.getItem('zen.fitToWindow') === 'true'; } catch { return false; }
+  });
 
   const { refreshTags, refreshFocusModes } = useAppContext();
   const {
@@ -191,7 +194,7 @@ function NotesPageContent({ noteId }) {
   const isEditorExpandable = selectedView === "list";
   const isPageExpanded = isEditorExpanded === true && isEditorExpandable === true;
 
-  let editorContent = <NotesEditor isNewNote={noteId === "new"} isExpandable={isEditorExpandable} onToggleToc={() => setShowToc(prev => { const next = !prev; try { localStorage.setItem('zen.showToc', String(next)); } catch {} return next; })} key={selectedNote?.noteId} />;
+  let editorContent = <NotesEditor isNewNote={noteId === "new"} isExpandable={isEditorExpandable} onToggleToc={() => setShowToc(prev => { const next = !prev; try { localStorage.setItem('zen.showToc', String(next)); } catch {} return next; })} isFitToWindow={isFitToWindow} onFitToWindowToggle={() => { setIsFitToWindow(prev => { const next = !prev; try { localStorage.setItem('zen.fitToWindow', String(next)); } catch {} return next; }); }} key={selectedNote?.noteId} />;
   if (isMultiSelect === true) {
     editorContent = <BulkActionsPanel selectedIds={selectedIds} allIds={notes.map(n => n.noteId)} selectedNotes={notes.filter(n => selectedIds.includes(n.noteId))} onClose={handleClearSelection} onSelectAll={() => setSelectedIds(notes.map(n => n.noteId))} />;
   }
@@ -248,7 +251,7 @@ function NotesPageContent({ noteId }) {
           />
         </div>
 
-        <div className={`${editorClassName}${isPageExpanded ? " is-expanded" : ""}`}>
+        <div className={`${editorClassName}${isPageExpanded ? " is-expanded" : ""}${isFitToWindow ? " is-fit-to-window" : ""}`}>
           {editorContent}
         </div>
 

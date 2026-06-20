@@ -247,6 +247,8 @@
   "notes.editor.copyMarkdown.failed": "复制 Markdown 失败",
   "notes.editor.expand": "展开编辑区",
   "notes.editor.collapse": "收起编辑区",
+  "notes.editor.fitToWindow": "适应窗口",
+  "notes.editor.fitToWindow.exit": "恢复默认宽度",
   "notes.toolbar.codeblock": "代码块",
   "templates.empty.desc": "创建一个模板以加速笔记创建",
   "bulk.selectEverything": "选择全部",

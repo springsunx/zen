@@ -29,7 +29,7 @@ import useSlashCommands from "./useSlashCommands.js";
 import "./NotesEditor.css";
 import { t } from "../../commons/i18n/index.js";
 
-export default function NotesEditor({ isNewNote, isModal, isExpandable = false, onClose, onEditModeChange = () => {}, onContentChange = () => {}, onSaved = () => {}, onToggleToc }) {
+export default function NotesEditor({ isNewNote, isModal, isExpandable = false, onClose, onEditModeChange = () => {}, onContentChange = () => {}, onSaved = () => {}, onToggleToc, isFitToWindow = false, onFitToWindowToggle }) {
   const { selectedNote, handleNoteChange, patchNote, handlePinToggle } = useNotes();
   const { refreshTags } = useAppContext();
   const { isEditorExpanded, toggleEditorExpanded } = useLayout();
@@ -582,6 +582,8 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
         onPinClick={handlePinToggleClick}
         onUnpinClick={handlePinToggleClick}
         onToggleToc={onToggleToc}
+        isFitToWindow={isFitToWindow}
+        onFitToWindowToggle={onFitToWindowToggle}
       />
       <div className="notes-editor-header">
         <div className="notes-editor-title" contentEditable={isEditable} ref={titleRef} onBlur={handleTitleChange} dangerouslySetInnerHTML={{ __html: title }} />

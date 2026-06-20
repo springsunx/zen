@@ -86,7 +86,7 @@
     /* layout dimensions */
     --sidebar-width: 220px;
     --notes-list-width: 280px;
-    --notes-editor-max-width: 850px;
+    --notes-editor-max-width: 1200px;
 
     /* transitions */
     --transition-fast: 150ms;
@@ -325,6 +325,14 @@ body.has-right-toc .page-container {
 
 body.has-right-toc .page-container.is-editor-expanded {
   padding-right: 0;
+}
+
+body.has-right-toc .page-container.is-editor-expanded .notes-editor-container.is-fit-to-window {
+  padding-right: 220px;
+}
+
+body.has-right-toc .page-container.is-editor-expanded .notes-editor-container.is-fit-to-window .notes-editor {
+  max-width: calc(100vw - 220px);
 }
 
 body.has-right-toc .notes-editor-container {

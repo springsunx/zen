@@ -28,6 +28,10 @@
         margin: 0 auto;
     }
 
+    &.is-expanded.is-fit-to-window .notes-editor {
+        width: 100%;
+    }
+
     .notes-editor-toolbar {
         display: flex;
         justify-content: space-between;
