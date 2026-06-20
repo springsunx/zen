@@ -412,7 +412,6 @@
     }
 
     table {
-        width: 100%;
         border-collapse: collapse;
         margin: 16px 0;
     }
@@ -422,7 +421,6 @@
     td {
         border: 1px solid var(--neutral-200);
         padding: 8px 12px;
-        width: max-content;
     }
 
     th {
@@ -552,6 +550,17 @@
 @media screen and (max-width: 948px) {
     .formatting-toolbar {
         display: none;
+    }
+
+    .notes-grid-item-content,
+    .notes-editor-rendered {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+
+        table th,
+        table td {
+            padding: 4px 6px;
+        }
     }
 
     .ai-fab {
