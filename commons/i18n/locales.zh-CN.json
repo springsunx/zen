@@ -355,5 +355,8 @@
   "notes.editor.imageDropzoneHint": "点击上传或拖拽图片到此处",
   "backlinks.title": "反向链接",
   "backlinks.loading": "加载中...",
-  "backlinks.untitled": "无标题"
+  "backlinks.untitled": "无标题",
+  "code.copy": "复制",
+  "code.copied": "已复制!",
+  "code.wrap": "换行"
 }

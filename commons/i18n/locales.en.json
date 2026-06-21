@@ -352,5 +352,8 @@
   "notes.editor.imageDropzoneHint": "Click to upload or drag and drop images",
   "backlinks.title": "Backlinks",
   "backlinks.loading": "Loading...",
-  "backlinks.untitled": "Untitled"
+  "backlinks.untitled": "Untitled",
+  "code.copy": "Copy",
+  "code.copied": "Copied!",
+  "code.wrap": "Wrap"
 }

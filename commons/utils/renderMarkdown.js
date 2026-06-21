@@ -1,4 +1,5 @@
 import { generateId, cleanCustomId, extractCustomId, buildHeadingOpen, buildLinkOpen, findAnchor} from "./markdownToc.js";
+import { t } from "../i18n/index.js";
 
 // 辅助函数：复制代码到剪贴板
 function createCopyHandler() {
@@ -6,7 +7,7 @@ function createCopyHandler() {
 
   function showCopyFeedback(button) {
     const originalText = button.innerText;
-    button.innerText = 'Copied!';
+    button.innerText = t('code.copied') || 'Copied!';
     setTimeout(() => { button.innerText = originalText; }, 2000);
   }
 
@@ -227,8 +228,9 @@ export default function renderMarkdown(text, opts = {}) {
 
     return `<div class="code-block-wrapper">
       <div class="code-block-header">
-        <button class="copy-code-button" onclick="window.copyCodeToClipboard(this)">Copy</button>
+        <button class="copy-code-button" onclick="window.copyCodeToClipboard(this)">${t('code.copy') || 'Copy'}</button>
         ${lang ? `<span class="code-block-lang">${lang}</span>` : ''}
+        <span class="wrap-toggle" onclick="this.classList.toggle('is-on');this.closest('.code-block-wrapper').classList.toggle('is-wrap')">${t('code.wrap') || 'Wrap'}<span class="wrap-toggle-track"></span></span>
       </div>
       <div class="code-block-content">${highlighted}</div>
     </div>`;
