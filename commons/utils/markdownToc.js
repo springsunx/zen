@@ -80,7 +80,7 @@ export function findAnchor(root, idRaw) {
 export function extractHeadingsFromMarkdown(markdown) {
   if (!markdown) return [];
   const lines = String(markdown).split("\n");
-  let inCode = false, fence = '';
+  let inCode = false, fence = '', fenceLen = 0;
   let inToc = false;
   const out = [];
   for (const line of lines) {
@@ -88,12 +88,29 @@ export function extractHeadingsFromMarkdown(markdown) {
     if (t.includes('<!-- toc:start -->')) { inToc = true; continue; }
     if (t.includes('<!-- toc:end -->')) { inToc = false; continue; }
     if (inToc) continue;
-    if (t.startsWith('```') || t.startsWith('~~~')) {
-      if (!inCode) { inCode = true; fence = t.slice(0, 3); }
-      else if (t.startsWith(fence)) { inCode = false; fence = ''; }
+
+    // Fenced code block: ``` or ~~~
+    if (!inCode) {
+      const m = t.match(/^(`{3,}|~{3,})/);
+      if (m) {
+        inCode = true;
+        fence = m[1][0]; // ` or ~
+        fenceLen = m[1].length;
+        continue;
+      }
+    } else {
+      // Closing fence: same char, same or greater length, only whitespace after
+      const m = t.match(/^(`{3,}|~{3,})\s*$/);
+      if (m && m[1][0] === fence && m[1].length >= fenceLen) {
+        inCode = false;
+        fence = '';
+        fenceLen = 0;
+      }
       continue;
     }
-    if (inCode) continue;
+
+    // Indented code block: 4 spaces or 1 tab at line start, preceded by blank line
+    if (/^(\t| {4})/.test(line)) continue;
 
     // Markdown heading: ### Title or ### Title {#custom-id}
     const m = line.match(/^(#{1,3})\s+(.+)$/);
