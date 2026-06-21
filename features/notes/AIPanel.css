@@ -60,7 +60,7 @@
     background: var(--bg-primary);
     color: var(--text-secondary);
     outline: none;
-    max-width: 160px;
+    max-width: 220px;
     overflow: hidden;
     text-overflow: ellipsis;
 
@@ -320,12 +320,28 @@
 /* ─── Footer / Input ─── */
 .ai-panel-footer {
     display: flex;
-    align-items: flex-end;
+    align-items: stretch;
     gap: 8px;
     padding: 10px 14px;
     border-top: 1px solid var(--neutral-100, #f5f5f5);
     background: var(--bg-primary);
     flex-shrink: 0;
+}
+
+.ai-panel-right-col {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    justify-content: space-between;
+}
+
+.ai-panel-right-col .ai-panel-context-select,
+.ai-panel-right-col .ai-panel-send {
+    width: 100%;
+}
+
+.ai-panel-right-col .ai-panel-context-select {
+    max-width: none;
 }
 
 .ai-panel-input {
@@ -382,6 +398,20 @@
 
     svg {
         margin-left: 2px; /* visual centering for send icon */
+    }
+}
+
+/* ─── Context Select ─── */
+.ai-panel-context-select {
+    font-size: 11px;
+    padding: 2px 6px;
+    border: 1px solid var(--neutral-200);
+    border-radius: 4px;
+    background: var(--bg-primary);
+    color: var(--text-secondary);
+    outline: none;
+    &:focus {
+        border-color: var(--neutral-400);
     }
 }
 

@@ -606,6 +606,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
         <AIPanel
           fullContent={content}
           selectedText={textareaRef.current ? textareaRef.current.value.substring(textareaRef.current.selectionStart, textareaRef.current.selectionEnd) : ""}
+          noteTitle={title}
           messages={aiMessages}
           setMessages={setAiMessages}
           onInsert={handleAIInsert}
