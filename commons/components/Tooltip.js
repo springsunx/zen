@@ -2,8 +2,12 @@ import isMobile from '../utils/isMobile';
 import './Tooltip.css';
 
 let activeTooltip = null;
+let activeAnchor = null;
 let showTimeout = null;
 let hideTimeout = null;
+let autoDismissTimeout = null;
+
+const AUTO_DISMISS_MS = 30000;
 
 function handleMouseOver(e) {
   const element = e.target.closest('[data-tooltip]');
@@ -44,23 +48,42 @@ function handleResize() {
   }
 }
 
+function handleClick() {
+  if (activeTooltip) {
+    hideTooltip();
+  }
+}
+
 function addGlobalEventListeners() {
   document.addEventListener('mouseover', handleMouseOver);
   document.addEventListener('mouseout', handleMouseOut);
   document.addEventListener('mousemove', handleMouseMove);
   document.addEventListener('scroll', handleScroll, true);
+  document.addEventListener('mousedown', handleClick, true);
   window.addEventListener('resize', handleResize);
 }
 
 function observeElements() {
   const observer = new MutationObserver((mutations) => {
-    mutations.forEach((mutation) => {
-      mutation.addedNodes.forEach((node) => {
+    for (const mutation of mutations) {
+      // Handle added nodes
+      for (const node of mutation.addedNodes) {
         if (node.nodeType === Node.ELEMENT_NODE) {
           processNewElements(node);
         }
-      });
-    });
+      }
+      // Handle removed nodes — hide tooltip if anchor was removed
+      if (activeAnchor) {
+        for (const node of mutation.removedNodes) {
+          if (node.nodeType === Node.ELEMENT_NODE) {
+            if (node === activeAnchor || (node.contains && node.contains(activeAnchor))) {
+              hideTooltip();
+              break;
+            }
+          }
+        }
+      }
+    }
   });
 
   observer.observe(document.body, {
@@ -91,6 +114,7 @@ function processNewElements(element) {
 function showTooltip(element) {
   clearTimeout(hideTimeout);
   clearTimeout(showTimeout);
+  clearTimeout(autoDismissTimeout);
 
   showTimeout = setTimeout(() => {
     const tooltipText = element.getAttribute('data-tooltip');
@@ -116,15 +140,24 @@ function showTooltip(element) {
     tooltip.className = `tooltip ${position.placement}`;
 
     activeTooltip = tooltip;
+    activeAnchor = element;
 
     requestAnimationFrame(() => {
       tooltip.classList.add('visible');
     });
+
+    // Safety auto-dismiss
+    autoDismissTimeout = setTimeout(() => {
+      hideTooltip();
+    }, AUTO_DISMISS_MS);
   }, 400);
 }
 
 function hideTooltip() {
   clearTimeout(showTimeout);
+  clearTimeout(autoDismissTimeout);
+
+  activeAnchor = null;
 
   if (activeTooltip) {
     const tooltip = activeTooltip;
