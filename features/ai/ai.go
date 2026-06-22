@@ -18,15 +18,16 @@ import (
 )
 
 type AIConfig struct {
-	ConfigID  int       `json:"configId"`
-	Name      string    `json:"name"`
-	BaseURL   string    `json:"baseUrl"`
-	APIKey    string    `json:"apiKey"`
-	Model     string    `json:"model"`
-	IsDefault bool      `json:"isDefault"`
-	SkipTLSVerify bool `json:"skipTlsVerify"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	ConfigID      int       `json:"configId"`
+	Name          string    `json:"name"`
+	BaseURL       string    `json:"baseUrl"`
+	APIKey        string    `json:"apiKey"`
+	Model         string    `json:"model"`
+	IsDefault     bool      `json:"isDefault"`
+	SkipTLSVerify bool      `json:"skipTlsVerify"`
+	SystemPrompt  string    `json:"systemPrompt"`
+	CreatedAt     time.Time `json:"createdAt"`
+	UpdatedAt     time.Time `json:"updatedAt"`
 }
 
 // ─── CRUD Handlers ───
@@ -140,9 +141,10 @@ func HandleSetDefault(w http.ResponseWriter, r *http.Request) {
 // ─── AI Process Handler ───
 
 type ProcessRequest struct {
-	ConfigID      int    `json:"configId"`      // 0 = use default
-	Instruction   string `json:"instruction"`
-	Content       string `json:"content"`
+	ConfigID      int           `json:"configId"`      // 0 = use default
+	Instruction   string        `json:"instruction"`
+	Content       string        `json:"content"`
+	Messages      []chatMessage `json:"messages"`      // conversation history
 }
 
 type ProcessResponse struct {
@@ -168,11 +170,11 @@ func HandleProcess(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Build prompt
-	prompt := buildPrompt(req.Instruction, req.Content)
+	// Build prompt (instruction only, content sent separately)
+	prompt := buildPrompt(req.Instruction)
 
-	// Call LLM API
-	result, err := callLLM(config, prompt)
+	// Call LLM API with conversation history and content
+	result, err := callLLM(config, prompt, req.Messages, req.Content)
 	if err != nil {
 		slog.Error("AI processing failed", "error", err)
 		utils.SendErrorResponse(w, "AI_PROCESS_FAILED", "AI processing failed.", err, http.StatusInternalServerError)
@@ -266,7 +268,7 @@ func HandleFetchModels(w http.ResponseWriter, r *http.Request) {
 func GetAllConfigs() ([]AIConfig, error) {
 	var configs []AIConfig
 	rows, err := sqlite.DB.Query(`
-		SELECT config_id, name, base_url, api_key, model, is_default, skip_tls_verify, created_at, updated_at
+		SELECT config_id, name, base_url, api_key, model, is_default, skip_tls_verify, system_prompt, created_at, updated_at
 		FROM ai_configs ORDER BY is_default DESC, config_id ASC
 	`)
 	if err != nil {
@@ -278,7 +280,7 @@ func GetAllConfigs() ([]AIConfig, error) {
 		var c AIConfig
 		var isDefault int
 		var skipTLS int
-		err = rows.Scan(&c.ConfigID, &c.Name, &c.BaseURL, &c.APIKey, &c.Model, &isDefault, &skipTLS, &c.CreatedAt, &c.UpdatedAt)
+		err = rows.Scan(&c.ConfigID, &c.Name, &c.BaseURL, &c.APIKey, &c.Model, &isDefault, &skipTLS, &c.SystemPrompt, &c.CreatedAt, &c.UpdatedAt)
 		if err != nil {
 			return configs, fmt.Errorf("error scanning ai_config: %w", err)
 		}
@@ -301,9 +303,9 @@ func CreateConfig(c AIConfig) (AIConfig, error) {
 	}
 
 	result, err := sqlite.DB.Exec(`
-		INSERT INTO ai_configs (name, base_url, api_key, model, is_default, skip_tls_verify)
-		VALUES (?, ?, ?, ?, ?, ?)
-	`, c.Name, c.BaseURL, c.APIKey, c.Model, isDefault, boolToInt(c.SkipTLSVerify))
+		INSERT INTO ai_configs (name, base_url, api_key, model, is_default, skip_tls_verify, system_prompt)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
+	`, c.Name, c.BaseURL, c.APIKey, c.Model, isDefault, boolToInt(c.SkipTLSVerify), c.SystemPrompt)
 	if err != nil {
 		return c, fmt.Errorf("error creating ai_config: %w", err)
 	}
@@ -327,9 +329,9 @@ func UpdateConfig(c AIConfig) error {
 	}
 
 	_, err := sqlite.DB.Exec(`
-		UPDATE ai_configs SET name = ?, base_url = ?, api_key = ?, model = ?, is_default = ?, skip_tls_verify = ?, updated_at = CURRENT_TIMESTAMP
+		UPDATE ai_configs SET name = ?, base_url = ?, api_key = ?, model = ?, is_default = ?, skip_tls_verify = ?, system_prompt = ?, updated_at = CURRENT_TIMESTAMP
 		WHERE config_id = ?
-	`, c.Name, c.BaseURL, c.APIKey, c.Model, isDefault, boolToInt(c.SkipTLSVerify), c.ConfigID)
+	`, c.Name, c.BaseURL, c.APIKey, c.Model, isDefault, boolToInt(c.SkipTLSVerify), c.SystemPrompt, c.ConfigID)
 	if err != nil {
 		return fmt.Errorf("error updating ai_config: %w", err)
 	}
@@ -407,9 +409,9 @@ func resolveConfig(configID int) (AIConfig, error) {
 		var isDefault int
 		var skipTLS int
 		err := sqlite.DB.QueryRow(`
-			SELECT config_id, name, base_url, api_key, model, is_default, skip_tls_verify, created_at, updated_at
+			SELECT config_id, name, base_url, api_key, model, is_default, skip_tls_verify, system_prompt, created_at, updated_at
 			FROM ai_configs WHERE is_default = 1 LIMIT 1
-		`).Scan(&c.ConfigID, &c.Name, &c.BaseURL, &c.APIKey, &c.Model, &isDefault, &skipTLS, &c.CreatedAt, &c.UpdatedAt)
+		`).Scan(&c.ConfigID, &c.Name, &c.BaseURL, &c.APIKey, &c.Model, &isDefault, &skipTLS, &c.SystemPrompt, &c.CreatedAt, &c.UpdatedAt)
 		if err == nil {
 			c.IsDefault = true
 			c.SkipTLSVerify = skipTLS == 1
@@ -432,9 +434,9 @@ func resolveConfig(configID int) (AIConfig, error) {
 	var isDefault int
 	var skipTLS int
 	err := sqlite.DB.QueryRow(`
-		SELECT config_id, name, base_url, api_key, model, is_default, skip_tls_verify, created_at, updated_at
+		SELECT config_id, name, base_url, api_key, model, is_default, skip_tls_verify, system_prompt, created_at, updated_at
 		FROM ai_configs WHERE config_id = ?
-	`, configID).Scan(&c.ConfigID, &c.Name, &c.BaseURL, &c.APIKey, &c.Model, &isDefault, &skipTLS, &c.CreatedAt, &c.UpdatedAt)
+	`, configID).Scan(&c.ConfigID, &c.Name, &c.BaseURL, &c.APIKey, &c.Model, &isDefault, &skipTLS, &c.SystemPrompt, &c.CreatedAt, &c.UpdatedAt)
 	if err != nil {
 		return c, fmt.Errorf("config not found: %w", err)
 	}
@@ -443,13 +445,8 @@ func resolveConfig(configID int) (AIConfig, error) {
 	return c, nil
 }
 
-func buildPrompt(instruction, content string) string {
-	safeInstruction := fmt.Sprintf("<user_instruction>%s</user_instruction>", instruction)
-
-	if content != "" {
-		return fmt.Sprintf("<content>\n%s\n</content>\n\n%s\n\nOutput the processed content directly, without additional explanation.", content, safeInstruction)
-	}
-	return fmt.Sprintf("%s\n\nOutput the generated content directly, without additional explanation.", safeInstruction)
+func buildPrompt(instruction string) string {
+	return fmt.Sprintf("<user_instruction>%s</user_instruction>", instruction)
 }
 
 // ─── LLM API Call ───
@@ -470,12 +467,37 @@ type chatResponse struct {
 	} `json:"choices"`
 }
 
-func callLLM(config AIConfig, prompt string) (string, error) {
+func callLLM(config AIConfig, prompt string, history []chatMessage, content string) (string, error) {
+	systemPrompt := "You are a helpful assistant. Provide detailed, well-structured responses. Use markdown formatting when appropriate."
+	if config.SystemPrompt != "" {
+		systemPrompt = config.SystemPrompt
+	}
+
+	messages := []chatMessage{
+		{Role: "system", Content: systemPrompt},
+	}
+
+	// Embed content as context only once (first message carries content)
+	if content != "" {
+		messages = append(messages, chatMessage{
+			Role:    "user",
+			Content: fmt.Sprintf("<content>\n%s\n</content>", content),
+		})
+		messages = append(messages, chatMessage{
+			Role:    "assistant",
+			Content: "I've received the content. I'll use it as context for our conversation.",
+		})
+	}
+
+	// Append conversation history
+	messages = append(messages, history...)
+
+	// Append current instruction
+	messages = append(messages, chatMessage{Role: "user", Content: prompt})
+
 	reqBody := chatRequest{
-		Model: config.Model,
-		Messages: []chatMessage{
-			{Role: "user", Content: prompt},
-		},
+		Model:    config.Model,
+		Messages: messages,
 	}
 
 	payload, err := json.Marshal(reqBody)

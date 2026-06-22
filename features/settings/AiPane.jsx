@@ -17,6 +17,7 @@ export default function AiPane() {
   const [availableModels, setAvailableModels] = useState([]);
   const [isFetchingModels, setIsFetchingModels] = useState(false);
   const [skipTlsVerify, setSkipTlsVerify] = useState(false);
+  const [systemPrompt, setSystemPrompt] = useState("");
 
   useEffect(() => {
     loadConfigs();
@@ -37,6 +38,7 @@ export default function AiPane() {
     setAvailableModels([]);
     setIsFetchingModels(false);
     setSkipTlsVerify(false);
+    setSystemPrompt("");
   }
 
   function handleAdd() {
@@ -52,6 +54,7 @@ export default function AiPane() {
     setModel(config.model);
     setIsDefault(config.isDefault);
     setSkipTlsVerify(config.skipTlsVerify || false);
+    setSystemPrompt(config.systemPrompt || "");
     setIsEditing(true);
     setAvailableModels([]);
     // Auto-fetch models if both baseUrl and apiKey are available
@@ -67,7 +70,7 @@ export default function AiPane() {
   }
 
   function handleSave() {
-    const payload = { name, baseUrl, apiKey: apiKey || (editConfig ? editConfig.apiKey : ""), model, isDefault, skipTlsVerify };
+    const payload = { name, baseUrl, apiKey: apiKey || (editConfig ? editConfig.apiKey : ""), model, isDefault, skipTlsVerify, systemPrompt };
 
     if (editConfig && editConfig.configId > 0) {
       ApiClient.updateAIConfig(editConfig.configId, payload)
@@ -159,6 +162,16 @@ export default function AiPane() {
               <input type="checkbox" checked={skipTlsVerify} onChange={e => setSkipTlsVerify(e.target.checked)} />
               {t('ai.config.skipTlsVerify')}
             </label>
+          </div>
+          <div className="ai-pane-field">
+            <label>{t('ai.config.systemPrompt')}</label>
+            <textarea
+              className="ai-pane-system-prompt"
+              value={systemPrompt}
+              onInput={e => setSystemPrompt(e.target.value)}
+              placeholder={t('ai.config.systemPrompt.placeholder')}
+              rows="4"
+            />
           </div>
           <div className="ai-pane-actions">
             <Button onClick={handleCancel}>{t('common.cancel')}</Button>

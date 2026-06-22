@@ -105,6 +105,24 @@
             border-color: var(--neutral-600);
         }
     }
+
+    textarea {
+        width: 100%;
+        padding: var(--spacing-2);
+        border: 1px solid var(--neutral-200);
+        border-radius: 4px;
+        font: var(--sm);
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        outline: none;
+        box-sizing: border-box;
+        resize: vertical;
+        font-family: inherit;
+
+        &:focus {
+            border-color: var(--neutral-600);
+        }
+    }
 }
 
 .ai-pane-model-row {

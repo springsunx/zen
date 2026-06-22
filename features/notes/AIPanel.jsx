@@ -53,17 +53,19 @@ export default function AIPanel({ fullContent, selectedText, noteTitle, messages
 
     setIsProcessing(true);
 
-    let sendFull = "";
-    let sendSel = "";
-    if (contentMode === "full") {
-      sendFull = fullContent || "";
-    } else if (contentMode === "selection") {
-      sendSel = selectedText || "";
-    } else if (contentMode === "none" && noteTitle) {
-      sendSel = noteTitle;
+    let content = "";
+    // Only send content on the first message; subsequent messages reuse the context
+    if (messages.length === 0) {
+      if (contentMode === "full") {
+        content = fullContent || "";
+      } else if (contentMode === "selection") {
+        content = selectedText || "";
+      } else if (contentMode === "none" && noteTitle) {
+        content = noteTitle;
+      }
     }
 
-    ApiClient.processWithAI(selectedConfigId, text, sendFull, sendSel)
+    ApiClient.processWithAI(selectedConfigId, text, content, messages)
       .then(res => {
         const aiMsg = { role: "assistant", content: res.result };
         setMessages(prev => [...prev, aiMsg]);

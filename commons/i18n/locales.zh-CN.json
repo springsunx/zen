@@ -297,6 +297,8 @@
   "ai.config.fetchModelsFailed": "获取模型列表失败",
   "ai.config.selectModel": "-- 选择模型 --",
   "ai.config.skipTlsVerify": "跳过 TLS 证书验证（适用于 Docker/自建服务）",
+  "ai.config.systemPrompt": "系统提示词",
+  "ai.config.systemPrompt.placeholder": "你是一个有用的助手。提供详细、结构清晰的回复。适当时使用 Markdown 格式。",
   "ai.modal.title": "AI 助手",
   "ai.modal.placeholder": "描述你需要的内容... (Enter 发送，Shift+Enter 换行)",
   "ai.modal.send": "发送",

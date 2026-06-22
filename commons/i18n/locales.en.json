@@ -294,6 +294,8 @@
   "ai.config.fetchModelsFailed": "Failed to fetch models",
   "ai.config.selectModel": "-- Select a model --",
   "ai.config.skipTlsVerify": "Skip TLS certificate verification (for Docker/self-hosted)",
+  "ai.config.systemPrompt": "System Prompt",
+  "ai.config.systemPrompt.placeholder": "You are a helpful assistant. Provide detailed, well-structured responses. Use markdown formatting when appropriate.",
   "ai.modal.title": "AI Assistant",
   "ai.modal.placeholder": "Describe what you need... (Enter to send, Shift+Enter for new line)",
   "ai.modal.send": "Send",
