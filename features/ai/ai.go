@@ -142,8 +142,7 @@ func HandleSetDefault(w http.ResponseWriter, r *http.Request) {
 type ProcessRequest struct {
 	ConfigID      int    `json:"configId"`      // 0 = use default
 	Instruction   string `json:"instruction"`
-	FullContent   string `json:"fullContent"`
-	SelectedText  string `json:"selectedText"`
+	Content       string `json:"content"`
 }
 
 type ProcessResponse struct {
@@ -170,7 +169,7 @@ func HandleProcess(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Build prompt
-	prompt := buildPrompt(req.Instruction, req.SelectedText, req.FullContent)
+	prompt := buildPrompt(req.Instruction, req.Content)
 
 	// Call LLM API
 	result, err := callLLM(config, prompt)
@@ -444,14 +443,11 @@ func resolveConfig(configID int) (AIConfig, error) {
 	return c, nil
 }
 
-func buildPrompt(instruction, selectedText, fullContent string) string {
+func buildPrompt(instruction, content string) string {
 	safeInstruction := fmt.Sprintf("<user_instruction>%s</user_instruction>", instruction)
 
-	if selectedText != "" {
-		return fmt.Sprintf("<selected_text>\n%s\n</selected_text>\n\n%s\n\nOutput the processed content directly, without additional explanation.", selectedText, safeInstruction)
-	}
-	if fullContent != "" {
-		return fmt.Sprintf("<note_content>\n%s\n</note_content>\n\n%s\n\nOutput the processed content directly, without additional explanation.", fullContent, safeInstruction)
+	if content != "" {
+		return fmt.Sprintf("<content>\n%s\n</content>\n\n%s\n\nOutput the processed content directly, without additional explanation.", content, safeInstruction)
 	}
 	return fmt.Sprintf("%s\n\nOutput the generated content directly, without additional explanation.", safeInstruction)
 }

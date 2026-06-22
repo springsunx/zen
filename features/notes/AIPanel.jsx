@@ -14,10 +14,11 @@ function sanitizeHTML(html) {
 }
 import "./AIPanel.css";
 
-export default function AIPanel({ fullContent, selectedText, messages, setMessages, onInsert, onReplace, onClose }) {
+export default function AIPanel({ fullContent, selectedText, noteTitle, messages, setMessages, onInsert, onReplace, onClose }) {
   const [configs, setConfigs] = useState([]);
   const [selectedConfigId, setSelectedConfigId] = useState(0);
   const [instruction, setInstruction] = useState("");
+  const [contentMode, setContentMode] = useState(selectedText ? "selection" : "full");
   const [isProcessing, setIsProcessing] = useState(false);
   const bodyRef = useRef(null);
   const inputRef = useRef(null);
@@ -52,7 +53,16 @@ export default function AIPanel({ fullContent, selectedText, messages, setMessag
 
     setIsProcessing(true);
 
-    ApiClient.processWithAI(selectedConfigId, text, fullContent || "", selectedText || "")
+    let content = "";
+    if (contentMode === "full") {
+      content = fullContent || "";
+    } else if (contentMode === "selection") {
+      content = selectedText || "";
+    } else if (contentMode === "none" && noteTitle) {
+      content = noteTitle;
+    }
+
+    ApiClient.processWithAI(selectedConfigId, text, content)
       .then(res => {
         const aiMsg = { role: "assistant", content: res.result };
         setMessages(prev => [...prev, aiMsg]);
@@ -214,16 +224,27 @@ export default function AIPanel({ fullContent, selectedText, messages, setMessag
           placeholder={t('ai.modal.placeholder')}
           rows="1"
         />
-        <button
-          className="ai-panel-send"
-          onClick={handleSend}
-          disabled={isProcessing || !instruction.trim()}
-          title={t('ai.modal.send')}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
-          </svg>
-        </button>
+        <div className="ai-panel-right-col">
+          <select
+            className="ai-panel-context-select"
+            value={contentMode}
+            onChange={e => setContentMode(e.target.value)}
+          >
+            <option value="none">{t('ai.context.none')}</option>
+            {selectedText && <option value="selection">{t('ai.context.selection')}</option>}
+            <option value="full">{t('ai.context.full')}</option>
+          </select>
+          <button
+            className="ai-panel-send"
+            onClick={handleSend}
+            disabled={isProcessing || !instruction.trim()}
+            title={t('ai.modal.send')}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+            </svg>
+          </button>
+        </div>
       </div>
     </div>
   );
