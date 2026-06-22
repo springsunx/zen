@@ -39,9 +39,28 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 document.addEventListener("keydown", e => {
-  if (e.ctrlKey && e.key === 'n') {
+  if (e.altKey && e.key.toLowerCase() === 'n') {
     e.preventDefault();
     navigateTo("/notes/new");
+    return;
+  }
+
+  if (e.altKey && e.key.toLowerCase() === 't') {
+    const match = window.location.pathname.match(/^\/notes\/(\d+)/);
+    if (match) {
+      e.preventDefault();
+      import('./commons/http/ApiClient.js').then(mod => {
+        mod.default.pinNote(parseInt(match[1], 10)).then(() => {
+          window.dispatchEvent(new CustomEvent("notes:refresh"));
+        });
+      });
+    }
+    return;
+  }
+
+  if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'p') {
+    e.preventDefault();
+    render(<SearchMenu initialMode="commands" />, document.querySelector('.modal-root'));
     return;
   }
 

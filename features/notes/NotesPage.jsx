@@ -122,6 +122,18 @@ function NotesPageContent({ noteId }) {
     return () => window.removeEventListener('notes:refresh', handleRefresh);
   }, [handleNoteChange, refreshTags, refreshFocusModes, selectedFocusId, isArchivesPage, isTrashPage]);
 
+  // Listen for view change commands from the command palette
+  useEffect(() => {
+    function handleViewChangeCommand(e) {
+      const view = e.detail && e.detail.view;
+      if (view) {
+        handleViewChange(view);
+      }
+    }
+    window.addEventListener('command:changeView', handleViewChangeCommand);
+    return () => window.removeEventListener('command:changeView', handleViewChangeCommand);
+  }, [selectedFocusId, selectedTagId, isArchivesPage, isTrashPage]);
+
   // TODO: Move this to NotesEditor
   useEffect(() => {
     if (noteId === "new") {

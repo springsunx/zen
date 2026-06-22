@@ -53,16 +53,17 @@ export default function AIPanel({ fullContent, selectedText, noteTitle, messages
 
     setIsProcessing(true);
 
-    let content = "";
+    let sendFull = "";
+    let sendSel = "";
     if (contentMode === "full") {
-      content = fullContent || "";
+      sendFull = fullContent || "";
     } else if (contentMode === "selection") {
-      content = selectedText || "";
+      sendSel = selectedText || "";
     } else if (contentMode === "none" && noteTitle) {
-      content = noteTitle;
+      sendSel = noteTitle;
     }
 
-    ApiClient.processWithAI(selectedConfigId, text, content)
+    ApiClient.processWithAI(selectedConfigId, text, sendFull, sendSel)
       .then(res => {
         const aiMsg = { role: "assistant", content: res.result };
         setMessages(prev => [...prev, aiMsg]);

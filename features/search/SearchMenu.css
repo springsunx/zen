@@ -33,7 +33,7 @@
     }
 
     .search-results-container {
-        max-height: 400px;
+        max-height: 450px;
         overflow-y: scroll;
 
         &::-webkit-scrollbar {
@@ -103,6 +103,8 @@
 
             .search-result-item-content {
                 padding-left: 10px;
+                flex: 1;
+                min-width: 0;
 
                 .title {
                     font-weight: 600;
@@ -131,6 +133,19 @@
                         padding: 2px;
                         font-weight: 500;
                     }
+                }
+            }
+
+            &.search-command-item {
+                .command-shortcut {
+                    flex-shrink: 0;
+                    margin-left: auto;
+                    padding: 2px 6px;
+                    font-size: 11px;
+                    color: var(--text-secondary);
+                    background-color: var(--neutral-100);
+                    border-radius: 3px;
+                    font-family: monospace;
                 }
             }
         }
