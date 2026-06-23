@@ -68,11 +68,11 @@ export default function StoragePane() {
         </div>
         <div className="storage-field">
           <label>{t('storage.accessKey')}</label>
-          <input type="text" value={accessKey} onInput={e => setAccessKey(e.target.value)} placeholder="AKIAIOSFODNN7EXAMPLE" />
+          <input type="text" value={accessKey} onInput={e => setAccessKey(e.target.value)} placeholder="AKIAIOSFODNN7EXAMPLE" autoComplete="off" data-bwignore />
         </div>
         <div className="storage-field">
           <label>{t('storage.secretKey')}</label>
-          <input type="password" value={secretKey} onInput={e => setSecretKey(e.target.value)} placeholder="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY" />
+          <input type="password" value={secretKey} onInput={e => setSecretKey(e.target.value)} placeholder="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY" autoComplete="off" data-bwignore />
         </div>
         <div className="storage-field">
           <label>{t('storage.region')}</label>
