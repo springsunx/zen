@@ -14,6 +14,8 @@ export default function StoragePane() {
   const [region, setRegion] = useState("");
   const [publicUrl, setPublicUrl] = useState("");
   const [useSSL, setUseSSL] = useState(true);
+  const [attachmentsBucket, setAttachmentsBucket] = useState("");
+  const [attachmentsPublicUrl, setAttachmentsPublicUrl] = useState("");
   const [isTesting, setIsTesting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -32,13 +34,15 @@ export default function StoragePane() {
         setRegion(config.region || "");
         setPublicUrl(config.publicUrl || "");
         setUseSSL(config.useSSL !== false);
+        setAttachmentsBucket(config.attachmentsBucket || "");
+        setAttachmentsPublicUrl(config.attachmentsPublicUrl || "");
       })
       .catch(err => { console.error('Failed to load storage config:', err); });
   }
 
   function handleSave() {
     setIsSaving(true);
-    const payload = { provider, endpoint, bucket, accessKey, secretKey, region, publicUrl, useSSL };
+    const payload = { provider, endpoint, bucket, accessKey, secretKey, region, publicUrl, useSSL, attachmentsBucket, attachmentsPublicUrl };
     ApiClient.updateStorageConfig(payload)
       .then(() => { showToast(t('storage.toast.saved')); })
       .catch(() => { showToast(t('storage.toast.saveFailed')); })
@@ -67,6 +71,18 @@ export default function StoragePane() {
           <input type="text" value={bucket} onInput={e => setBucket(e.target.value)} placeholder="my-bucket" />
         </div>
         <div className="storage-field">
+          <label>{t('storage.publicUrl')}</label>
+          <input type="text" value={publicUrl} onInput={e => setPublicUrl(e.target.value)} placeholder={t('storage.publicUrl.placeholder')} />
+        </div>
+        <div className="storage-field">
+          <label>{t('storage.attachmentsBucket')}</label>
+          <input type="text" value={attachmentsBucket} onInput={e => setAttachmentsBucket(e.target.value)} placeholder={t('storage.attachmentsBucket.placeholder')} />
+        </div>
+        <div className="storage-field">
+          <label>{t('storage.attachmentsPublicUrl')}</label>
+          <input type="text" value={attachmentsPublicUrl} onInput={e => setAttachmentsPublicUrl(e.target.value)} placeholder={t('storage.attachmentsPublicUrl.placeholder')} />
+        </div>
+        <div className="storage-field">
           <label>{t('storage.accessKey')}</label>
           <input type="text" value={accessKey} onInput={e => setAccessKey(e.target.value)} placeholder="AKIAIOSFODNN7EXAMPLE" autoComplete="off" data-bwignore />
         </div>
@@ -77,10 +93,6 @@ export default function StoragePane() {
         <div className="storage-field">
           <label>{t('storage.region')}</label>
           <input type="text" value={region} onInput={e => setRegion(e.target.value)} placeholder="us-east-1" />
-        </div>
-        <div className="storage-field">
-          <label>{t('storage.publicUrl')}</label>
-          <input type="text" value={publicUrl} onInput={e => setPublicUrl(e.target.value)} placeholder={t('storage.publicUrl.placeholder')} />
         </div>
         <div className="storage-field storage-checkbox-row">
           <label className="storage-checkbox">

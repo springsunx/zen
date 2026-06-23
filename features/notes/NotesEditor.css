@@ -200,6 +200,31 @@
     &::-webkit-scrollbar {
         display: none;
     }
+
+    .attachment-file-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 12px;
+        margin: 16px 16px 16px 0;
+        border-radius: 6px;
+        background-color: var(--neutral-100);
+        color: var(--neutral-600);
+        font-size: 13px;
+        font-weight: 500;
+        max-width: 200px;
+        flex-shrink: 0;
+
+        svg {
+            flex-shrink: 0;
+        }
+
+        span {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+    }
 }
 
 .notes-editor-textarea {

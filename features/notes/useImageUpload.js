@@ -16,11 +16,24 @@ function useImageUpload({ insertAtCursor }) {
       });
   }
 
-  function processImageFiles(files) {
+  function uploadAttachment(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    ApiClient.uploadAttachment(formData)
+      .then(result => {
+        const link = `[${result.originalName}](/attachments/${result.filename})`;
+        insertAtCursor(link);
+      });
+  }
+
+  function processFiles(files) {
     for (let file of files) {
       if (file.type.startsWith('image/')) {
-        setAttachments((prevAttachments) => [...prevAttachments, file]);
+        setAttachments((prev) => [...prev, { file, type: 'image' }]);
         uploadImage(file);
+      } else {
+        setAttachments((prev) => [...prev, { file, type: 'attachment' }]);
+        uploadAttachment(file);
       }
     }
   }
@@ -28,17 +41,23 @@ function useImageUpload({ insertAtCursor }) {
   function handlePaste(e) {
     const items = e.clipboardData.items;
 
-    // Ignore if it doesn't contain any images
-    if (Array.from(items).every(item => item.type.indexOf('image') === -1)) {
-      return;
-    }
+    // Check if there are any files (images or other)
+    const hasFiles = Array.from(items).some(item => item.kind === 'file');
+    if (!hasFiles) return;
 
     e.preventDefault();
     for (let item of items) {
-      if (item.type.indexOf('image') !== -1) {
+      if (item.kind === 'file') {
         const file = item.getAsFile();
-        setAttachments((prevAttachments) => [...prevAttachments, file]);
-        uploadImage(file);
+        if (file) {
+          if (file.type.startsWith('image/')) {
+            setAttachments((prev) => [...prev, { file, type: 'image' }]);
+            uploadImage(file);
+          } else {
+            setAttachments((prev) => [...prev, { file, type: 'attachment' }]);
+            uploadAttachment(file);
+          }
+        }
       }
     }
   }
@@ -58,7 +77,7 @@ function useImageUpload({ insertAtCursor }) {
     setIsDraggingOver(false);
 
     const files = e.dataTransfer.files;
-    processImageFiles(files);
+    processFiles(files);
   }
 
   function handleDropzoneClick() {
@@ -68,7 +87,7 @@ function useImageUpload({ insertAtCursor }) {
   function handleFileInputChange(e) {
     const files = e.target.files;
     if (files) {
-      processImageFiles(files);
+      processFiles(files);
       e.target.value = '';
     }
   }

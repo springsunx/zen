@@ -370,6 +370,14 @@ async function cleanupImages() {
   return await request('POST', '/api/images/cleanup');
 }
 
+async function uploadAttachment(formData) {
+  return await request('POST', '/api/attachments/', formData);
+}
+
+async function deleteAttachment(filename) {
+  return await request('DELETE', `/api/attachments/${encodeURIComponent(filename)}/`);
+}
+
 // ─── Storage ───
 
 async function getStorageConfig() {
@@ -532,6 +540,8 @@ export default {
   deleteImage,
   forceDeleteImage,
   cleanupImages,
+  uploadAttachment,
+  deleteAttachment,
   search,
   getSimilarImages,
   getStorageConfig,

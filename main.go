@@ -14,6 +14,7 @@ import (
 	"zen/commons/auth"
 	"zen/commons/session"
 	"zen/commons/sqlite"
+	"zen/features/attachments"
 	"zen/features/canvas"
 	"zen/features/ai"
 	"zen/features/focus"
@@ -69,6 +70,9 @@ func main() {
 		path = "./images"
 	}
 	if err := os.MkdirAll("images", 0755); err != nil {
+		panic(err)
+	}
+	if err := os.MkdirAll("attachments", 0755); err != nil {
 		panic(err)
 	}
 
@@ -139,8 +143,11 @@ func newRouter() *http.ServeMux {
 
 	addPrivateRoute(mux, "POST /api/images/", images.HandleUploadImage)
 	addPrivateRoute(mux, "GET /api/images/", images.HandleGetImages)
-        addPrivateRoute(mux, "DELETE /api/images/{filename}/", images.HandleDeleteImage)
-        addPrivateRoute(mux, "POST /api/images/cleanup", images.HandleCleanupImages)
+	addPrivateRoute(mux, "DELETE /api/images/{filename}/", images.HandleDeleteImage)
+	addPrivateRoute(mux, "POST /api/images/cleanup", images.HandleCleanupImages)
+
+	addPrivateRoute(mux, "POST /api/attachments/", attachments.HandleUploadAttachment)
+	addPrivateRoute(mux, "DELETE /api/attachments/{filename}/", attachments.HandleDeleteAttachment)
 
 	addPrivateRoute(mux, "POST /api/import/", settings.HandleImport)
 	addPrivateRoute(mux, "GET /api/export/", settings.HandleExport)
@@ -188,6 +195,7 @@ func newRouter() *http.ServeMux {
 
 	mux.HandleFunc("GET /assets/", handleStaticAssets)
 	mux.HandleFunc("GET /images/", handleUploadedImages)
+	mux.HandleFunc("GET /attachments/", handleUploadedAttachments)
 	mux.HandleFunc("GET /sw.js", handleServiceWorker)
 	mux.HandleFunc("GET /", handleRoot)
 
@@ -238,6 +246,11 @@ func handleStaticAssets(w http.ResponseWriter, r *http.Request) {
 func handleUploadedImages(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "public, max-age=31536000") // 1 year
 	http.StripPrefix("/images/", http.FileServer(http.Dir("images"))).ServeHTTP(w, r)
+}
+
+func handleUploadedAttachments(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "public, max-age=31536000") // 1 year
+	http.StripPrefix("/attachments/", http.FileServer(http.Dir("attachments"))).ServeHTTP(w, r)
 }
 
 func addPrivateRoute(mux *http.ServeMux, pattern string, handlerFunc func(w http.ResponseWriter, r *http.Request)) {
