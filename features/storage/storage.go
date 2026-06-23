@@ -5,27 +5,23 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 	"zen/commons/sqlite"
-
-	"github.com/minio/minio-go/v7"
-	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
 type StorageConfig struct {
-	ConfigID   int    `json:"configId"`
-	Provider   string `json:"provider"`
-	Endpoint   string `json:"endpoint"`
-	Bucket     string `json:"bucket"`
-	AccessKey  string `json:"accessKey"`
-	SecretKey  string `json:"secretKey"`
-	Region     string `json:"region"`
-	PublicURL  string `json:"publicUrl"`
-	UseSSL     bool   `json:"useSSL"`
+	ConfigID  int    `json:"configId"`
+	Provider  string `json:"provider"`
+	Endpoint  string `json:"endpoint"`
+	Bucket    string `json:"bucket"`
+	AccessKey string `json:"accessKey"`
+	SecretKey string `json:"secretKey"`
+	Region    string `json:"region"`
+	PublicURL string `json:"publicUrl"`
+	UseSSL    bool   `json:"useSSL"`
 }
 
 // Provider is the interface for file storage operations.
@@ -77,27 +73,18 @@ func (p *LocalProvider) GetURL(filename string) string {
 // ── S3 Provider ──
 
 type S3Provider struct {
-	client    *minio.Client
+	client    *S3Client
 	config    StorageConfig
 	publicURL string
 }
 
 func NewS3Provider(config StorageConfig) (*S3Provider, error) {
 	endpoint := config.Endpoint
-	// Strip protocol prefix for minio client
 	endpoint = strings.TrimPrefix(endpoint, "https://")
 	endpoint = strings.TrimPrefix(endpoint, "http://")
-	// Strip trailing slash
 	endpoint = strings.TrimSuffix(endpoint, "/")
 
-	client, err := minio.New(endpoint, &minio.Options{
-		Creds:  credentials.NewStaticV4(config.AccessKey, config.SecretKey, ""),
-		Secure: config.UseSSL,
-		Region: config.Region,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("error creating S3 client: %w", err)
-	}
+	client := NewS3Client(endpoint, config.AccessKey, config.SecretKey, config.Region, config.UseSSL)
 
 	// Verify bucket exists
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -129,9 +116,7 @@ func NewS3Provider(config StorageConfig) (*S3Provider, error) {
 
 func (p *S3Provider) Upload(filename string, reader io.Reader, size int64, contentType string) error {
 	ctx := context.Background()
-	_, err := p.client.PutObject(ctx, p.config.Bucket, filename, reader, size, minio.PutObjectOptions{
-		ContentType: contentType,
-	})
+	err := p.client.PutObject(ctx, p.config.Bucket, filename, reader, size, contentType)
 	if err != nil {
 		return fmt.Errorf("error uploading to S3: %w", err)
 	}
@@ -140,7 +125,7 @@ func (p *S3Provider) Upload(filename string, reader io.Reader, size int64, conte
 
 func (p *S3Provider) Delete(filename string) error {
 	ctx := context.Background()
-	err := p.client.RemoveObject(ctx, p.config.Bucket, filename, minio.RemoveObjectOptions{})
+	err := p.client.RemoveObject(ctx, p.config.Bucket, filename)
 	if err != nil {
 		return fmt.Errorf("error deleting from S3: %w", err)
 	}
@@ -152,8 +137,6 @@ func (p *S3Provider) GetURL(filename string) string {
 }
 
 // ── Config DB Operations ──
-
-const defaultSystemPrompt = "You are a helpful assistant. Provide detailed, well-structured responses. Use markdown formatting when appropriate."
 
 func GetConfig() (StorageConfig, error) {
 	var c StorageConfig
@@ -220,14 +203,7 @@ func TestS3Connection(config StorageConfig) error {
 	endpoint = strings.TrimPrefix(endpoint, "http://")
 	endpoint = strings.TrimSuffix(endpoint, "/")
 
-	client, err := minio.New(endpoint, &minio.Options{
-		Creds:  credentials.NewStaticV4(config.AccessKey, config.SecretKey, ""),
-		Secure: config.UseSSL,
-		Region: config.Region,
-	})
-	if err != nil {
-		return fmt.Errorf("error creating client: %w", err)
-	}
+	client := NewS3Client(endpoint, config.AccessKey, config.SecretKey, config.Region, config.UseSSL)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -242,14 +218,14 @@ func TestS3Connection(config StorageConfig) error {
 
 	// Try a test upload
 	testKey := ".zen-test-" + fmt.Sprintf("%d", time.Now().UnixNano())
-	_, err = client.PutObject(ctx, config.Bucket, testKey,
-		strings.NewReader("test"), 4, minio.PutObjectOptions{ContentType: "text/plain"})
+	err = client.PutObject(ctx, config.Bucket, testKey,
+		strings.NewReader("test"), 4, "text/plain")
 	if err != nil {
 		return fmt.Errorf("upload test failed: %w", err)
 	}
 
 	// Clean up test object
-	_ = client.RemoveObject(ctx, config.Bucket, testKey, minio.RemoveObjectOptions{})
+	_ = client.RemoveObject(ctx, config.Bucket, testKey)
 
 	return nil
 }
@@ -267,9 +243,4 @@ func IsS3Enabled() bool {
 		return false
 	}
 	return config.Provider == "s3"
-}
-
-// Ensure URL parsing helper works
-func init() {
-	_ = url.Parse
 }
