@@ -145,6 +145,7 @@
   "notes.view.list": "List View",
   "notes.view.card": "Card View",
   "notes.view.gallery": "Gallery View",
+  "notes.view.global": "Global",
   "notes.sidebar.toggle": "Toggle Sidebar",
   "notes.delete.title": "Delete Note",
   "notes.delete.desc": "This note will be moved to the Trash and permanently deleted after 30 days.",

@@ -144,6 +144,7 @@
   "notes.view.list": "列表视图",
   "notes.view.card": "卡片视图",
   "notes.view.gallery": "图库视图",
+  "notes.view.global": "全局",
   "notes.sidebar.toggle": "切换侧栏",
   "notes.delete.title": "删除笔记",
   "notes.delete.desc": "该笔记将被移至回收站，并在 30 天后永久删除。",
