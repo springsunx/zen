@@ -23,6 +23,7 @@ import (
 	"zen/features/notes"
 	"zen/features/search"
 	"zen/features/settings"
+	"zen/features/storage"
 	"zen/features/tags"
 	"zen/features/templates"
 	"zen/features/users"
@@ -163,6 +164,10 @@ func newRouter() *http.ServeMux {
 	addPrivateRoute(mux, "PUT /api/ai/configs/{configId}/default/", ai.HandleSetDefault)
 	addPrivateRoute(mux, "POST /api/ai/process/", ai.HandleProcess)
 	addPrivateRoute(mux, "POST /api/ai/models/", ai.HandleFetchModels)
+
+	addPrivateRoute(mux, "GET /api/storage/config", storage.HandleGetConfig)
+	addPrivateRoute(mux, "PUT /api/storage/config", storage.HandleUpdateConfig)
+	addPrivateRoute(mux, "POST /api/storage/test", storage.HandleTestConnection)
 
 	addPrivateRoute(mux, "GET /api/templates/", templates.HandleGetTemplates)
 	addPrivateRoute(mux, "GET /api/templates/{templateId}/", templates.HandleGetTemplate)

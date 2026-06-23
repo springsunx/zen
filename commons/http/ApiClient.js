@@ -370,6 +370,20 @@ async function cleanupImages() {
   return await request('POST', '/api/images/cleanup');
 }
 
+// ─── Storage ───
+
+async function getStorageConfig() {
+  return await request('GET', '/api/storage/config');
+}
+
+async function updateStorageConfig(config) {
+  return await request('PUT', '/api/storage/config', config);
+}
+
+async function testStorageConnection(config) {
+  return await request('POST', '/api/storage/test', config);
+}
+
 // ─── Search ───
 
 async function search(query) {
@@ -520,6 +534,9 @@ export default {
   cleanupImages,
   search,
   getSimilarImages,
+  getStorageConfig,
+  updateStorageConfig,
+  testStorageConnection,
   importFile,
   exportNotes,
   getTemplates,

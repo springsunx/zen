@@ -17,6 +17,7 @@ import (
 	"time"
 	"zen/commons/queue"
 	"zen/commons/utils"
+	"zen/features/storage"
 )
 
 const IMAGES_LIMIT = 100
@@ -28,6 +29,7 @@ type ImagesResponseEnvelope struct {
 
 type Image struct {
 	Filename    string    `json:"filename"`
+	URL         string    `json:"url"`
 	Width       int       `json:"width"`
 	Height      int       `json:"height"`
 	Format      string    `json:"format"`
@@ -156,21 +158,30 @@ func HandleUploadImage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	filename := fmt.Sprintf("%d%s", time.Now().UnixNano(), filepath.Ext(handler.Filename))
-	filepath := filepath.Join("images", filename)
+	provider := storage.GetProvider()
 
-	dst, err := os.Create(filepath)
-	if err != nil {
-		err = fmt.Errorf("error creating image file: %w", err)
-		utils.SendErrorResponse(w, "IMAGE_CREATE_FAILED", "Error creating image file.", err, http.StatusInternalServerError)
-		return
+	// Determine content type
+	contentType := handler.Header.Get("Content-Type")
+	if contentType == "" {
+		contentType = "application/octet-stream"
 	}
-	defer dst.Close()
 
-	bytesWritten, err := io.Copy(dst, file)
-	if err != nil {
-		err = fmt.Errorf("error uploading image file: %w", err)
+	if err := provider.Upload(filename, file, handler.Size, contentType); err != nil {
+		err = fmt.Errorf("error uploading image: %w", err)
 		utils.SendErrorResponse(w, "IMAGE_UPLOAD_FAILED", "Error uploading image.", err, http.StatusInternalServerError)
 		return
+	}
+
+	// For local provider, also sync to disk for backward compatibility
+	if storage.IsS3Enabled() {
+		// Still save a local copy for thumbnails/intelligence processing
+		localPath := filepath.Join("images", filename)
+		if _, seekErr := file.Seek(0, 0); seekErr == nil {
+			if dst, createErr := os.Create(localPath); createErr == nil {
+				io.Copy(dst, file)
+				dst.Close()
+			}
+		}
 	}
 
 	imageRecord := ImageRecord{
@@ -179,7 +190,7 @@ func HandleUploadImage(w http.ResponseWriter, r *http.Request) {
 		Height:      imageInfo.Height,
 		Format:      imageInfo.Format,
 		AspectRatio: imageInfo.AspectRatio,
-		FileSize:    bytesWritten,
+		FileSize:    handler.Size,
 		Caption:     nil,
 	}
 
@@ -189,6 +200,8 @@ func HandleUploadImage(w http.ResponseWriter, r *http.Request) {
 		utils.SendErrorResponse(w, "IMAGE_CREATE_FAILED", "Error saving image.", err, http.StatusInternalServerError)
 		return
 	}
+
+	image.URL = provider.GetURL(filename)
 
 	queue.AddImageTask(filename, queue.QUEUE_IMAGE_PROCESS, "process")
 
@@ -253,12 +266,16 @@ func HandleDeleteImage(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    // Delete physical file (if exists)
-    imgPath := filepath.Join("images", filename)
-    if err := os.Remove(imgPath); err != nil && !os.IsNotExist(err) {
+    // Delete physical file
+    provider := storage.GetProvider()
+    if err := provider.Delete(filename); err != nil {
         utils.SendErrorResponse(w, "IMAGE_DELETE_FAILED", "Error deleting image file", err, http.StatusInternalServerError)
         return
     }
+
+    // Also try to remove local copy (for S3 mode where we keep local copies)
+    imgPath := filepath.Join("images", filename)
+    os.Remove(imgPath) // ignore error
 
     // Delete DB record
     if err := DeleteImage(filename); err != nil {

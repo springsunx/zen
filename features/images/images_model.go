@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"zen/commons/sqlite"
+	"zen/features/storage"
 )
 
 func GetAllImages(filter ImagesFilter) ([]Image, int, error) {
@@ -127,6 +128,11 @@ func GetAllImages(filter ImagesFilter) ([]Image, int, error) {
 			return images, total, err
 		}
 		images = append(images, image)
+	}
+
+	// Populate URL field based on current storage config
+	for i := range images {
+		images[i].URL = storage.GetImageURL(images[i].Filename)
 	}
 
 	return images, total, nil
