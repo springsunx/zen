@@ -1,0 +1,90 @@
+.storage-pane {
+    .storage-desc {
+        font: var(--sm);
+        color: var(--text-secondary);
+        margin-bottom: var(--spacing-4);
+    }
+
+    .storage-field {
+        margin-bottom: var(--spacing-3);
+
+        label {
+            display: block;
+            font: var(--sm);
+            font-weight: 600;
+            margin-bottom: var(--spacing-1);
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: var(--spacing-2);
+            border: 1px solid var(--neutral-200);
+            border-radius: 4px;
+            font: var(--sm);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            outline: none;
+            box-sizing: border-box;
+
+            &:focus {
+                border-color: var(--neutral-600);
+            }
+        }
+    }
+
+    .storage-provider-options {
+        display: flex;
+        gap: var(--spacing-2);
+    }
+
+    .storage-provider-option {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-2);
+        padding: var(--spacing-2) var(--spacing-3);
+        border: 1px solid var(--neutral-200);
+        border-radius: 4px;
+        cursor: pointer;
+        font: var(--sm);
+
+        &:hover {
+            border-color: var(--neutral-400);
+        }
+
+        &.is-active {
+            border-color: var(--primary);
+            background: var(--bg-secondary);
+        }
+
+        input[type="radio"] {
+            margin: 0;
+        }
+    }
+
+    .storage-s3-form {
+        margin-top: var(--spacing-3);
+        padding: var(--spacing-3);
+        background: var(--bg-secondary);
+        border-radius: 4px;
+    }
+
+    .storage-checkbox-row {
+        display: flex;
+        align-items: center;
+    }
+
+    .storage-checkbox {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-2);
+        cursor: pointer;
+        font: var(--sm);
+    }
+
+    .storage-actions {
+        display: flex;
+        gap: var(--spacing-2);
+        margin-top: var(--spacing-4);
+    }
+}

@@ -72,6 +72,8 @@ function NotesPageContent({ noteId }) {
     return ViewPreferences.getPreference(selectedFocusId, selectedTagId, isArchivesPage, isTrashPage);
   });
 
+  const [isGlobalView, setIsGlobalView] = useState(() => ViewPreferences.isGlobalMode());
+
   const [cardSize, setCardSize] = useState(() => {
     try {
       const v = localStorage.getItem("zen.card.size");
@@ -180,6 +182,14 @@ function NotesPageContent({ noteId }) {
     ViewPreferences.setPreference(newView, selectedFocusId, selectedTagId, isArchivesPage, isTrashPage);
   }
 
+  function handleGlobalViewToggle() {
+    const next = !isGlobalView;
+    setIsGlobalView(next);
+    ViewPreferences.setGlobalMode(next);
+    // Persist current view into the new mode's storage so it stays consistent
+    ViewPreferences.setPreference(selectedView, selectedFocusId, selectedTagId, isArchivesPage, isTrashPage);
+  }
+
   function handleMultiSelectStart(noteId) {
     setIsMultiSelect(true);
     setSelectedIds([noteId]);
@@ -253,6 +263,8 @@ function NotesPageContent({ noteId }) {
             isImagesLoading={isImagesLoading}
             view={selectedView}
             onViewChange={handleViewChange}
+            isGlobalView={isGlobalView}
+            onGlobalViewToggle={handleGlobalViewToggle}
             onLoadMoreClick={handleLoadMoreNotes}
             onLoadMoreImagesClick={handleLoadMoreImages}
             onSidebarToggle={toggleSidebar}

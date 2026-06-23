@@ -14,7 +14,7 @@ import { t } from "../../commons/i18n/index.js";
 import { useLayout } from "../../commons/contexts/LayoutContext.jsx";
 
 
-export default function NotesListToolbar({ onViewChange, view, cardSize, onCardSizeChange }) {
+export default function NotesListToolbar({ onViewChange, view, cardSize, onCardSizeChange, isGlobalView, onGlobalViewToggle }) {
 
   const searchParams = useSearchParams();
   const { refreshNotes } = useNotes();
@@ -91,11 +91,11 @@ export default function NotesListToolbar({ onViewChange, view, cardSize, onCardS
   }
 
     return (
-    <Toolbar actions={actions} listName={listName} className="notes-list-toolbar" view={view} cardSize={cardSize} onCardSizeChange={onCardSizeChange} />
+    <Toolbar actions={actions} listName={listName} className="notes-list-toolbar" view={view} cardSize={cardSize} onCardSizeChange={onCardSizeChange} isGlobalView={isGlobalView} onGlobalViewToggle={onGlobalViewToggle} />
   );
 }
 
-function Toolbar({ actions, listName, className, view, cardSize = 240, onCardSizeChange = () => {} }) {
+function Toolbar({ actions, listName, className, view, cardSize = 240, onCardSizeChange = () => {}, isGlobalView = false, onGlobalViewToggle = () => {} }) {
   const { toggleSidebar } = useLayout();
   const buttons = actions.map(action => (
     <div key={action.title} {...action}>
@@ -127,6 +127,12 @@ function Toolbar({ actions, listName, className, view, cardSize = 240, onCardSiz
       {title}
       <ButtonGroup>
         {buttons}
+        {actions.length > 1 && (
+          <div className={`view-mode-toggle ${isGlobalView ? 'is-on' : ''}`} onClick={onGlobalViewToggle}>
+            {t('notes.view.global')}
+            <span className="view-mode-toggle-track"></span>
+          </div>
+        )}
       </ButtonGroup>
       {(view === 'card' && isMobile() !== true) && (
         <div className="card-size-control">
