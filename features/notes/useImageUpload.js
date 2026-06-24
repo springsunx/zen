@@ -23,6 +23,7 @@ function useImageUpload({ insertAtCursor }) {
       .then(result => {
         const link = `[${result.originalName}](/attachments/${result.filename})`;
         insertAtCursor(link);
+        window.dispatchEvent(new CustomEvent('attachments:refresh'));
       });
   }
 
