@@ -4,6 +4,7 @@ import (
 	"embed"
 	"flag"
 	"fmt"
+	"io"
 	"io/fs"
 	"log/slog"
 	"net/http"
@@ -292,18 +293,32 @@ func serveStorageFile(w http.ResponseWriter, r *http.Request, prefix string, isA
 		return
 	}
 
-	// File not on disk — if S3 is enabled, redirect to presigned URL
+	// File not on disk — if S3 is enabled, proxy from S3
 	if storage.IsS3Enabled() {
-		var presignedURL string
+		var provider storage.Provider
 		if isAttachment {
-			presignedURL = storage.GetAttachmentPresignedURL(filename, originalName)
+			provider = storage.GetAttachmentProvider()
 		} else {
-			presignedURL = storage.GetImagePresignedURL(filename)
+			provider = storage.GetProvider()
 		}
-		if presignedURL != "" {
-			http.Redirect(w, r, presignedURL, http.StatusFound)
+		s3p, ok := provider.(*storage.S3Provider)
+		if !ok {
+			http.NotFound(w, r)
 			return
 		}
+		reader, dlErr := s3p.DownloadObject(filename)
+		if dlErr != nil {
+			slog.Error("S3 download failed", "filename", filename, "error", dlErr)
+			http.NotFound(w, r)
+			return
+		}
+		defer reader.Close()
+		if isAttachment && originalName != "" {
+			w.Header().Set("Content-Disposition", storage.ContentDisposition(originalName))
+		}
+		w.Header().Set("Cache-Control", "public, max-age=31536000")
+		io.Copy(w, reader)
+		return
 	}
 
 	http.NotFound(w, r)
