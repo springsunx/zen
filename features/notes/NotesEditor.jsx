@@ -201,13 +201,14 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   // Clear ?edit=true from URL after consuming it
   useEffect(() => {
     if (autoEdit === true) {
+      setIsEditable(true);
       const url = new URL(window.location.href);
       if (url.searchParams.has("edit")) {
         url.searchParams.delete("edit");
         window.history.replaceState({}, "", url.pathname + url.search);
       }
     }
-  }, []);
+  }, [autoEdit]);
 
   // Fetch backlinks when note changes
   useEffect(() => {
