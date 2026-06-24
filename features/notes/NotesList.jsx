@@ -210,7 +210,7 @@ function NotesListItem({ note, isMultiSelect, isSelected, onMultiSelectStart, on
           <div className="notes-list-item-tags">{tags}</div>
           <div className="notes-list-item-subtext" title={fullUpdatedAt}>{shortUpdatedAt}</div>
         </div>
-        <div className="notes-list-item-footer" onClick={e => e.stopPropagation()}>
+        <div className="notes-list-item-footer">
           <span className="notes-list-item-size">{noteSize}</span>
           <div className="notes-list-item-actions">
             <div className="notes-list-action" title={t('common.edit')} onClick={handleEdit}>
