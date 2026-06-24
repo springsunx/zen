@@ -3,7 +3,9 @@ import NotesListToolbar from './NotesListToolbar.jsx';
 import Link from '../../commons/components/Link.jsx';
 import Spinner from '../../commons/components/Spinner.jsx';
 import Button from '../../commons/components/Button.jsx';
-import { PinIcon, CheckboxUncheckedIcon, CheckboxCheckedIcon, NotesIcon, ImagesIcon, AttachmentsIcon } from '../../commons/components/Icon.jsx';
+import ApiClient from '../../commons/http/ApiClient.js';
+import { showToast } from '../../commons/components/Toast.jsx';
+import { PinIcon, CheckboxUncheckedIcon, CheckboxCheckedIcon, NotesIcon, ImagesIcon, AttachmentsIcon, ArchiveIcon, TrashIcon } from '../../commons/components/Icon.jsx';
 import renderMarkdown from '../../commons/utils/renderMarkdown.js';
 import formatDate from '../../commons/utils/formatDate.js';
 import isMobile from "../../commons/utils/isMobile.js";
@@ -93,6 +95,38 @@ function NotesListItem({ note, isMultiSelect, isSelected, onMultiSelectStart, on
     title = <div className="notes-list-item-title untitled">{preview}</div>
   }
 
+  function handlePin(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const apiCall = note.isPinned ? ApiClient.unpinNote : ApiClient.pinNote;
+    apiCall(note.noteId)
+      .then(() => window.dispatchEvent(new CustomEvent('notes:refresh')))
+      .catch(err => console.error('Pin toggle failed:', err));
+  }
+
+  function handleArchive(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    ApiClient.archiveNote(note.noteId)
+      .then(() => {
+        showToast(t('notes.archive.archived'));
+        window.dispatchEvent(new CustomEvent('notes:refresh'));
+      })
+      .catch(err => console.error('Archive failed:', err));
+  }
+
+  function handleDelete(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!confirm(t('notes.delete.desc'))) return;
+    ApiClient.deleteNote(note.noteId)
+      .then(() => {
+        showToast(t('notes.delete.deleted'));
+        window.dispatchEvent(new CustomEvent('notes:refresh'));
+      })
+      .catch(err => console.error('Delete failed:', err));
+  }
+
   if (isMultiSelect === true) {
     const checkbox = (
       <div className={`notes-list-item-checkbox ${isSelected ? 'is-checked' : ''}`}>
@@ -116,6 +150,11 @@ function NotesListItem({ note, isMultiSelect, isSelected, onMultiSelectStart, on
     );
   }
 
+  function formatNoteSize(bytes) {
+    if (bytes < 1024) return bytes + " B";
+    return (bytes / 1024).toFixed(1) + " KB";
+  }
+
   function handleCmdClick(e) {
     if (e.metaKey === true || e.ctrlKey === true) {
       e.preventDefault();
@@ -123,16 +162,29 @@ function NotesListItem({ note, isMultiSelect, isSelected, onMultiSelectStart, on
     }
   }
 
+  const noteSize = formatNoteSize(new TextEncoder().encode(note.content || '').length);
+
   return (
-    <div {...longPress} onClickCapture={handleCmdClick}>
+    <div {...longPress} onClickCapture={handleCmdClick} className="notes-list-item-wrapper">
       <Link to={link} className={`notes-list-item ${note.isPinned ? 'pinned' : ''}`} activeClassName="is-active" shouldPreserveSearchParams>
         <div className="notes-list-item-header">
           {title}
-          <PinIcon isPinned={note.isPinned} className="notes-list-item-pin" />
+          <PinIcon isPinned={note.isPinned} className="notes-list-item-pin" onClick={handlePin} />
         </div>
         <div className="notes-list-item-subcontainer">
           <div className="notes-list-item-tags">{tags}</div>
           <div className="notes-list-item-subtext" title={fullUpdatedAt}>{shortUpdatedAt}</div>
+        </div>
+        <div className="notes-list-item-footer">
+          <span className="notes-list-item-size">{noteSize}</span>
+          <div className="notes-list-item-actions">
+            <div className="notes-list-action" title={t('notes.archive.archive')} onClick={handleArchive}>
+              <ArchiveIcon />
+            </div>
+            <div className="notes-list-action is-delete" title={t('common.delete')} onClick={handleDelete}>
+              <TrashIcon />
+            </div>
+          </div>
         </div>
       </Link>
     </div>
