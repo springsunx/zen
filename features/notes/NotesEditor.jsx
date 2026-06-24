@@ -29,7 +29,7 @@ import useSlashCommands from "./useSlashCommands.js";
 import "./NotesEditor.css";
 import { t } from "../../commons/i18n/index.js";
 
-export default function NotesEditor({ isNewNote, isModal, isExpandable = false, onClose, onEditModeChange = () => {}, onContentChange = () => {}, onSaved = () => {}, onToggleToc, isFitToWindow = false, onFitToWindowToggle }) {
+export default function NotesEditor({ isNewNote, isModal, isExpandable = false, onClose, onEditModeChange = () => {}, onContentChange = () => {}, onSaved = () => {}, onToggleToc, isFitToWindow = false, onFitToWindowToggle, autoEdit }) {
   const { selectedNote, handleNoteChange, patchNote, handlePinToggle } = useNotes();
   const { refreshTags } = useAppContext();
   const { isEditorExpanded, toggleEditorExpanded } = useLayout();
@@ -39,7 +39,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   }
 
   // ─── State ───
-  const [isEditable, setIsEditable] = useState(isNewNote);
+  const [isEditable, setIsEditable] = useState(isNewNote || autoEdit === true);
   const [title, setTitle] = useState(selectedNote?.title || "");
   const [content, setContent] = useState(selectedNote?.content || "");
   const [tags, setTags] = useState(selectedNote?.tags || []);
@@ -197,6 +197,17 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
       }, 0);
     }
   }, [isEditable]);
+
+  // Clear ?edit=true from URL after consuming it
+  useEffect(() => {
+    if (autoEdit === true) {
+      const url = new URL(window.location.href);
+      if (url.searchParams.has("edit")) {
+        url.searchParams.delete("edit");
+        window.history.replaceState({}, "", url.pathname + url.search);
+      }
+    }
+  }, []);
 
   // Fetch backlinks when note changes
   useEffect(() => {

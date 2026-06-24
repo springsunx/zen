@@ -9,10 +9,11 @@ import { openModal, closeModal } from '../../commons/components/Modal.jsx';
 import { AppProvider } from '../../commons/contexts/AppContext.jsx';
 import { NotesProvider, useNotes } from "../../commons/contexts/NotesContext.jsx";
 import NoteDeleteModal from './NoteDeleteModal.jsx';
-import { PinIcon, CheckboxUncheckedIcon, CheckboxCheckedIcon, NotesIcon, ImagesIcon, AttachmentsIcon, ArchiveIcon, TrashIcon } from '../../commons/components/Icon.jsx';
+import { PinIcon, PencilIcon, CheckboxUncheckedIcon, CheckboxCheckedIcon, NotesIcon, ImagesIcon, AttachmentsIcon, ArchiveIcon, TrashIcon } from '../../commons/components/Icon.jsx';
 import renderMarkdown from '../../commons/utils/renderMarkdown.js';
 import formatDate from '../../commons/utils/formatDate.js';
 import isMobile from "../../commons/utils/isMobile.js";
+import navigateTo from "../../commons/utils/navigateTo.js";
 import useLongPress from "../../commons/utils/useLongPress.js";
 import ImageGallery from "./ImageGallery.jsx";
 import ImageTable from "./ImageTable.jsx";
@@ -153,6 +154,12 @@ function NotesListItem({ note, isMultiSelect, isSelected, onMultiSelectStart, on
     );
   }
 
+  function handleEdit(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    navigateTo(`/notes/${note.noteId}?edit=true`, true);
+  }
+
   if (isMultiSelect === true) {
     const checkbox = (
       <div className={`notes-list-item-checkbox ${isSelected ? 'is-checked' : ''}`}>
@@ -204,6 +211,9 @@ function NotesListItem({ note, isMultiSelect, isSelected, onMultiSelectStart, on
         <div className="notes-list-item-footer" onClick={e => e.stopPropagation()}>
           <span className="notes-list-item-size">{noteSize}</span>
           <div className="notes-list-item-actions">
+            <div className="notes-list-action" title={t('common.edit')} onClick={handleEdit}>
+              <PencilIcon />
+            </div>
             <div className="notes-list-action" title={isArchivesPage ? t('notes.archive.unarchive') : t('notes.archive.archive')} onClick={handleArchive}>
               <ArchiveIcon />
             </div>
