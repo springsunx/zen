@@ -291,6 +291,10 @@ func GetAllAttachmentsPaginated(page int, tagID int, focusID int) ([]Attachment,
 }
 
 func getLinkedNotes(filename string) []NoteRef {
+	seen := make(map[int]bool)
+	var refs []NoteRef
+
+	// 1. From note_attachments table
 	rows, err := sqlite.DB.Query(`
 		SELECT n.note_id, n.title
 		FROM note_attachments na
@@ -298,20 +302,42 @@ func getLinkedNotes(filename string) []NoteRef {
 		WHERE na.filename = ?
 		ORDER BY n.updated_at DESC
 	`, filename)
-	if err != nil {
-		return nil
-	}
-	defer rows.Close()
-
-	var refs []NoteRef
-	for rows.Next() {
-		var ref NoteRef
-		if err := rows.Scan(&ref.NoteID, &ref.Title); err != nil {
-			continue
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var ref NoteRef
+			if err := rows.Scan(&ref.NoteID, &ref.Title); err != nil {
+				continue
+			}
+			if !seen[ref.NoteID] {
+				seen[ref.NoteID] = true
+				ref.Tags = getNoteTags(ref.NoteID)
+				refs = append(refs, ref)
+			}
 		}
-		ref.Tags = getNoteTags(ref.NoteID)
-		refs = append(refs, ref)
 	}
+
+	// 2. From note content (scan for /attachments/filename references)
+	pattern := "/attachments/" + filename
+	contentRows, err := sqlite.DB.Query(`
+		SELECT note_id, title FROM notes
+		WHERE deleted_at IS NULL AND content LIKE ?
+	`, "%"+pattern+"%")
+	if err == nil {
+		defer contentRows.Close()
+		for contentRows.Next() {
+			var ref NoteRef
+			if err := contentRows.Scan(&ref.NoteID, &ref.Title); err != nil {
+				continue
+			}
+			if !seen[ref.NoteID] {
+				seen[ref.NoteID] = true
+				ref.Tags = getNoteTags(ref.NoteID)
+				refs = append(refs, ref)
+			}
+		}
+	}
+
 	return refs
 }
 

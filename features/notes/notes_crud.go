@@ -5,10 +5,34 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"regexp"
 	"strings"
 	"zen/commons/sqlite"
 	"zen/features/tags"
 )
+
+var imageRefRegex = regexp.MustCompile(`!\[.*?\]\(/images/([^)]+)\)`)
+var attachmentRefRegex = regexp.MustCompile(`\[.*?\]\(/attachments/([^)]+)\)`)
+
+// syncNoteFileLinks updates note_images and note_attachments tables
+// based on the current note content. Must be called within a transaction.
+func syncNoteFileLinks(tx *sql.Tx, noteID int, content string) {
+	// Sync note_images
+	_, _ = tx.Exec("DELETE FROM note_images WHERE note_id = ?", noteID)
+	for _, m := range imageRefRegex.FindAllStringSubmatch(content, -1) {
+		if len(m) > 1 {
+			_, _ = tx.Exec("INSERT OR IGNORE INTO note_images (note_id, filename) VALUES (?, ?)", noteID, m[1])
+		}
+	}
+
+	// Sync note_attachments
+	_, _ = tx.Exec("DELETE FROM note_attachments WHERE note_id = ?", noteID)
+	for _, m := range attachmentRefRegex.FindAllStringSubmatch(content, -1) {
+		if len(m) > 1 {
+			_, _ = tx.Exec("INSERT OR IGNORE INTO note_attachments (note_id, filename) VALUES (?, ?)", noteID, m[1])
+		}
+	}
+}
 
 func GetAllNotes(filter NotesFilter) ([]Note, int, error) {
 	notes := []Note{}
@@ -328,6 +352,9 @@ func CreateNote(note Note) (Note, error) {
 		}
 	}
 
+	// Sync image and attachment links from content
+	syncNoteFileLinks(tx, note.NoteID, note.Content)
+
 	err = tx.Commit()
 
 	if err != nil {
@@ -435,6 +462,9 @@ func UpdateNote(note Note) (Note, error) {
 			note.Tags = []tags.Tag{}
 		}
 	}
+
+	// Sync image and attachment links from content
+	syncNoteFileLinks(tx, note.NoteID, note.Content)
 
 	err = tx.Commit()
 
