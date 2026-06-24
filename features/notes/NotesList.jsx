@@ -5,6 +5,10 @@ import Spinner from '../../commons/components/Spinner.jsx';
 import Button from '../../commons/components/Button.jsx';
 import ApiClient from '../../commons/http/ApiClient.js';
 import { showToast } from '../../commons/components/Toast.jsx';
+import { openModal, closeModal } from '../../commons/components/Modal.jsx';
+import { AppProvider } from '../../commons/contexts/AppContext.jsx';
+import { NotesProvider, useNotes } from "../../commons/contexts/NotesContext.jsx";
+import NoteDeleteModal from './NoteDeleteModal.jsx';
 import { PinIcon, CheckboxUncheckedIcon, CheckboxCheckedIcon, NotesIcon, ImagesIcon, AttachmentsIcon, ArchiveIcon, TrashIcon } from '../../commons/components/Icon.jsx';
 import renderMarkdown from '../../commons/utils/renderMarkdown.js';
 import formatDate from '../../commons/utils/formatDate.js';
@@ -14,22 +18,23 @@ import ImageGallery from "./ImageGallery.jsx";
 import ImageTable from "./ImageTable.jsx";
 import AttachmentList from "./AttachmentList.jsx";
 import NotesEditorModal from './NotesEditorModal.jsx';
-import { NotesProvider, useNotes } from "../../commons/contexts/NotesContext.jsx";
-import { AppProvider } from '../../commons/contexts/AppContext.jsx';
-import { openModal } from '../../commons/components/Modal.jsx';
 import EmptyState from '../../commons/components/EmptyState.jsx';
 import "./NotesList.css";
 import { t } from "../../commons/i18n/index.js";
 import { TAG_COLORS } from "../tags/TagDetailModal.jsx";
+import useSearchParams from '../../commons/components/useSearchParams.jsx';
 
 export default function NotesList({ notes = [], total, isLoading, images = [], imagesTotal, isImagesLoading, attachments = [], attachmentsTotal, isAttachmentsLoading, view, onViewChange, onLoadMoreClick, onLoadMoreImagesClick, onLoadMoreAttachmentsClick, isMultiSelect, selectedIds, onMultiSelectStart, onToggleSelect, cardSize = 240, onCardSizeChange = () => {}, isGlobalView = false, onGlobalViewToggle = () => {} }) {
+  const searchParams = useSearchParams();
+  const isArchivesPage = searchParams.get("isArchived") === "true";
+  const isTrashPage = searchParams.get("isDeleted") === "true";
   let listClassName = "notes-list";
   let content = <div className="notes-list-spinner"><Spinner /></div>;
   let loadMoreHandler = onLoadMoreClick;
   let currentTotal = total;
   let currentItems = notes;
 
-  let items = notes.map(note => <NotesListItem note={note} key={note.noteId} isMultiSelect={isMultiSelect} isSelected={selectedIds.includes(note.noteId)} onMultiSelectStart={onMultiSelectStart} onToggleSelect={onToggleSelect} />);
+  let items = notes.map(note => <NotesListItem note={note} key={note.noteId} isMultiSelect={isMultiSelect} isSelected={selectedIds.includes(note.noteId)} onMultiSelectStart={onMultiSelectStart} onToggleSelect={onToggleSelect} isArchivesPage={isArchivesPage} isTrashPage={isTrashPage} />);
 
   if (view === "card") {
     listClassName = "";
@@ -72,7 +77,7 @@ export default function NotesList({ notes = [], total, isLoading, images = [], i
   );
 }
 
-function NotesListItem({ note, isMultiSelect, isSelected, onMultiSelectStart, onToggleSelect }) {
+function NotesListItem({ note, isMultiSelect, isSelected, onMultiSelectStart, onToggleSelect, isArchivesPage, isTrashPage }) {
   const link = `/notes/${note.noteId}`;
   const updatedAtDate = new Date(note.updatedAt);
   const shortUpdatedAt = formatDate(updatedAtDate);
@@ -107,24 +112,45 @@ function NotesListItem({ note, isMultiSelect, isSelected, onMultiSelectStart, on
   function handleArchive(e) {
     e.preventDefault();
     e.stopPropagation();
-    ApiClient.archiveNote(note.noteId)
+    const apiCall = isArchivesPage ? ApiClient.unarchiveNote : ApiClient.archiveNote;
+    apiCall(note.noteId)
       .then(() => {
-        showToast(t('notes.archive.archived'));
+        showToast(isArchivesPage ? t('notes.archive.unarchived') : t('notes.archive.archived'));
         window.dispatchEvent(new CustomEvent('notes:refresh'));
       })
-      .catch(err => console.error('Archive failed:', err));
+      .catch(err => console.error('Archive toggle failed:', err));
   }
 
   function handleDelete(e) {
     e.preventDefault();
     e.stopPropagation();
-    if (!confirm(t('notes.delete.desc'))) return;
-    ApiClient.deleteNote(note.noteId)
-      .then(() => {
-        showToast(t('notes.delete.deleted'));
-        window.dispatchEvent(new CustomEvent('notes:refresh'));
-      })
-      .catch(err => console.error('Delete failed:', err));
+    if (isTrashPage) {
+      ApiClient.restoreNote(note.noteId)
+        .then(() => {
+          showToast(t('notes.delete.restored'));
+          window.dispatchEvent(new CustomEvent('notes:refresh'));
+        })
+        .catch(err => console.error('Restore failed:', err));
+      return;
+    }
+    openModal(
+      <AppProvider>
+        <NotesProvider>
+          <NoteDeleteModal
+            onDeleteClick={() => {
+              ApiClient.deleteNote(note.noteId)
+                .then(() => {
+                  closeModal();
+                  showToast(t('notes.delete.deleted'));
+                  window.dispatchEvent(new CustomEvent('notes:refresh'));
+                })
+                .catch(err => console.error('Delete failed:', err));
+            }}
+            onCloseClick={() => closeModal()}
+          />
+        </NotesProvider>
+      </AppProvider>
+    );
   }
 
   if (isMultiSelect === true) {
@@ -175,13 +201,13 @@ function NotesListItem({ note, isMultiSelect, isSelected, onMultiSelectStart, on
           <div className="notes-list-item-tags">{tags}</div>
           <div className="notes-list-item-subtext" title={fullUpdatedAt}>{shortUpdatedAt}</div>
         </div>
-        <div className="notes-list-item-footer">
+        <div className="notes-list-item-footer" onClick={e => e.stopPropagation()}>
           <span className="notes-list-item-size">{noteSize}</span>
           <div className="notes-list-item-actions">
-            <div className="notes-list-action" title={t('notes.archive.archive')} onClick={handleArchive}>
+            <div className="notes-list-action" title={isArchivesPage ? t('notes.archive.unarchive') : t('notes.archive.archive')} onClick={handleArchive}>
               <ArchiveIcon />
             </div>
-            <div className="notes-list-action is-delete" title={t('common.delete')} onClick={handleDelete}>
+            <div className="notes-list-action is-delete" title={isTrashPage ? t('notes.delete.restore') : t('common.delete')} onClick={handleDelete}>
               <TrashIcon />
             </div>
           </div>

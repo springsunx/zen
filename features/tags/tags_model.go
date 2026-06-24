@@ -439,7 +439,7 @@ type querier interface {
 // GetOrCreateParentTag finds or creates a parent tag by name.
 func GetOrCreateParentTag(name string, q querier) (int, error) {
 	var tagID int
-	err := q.QueryRow("SELECT tag_id FROM tags WHERE name = ? AND parent_id IS NULL", name).Scan(&tagID)
+	err := q.QueryRow("SELECT tag_id FROM tags WHERE LOWER(name) = LOWER(?)", name).Scan(&tagID)
 	if err == nil {
 		return tagID, nil
 	}
@@ -462,7 +462,7 @@ func ParseAndCreateTagHierarchy(name string, q querier) (int, string, error) {
 	if len(parts) <= 1 {
 		// No hierarchy — find existing or create
 		var existingID int
-		err := q.QueryRow("SELECT tag_id FROM tags WHERE name = ? AND parent_id IS NULL", name).Scan(&existingID)
+		err := q.QueryRow("SELECT tag_id FROM tags WHERE LOWER(name) = LOWER(?)", name).Scan(&existingID)
 		if err == nil {
 			return existingID, name, nil
 		}
@@ -493,9 +493,9 @@ func ParseAndCreateTagHierarchy(name string, q querier) (int, string, error) {
 	// Create leaf tag with parent_id
 	leafName := strings.Join(parts, "/") // keep full path as name for display
 
-	// Check if leaf already exists with same parent
+	// Check if leaf already exists (case-insensitive, regardless of parent)
 	var existingLeafID int
-	err := q.QueryRow("SELECT tag_id FROM tags WHERE name = ? AND parent_id = ?", leafName, currentParentID).Scan(&existingLeafID)
+	err := q.QueryRow("SELECT tag_id FROM tags WHERE LOWER(name) = LOWER(?)", leafName).Scan(&existingLeafID)
 	if err == nil {
 		return existingLeafID, leafName, nil
 	}
