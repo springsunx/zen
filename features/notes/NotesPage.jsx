@@ -237,8 +237,7 @@ function NotesPageContent({ noteId }) {
   const isEditorExpandable = selectedView === "list";
   const isPageExpanded = isEditorExpanded === true && isEditorExpandable === true;
 
-  const isAutoEdit = searchParams.get("edit") === "true";
-  let editorContent = <NotesEditor isNewNote={noteId === "new"} isExpandable={isEditorExpandable} autoEdit={isAutoEdit} onToggleToc={() => setShowToc(prev => { const next = !prev; try { localStorage.setItem('zen.showToc', String(next)); } catch {} return next; })} isFitToWindow={isFitToWindow} onFitToWindowToggle={() => { setIsFitToWindow(prev => { const next = !prev; try { localStorage.setItem('zen.fitToWindow', String(next)); } catch {} return next; }); }} key={selectedNote?.noteId} />;
+  let editorContent = <NotesEditor isNewNote={noteId === "new"} isExpandable={isEditorExpandable} onToggleToc={() => setShowToc(prev => { const next = !prev; try { localStorage.setItem('zen.showToc', String(next)); } catch {} return next; })} isFitToWindow={isFitToWindow} onFitToWindowToggle={() => { setIsFitToWindow(prev => { const next = !prev; try { localStorage.setItem('zen.fitToWindow', String(next)); } catch {} return next; }); }} key={selectedNote?.noteId} />;
   if (isMultiSelect === true) {
     editorContent = <BulkActionsPanel selectedIds={selectedIds} allIds={notes.map(n => n.noteId)} selectedNotes={notes.filter(n => selectedIds.includes(n.noteId))} onClose={handleClearSelection} onSelectAll={() => setSelectedIds(notes.map(n => n.noteId))} />;
   }

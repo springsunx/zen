@@ -14,6 +14,7 @@ import renderMarkdown from '../../commons/utils/renderMarkdown.js';
 import formatDate from '../../commons/utils/formatDate.js';
 import isMobile from "../../commons/utils/isMobile.js";
 import navigateTo from "../../commons/utils/navigateTo.js";
+import { requestEditMode } from "../../commons/utils/editMode.js";
 import useLongPress from "../../commons/utils/useLongPress.js";
 import ImageGallery from "./ImageGallery.jsx";
 import ImageTable from "./ImageTable.jsx";
@@ -157,7 +158,8 @@ function NotesListItem({ note, isMultiSelect, isSelected, onMultiSelectStart, on
   function handleEdit(e) {
     e.preventDefault();
     e.stopPropagation();
-    navigateTo(`/notes/${note.noteId}?edit=true`, true);
+    requestEditMode();
+    navigateTo(`/notes/${note.noteId}`, true);
   }
 
   if (isMultiSelect === true) {

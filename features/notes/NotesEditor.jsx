@@ -25,11 +25,12 @@ import useEditorKeyboardShortcuts from "./useEditorKeyboardShortcuts.js";
 import useImageUpload from "./useImageUpload.js";
 import useMarkdownFormatter from "./useMarkdownFormatter.js";
 import useAIPanel from "./useAIPanel.js";
+import { consumeEditMode } from "../../commons/utils/editMode.js";
 import useSlashCommands from "./useSlashCommands.js";
 import "./NotesEditor.css";
 import { t } from "../../commons/i18n/index.js";
 
-export default function NotesEditor({ isNewNote, isModal, isExpandable = false, onClose, onEditModeChange = () => {}, onContentChange = () => {}, onSaved = () => {}, onToggleToc, isFitToWindow = false, onFitToWindowToggle, autoEdit }) {
+export default function NotesEditor({ isNewNote, isModal, isExpandable = false, onClose, onEditModeChange = () => {}, onContentChange = () => {}, onSaved = () => {}, onToggleToc, isFitToWindow = false, onFitToWindowToggle }) {
   const { selectedNote, handleNoteChange, patchNote, handlePinToggle } = useNotes();
   const { refreshTags } = useAppContext();
   const { isEditorExpanded, toggleEditorExpanded } = useLayout();
@@ -39,7 +40,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   }
 
   // ─── State ───
-  const [isEditable, setIsEditable] = useState(isNewNote || autoEdit === true);
+  const [isEditable, setIsEditable] = useState(() => isNewNote || consumeEditMode());
   const [title, setTitle] = useState(selectedNote?.title || "");
   const [content, setContent] = useState(selectedNote?.content || "");
   const [tags, setTags] = useState(selectedNote?.tags || []);
@@ -198,17 +199,18 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
     }
   }, [isEditable]);
 
-  // Clear ?edit=true from URL after consuming it
+  // Activate edit mode when navigated from edit button (same note already selected)
   useEffect(() => {
-    if (autoEdit === true) {
-      setIsEditable(true);
-      const url = new URL(window.location.href);
-      if (url.searchParams.has("edit")) {
-        url.searchParams.delete("edit");
-        window.history.replaceState({}, "", url.pathname + url.search);
+    function handleNavigate() {
+      const match = window.location.pathname.match(/^\/notes\/(\d+)/);
+      const urlNoteId = match ? parseInt(match[1], 10) : null;
+      if (urlNoteId === selectedNote?.noteId && consumeEditMode()) {
+        setIsEditable(true);
       }
     }
-  }, [autoEdit]);
+    window.addEventListener('navigate', handleNavigate);
+    return () => window.removeEventListener('navigate', handleNavigate);
+  }, [selectedNote?.noteId]);
 
   // Fetch backlinks when note changes
   useEffect(() => {
