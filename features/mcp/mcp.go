@@ -1,13 +1,23 @@
 package mcp
 
 import (
+	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"image"
+	_ "image/gif"
+	_ "image/jpeg"
+	_ "image/png"
 	"log/slog"
 	"net/http"
+	"path/filepath"
 	"strings"
+	"time"
 	"zen/commons/utils"
+	"zen/features/images"
 	"zen/features/notes"
+	"zen/features/storage"
 	"zen/features/tags"
 )
 
@@ -266,6 +276,47 @@ func handleToolsList(req Request) *Response {
 				"required": []string{"title", "content"},
 			},
 		},
+		{
+			Name:        "upload_image",
+			Description: "Upload an image and get its URL for embedding in notes",
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"image_data": map[string]interface{}{
+						"type":        "string",
+						"description": "Base64 encoded image data",
+					},
+					"filename": map[string]interface{}{
+						"type":        "string",
+						"description": "Original filename with extension (e.g., photo.jpg)",
+					},
+				},
+				"required": []string{"image_data", "filename"},
+			},
+		},
+		{
+			Name:        "append_image_to_note",
+			Description: "Append an image link to a note's content",
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"noteId": map[string]interface{}{
+						"type":        "number",
+						"description": "The ID of the note to append the image to",
+					},
+					"image_path": map[string]interface{}{
+						"type":        "string",
+						"description": "The image path returned from upload_image (e.g., /images/filename.jpg)",
+					},
+					"description": map[string]interface{}{
+						"type":        "string",
+						"description": "Optional description/alt text for the image",
+						"default":     "",
+					},
+				},
+				"required": []string{"noteId", "image_path"},
+			},
+		},
 	}
 
 	result := ToolListResult{Tools: tools}
@@ -299,6 +350,10 @@ func handleToolsCall(req Request) *Response {
 		result = handleGetNote(params.Arguments)
 	case "create_note":
 		result = handleCreateNote(params.Arguments)
+	case "upload_image":
+		result = handleUploadImage(params.Arguments)
+	case "append_image_to_note":
+		result = handleAppendImageToNote(params.Arguments)
 	default:
 		return createErrorResponse(req.ID, -32601, "Unknown tool", params.Name)
 	}
@@ -534,6 +589,146 @@ func handleCreateNote(args map[string]interface{}) ToolCallResult {
 
 	return ToolCallResult{
 		Content: []ToolContent{{Type: "text", Text: text.String()}},
+	}
+}
+
+func handleUploadImage(args map[string]interface{}) ToolCallResult {
+	imageData, ok := args["image_data"].(string)
+	if !ok || imageData == "" {
+		return ToolCallResult{
+			Content: []ToolContent{{Type: "text", Text: "Error: image_data parameter is required"}},
+			IsError: true,
+		}
+	}
+
+	filename, ok := args["filename"].(string)
+	if !ok || filename == "" {
+		return ToolCallResult{
+			Content: []ToolContent{{Type: "text", Text: "Error: filename parameter is required"}},
+			IsError: true,
+		}
+	}
+
+	// Decode base64 data
+	data, err := base64.StdEncoding.DecodeString(imageData)
+	if err != nil {
+		slog.Error("MCP upload image error - invalid base64", "error", err)
+		return ToolCallResult{
+			Content: []ToolContent{{Type: "text", Text: "Error: invalid base64 image data"}},
+			IsError: true,
+		}
+	}
+
+	// Generate unique filename
+	ext := filepath.Ext(filename)
+	if ext == "" {
+		ext = ".jpg" // default extension
+	}
+	uniqueFilename := fmt.Sprintf("%d%s", time.Now().UnixNano(), ext)
+
+	// Upload to storage
+	provider := storage.GetProvider()
+	reader := bytes.NewReader(data)
+	contentType := http.DetectContentType(data)
+
+	if err := provider.Upload(uniqueFilename, reader, int64(len(data)), contentType, nil); err != nil {
+		slog.Error("MCP upload image error", "error", err)
+		return ToolCallResult{
+			Content: []ToolContent{{Type: "text", Text: "Error uploading image: " + err.Error()}},
+			IsError: true,
+		}
+	}
+
+	// Create image record in database
+	imageRecord := images.ImageRecord{
+		Filename: uniqueFilename,
+		FileSize: int64(len(data)),
+		Format:   strings.TrimPrefix(ext, "."),
+	}
+
+	// Try to decode image dimensions
+	img, format, err := image.Decode(bytes.NewReader(data))
+	if err == nil {
+		bounds := img.Bounds()
+		imageRecord.Width = bounds.Dx()
+		imageRecord.Height = bounds.Dy()
+		imageRecord.AspectRatio = float64(imageRecord.Width) / float64(imageRecord.Height)
+		imageRecord.Format = format
+	} else {
+		// Default values if we can't decode
+		imageRecord.Width = 0
+		imageRecord.Height = 0
+		imageRecord.AspectRatio = 0
+	}
+
+	_, err = images.CreateImage(imageRecord)
+	if err != nil {
+		slog.Error("MCP create image record error", "error", err)
+		// Image was uploaded but record failed - still return URL
+	}
+
+	imageURL := provider.GetURL(uniqueFilename)
+
+	return ToolCallResult{
+		Content: []ToolContent{{
+			Type: "text",
+			Text: fmt.Sprintf("Image uploaded successfully!\n\nFilename: %s\nURL: %s\n\nUse this URL in append_image_to_note to add it to a note.", uniqueFilename, imageURL),
+		}},
+	}
+}
+
+func handleAppendImageToNote(args map[string]interface{}) ToolCallResult {
+	noteIDFloat, ok := args["noteId"].(float64)
+	if !ok {
+		return ToolCallResult{
+			Content: []ToolContent{{Type: "text", Text: "Error: noteId parameter is required"}},
+			IsError: true,
+		}
+	}
+	noteID := int(noteIDFloat)
+
+	imagePath, ok := args["image_path"].(string)
+	if !ok || imagePath == "" {
+		return ToolCallResult{
+			Content: []ToolContent{{Type: "text", Text: "Error: image_path parameter is required"}},
+			IsError: true,
+		}
+	}
+
+	description := ""
+	if d, ok := args["description"].(string); ok {
+		description = d
+	}
+
+	// Get existing note
+	note, err := notes.GetNoteByID(noteID)
+	if err != nil {
+		slog.Error("MCP append image error - note not found", "error", err)
+		return ToolCallResult{
+			Content: []ToolContent{{Type: "text", Text: "Error: note not found"}},
+			IsError: true,
+		}
+	}
+
+	// Append image markdown to content
+	imageMarkdown := fmt.Sprintf("\n\n![%s](%s)", description, imagePath)
+	note.Content += imageMarkdown
+
+	// Update note
+	updatedNote, err := notes.UpdateNote(note)
+	if err != nil {
+		slog.Error("MCP append image error - update failed", "error", err)
+		return ToolCallResult{
+			Content: []ToolContent{{Type: "text", Text: "Error updating note: " + err.Error()}},
+			IsError: true,
+		}
+	}
+
+	return ToolCallResult{
+		Content: []ToolContent{{
+			Type: "text",
+			Text: fmt.Sprintf("Image appended to note successfully!\n\nNote: %s (ID: %d)\nImage: %s", updatedNote.Title, updatedNote.NoteID, imagePath),
+		}},
 	}
 }
 
