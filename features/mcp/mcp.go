@@ -8,6 +8,7 @@ import (
 	"strings"
 	"zen/commons/utils"
 	"zen/features/notes"
+	"zen/features/tags"
 )
 
 type Request struct {
@@ -240,6 +241,31 @@ func handleToolsList(req Request) *Response {
 				"required": []string{"noteId"},
 			},
 		},
+		{
+			Name:        "create_note",
+			Description: "Create a new note with title, content and optional tags",
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"title": map[string]interface{}{
+						"type":        "string",
+						"description": "The title of the note",
+					},
+					"content": map[string]interface{}{
+						"type":        "string",
+						"description": "The content of the note (supports markdown)",
+					},
+					"tags": map[string]interface{}{
+						"type":        "array",
+						"description": "Optional array of tag names to assign to the note",
+						"items": map[string]interface{}{
+							"type": "string",
+						},
+					},
+				},
+				"required": []string{"title", "content"},
+			},
+		},
 	}
 
 	result := ToolListResult{Tools: tools}
@@ -271,6 +297,8 @@ func handleToolsCall(req Request) *Response {
 		result = handleListNotes(params.Arguments)
 	case "get_note":
 		result = handleGetNote(params.Arguments)
+	case "create_note":
+		result = handleCreateNote(params.Arguments)
 	default:
 		return createErrorResponse(req.ID, -32601, "Unknown tool", params.Name)
 	}
@@ -436,6 +464,73 @@ func handleGetNote(args map[string]interface{}) ToolCallResult {
 
 	text.WriteString("\n---\n\n")
 	text.WriteString(note.Content)
+
+	return ToolCallResult{
+		Content: []ToolContent{{Type: "text", Text: text.String()}},
+	}
+}
+
+func handleCreateNote(args map[string]interface{}) ToolCallResult {
+	title, ok := args["title"].(string)
+	if !ok || title == "" {
+		return ToolCallResult{
+			Content: []ToolContent{{Type: "text", Text: "Error: title parameter is required"}},
+			IsError: true,
+		}
+	}
+
+	content, ok := args["content"].(string)
+	if !ok {
+		return ToolCallResult{
+			Content: []ToolContent{{Type: "text", Text: "Error: content parameter is required"}},
+			IsError: true,
+		}
+	}
+
+	note := notes.Note{
+		Title:   title,
+		Content: content,
+	}
+
+	if tagsArg, ok := args["tags"].([]interface{}); ok {
+		for _, t := range tagsArg {
+			if tagName, ok := t.(string); ok && tagName != "" {
+				note.Tags = append(note.Tags, tags.Tag{
+					TagID: -1,
+					Name:  tagName,
+				})
+			}
+		}
+	}
+
+	if note.Tags == nil {
+		note.Tags = []tags.Tag{}
+	}
+
+	createdNote, err := notes.CreateNote(note)
+	if err != nil {
+		slog.Error("MCP create note error", "error", err)
+		return ToolCallResult{
+			Content: []ToolContent{{Type: "text", Text: "Error creating note: " + err.Error()}},
+			IsError: true,
+		}
+	}
+
+	var text strings.Builder
+	text.WriteString(fmt.Sprintf("Note created successfully!\n\n"))
+	text.WriteString(fmt.Sprintf("**%s** (ID: %d)\n", createdNote.Title, createdNote.NoteID))
+	text.WriteString(fmt.Sprintf("Created: %s\n", createdNote.UpdatedAt.Format("2006-01-02 15:04:05")))
+
+	if len(createdNote.Tags) > 0 {
+		tagNames := make([]string, len(createdNote.Tags))
+		for i, tag := range createdNote.Tags {
+			tagNames[i] = tag.Name
+		}
+		text.WriteString(fmt.Sprintf("Tags: %s\n", strings.Join(tagNames, ", ")))
+	}
+
+	text.WriteString("\n---\n\n")
+	text.WriteString(createdNote.Content)
 
 	return ToolCallResult{
 		Content: []ToolContent{{Type: "text", Text: text.String()}},
