@@ -71,16 +71,8 @@ export default function StoragePane() {
           <input type="text" value={bucket} onInput={e => setBucket(e.target.value)} placeholder="my-bucket" />
         </div>
         <div className="storage-field">
-          <label>{t('storage.publicUrl')}</label>
-          <input type="text" value={publicUrl} onInput={e => setPublicUrl(e.target.value)} placeholder={t('storage.publicUrl.placeholder')} />
-        </div>
-        <div className="storage-field">
           <label>{t('storage.attachmentsBucket')}</label>
           <input type="text" value={attachmentsBucket} onInput={e => setAttachmentsBucket(e.target.value)} placeholder={t('storage.attachmentsBucket.placeholder')} />
-        </div>
-        <div className="storage-field">
-          <label>{t('storage.attachmentsPublicUrl')}</label>
-          <input type="text" value={attachmentsPublicUrl} onInput={e => setAttachmentsPublicUrl(e.target.value)} placeholder={t('storage.attachmentsPublicUrl.placeholder')} />
         </div>
         <div className="storage-field">
           <label>{t('storage.accessKey')}</label>

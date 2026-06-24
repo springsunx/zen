@@ -51,12 +51,18 @@ function NotesPageContent({ noteId }) {
     imagesTotal,
     imagesPageNumber,
     isImagesLoading,
+    attachments,
+    attachmentsTotal,
+    attachmentsPageNumber,
+    isAttachmentsLoading,
     refreshNotes,
     refreshImages,
+    refreshAttachments,
     handleNoteChange,
     handlePinToggle,
     handleLoadMoreNotes,
     handleLoadMoreImages,
+    handleLoadMoreAttachments,
     resetPagination
   } = useNotes();
 
@@ -88,9 +94,10 @@ function NotesPageContent({ noteId }) {
   useEffect(() => {
     refreshNotes(selectedTagId, selectedFocusId, isArchivesPage, isTrashPage, 1, isUntaggedPage);
     refreshImages(selectedTagId, selectedFocusId);
+    refreshAttachments(1, selectedTagId, selectedFocusId);
     refreshTags(selectedFocusId, isArchivesPage, isTrashPage);
     refreshFocusModes();
-  }, [refreshNotes, refreshImages, refreshTags, refreshFocusModes]);
+  }, [refreshNotes, refreshImages, refreshAttachments, refreshTags, refreshFocusModes]);
 
   useEffect(() => {
     // Reset to avoid showing incorrect notes
@@ -98,12 +105,13 @@ function NotesPageContent({ noteId }) {
 
     refreshNotes(selectedTagId, selectedFocusId, isArchivesPage, isTrashPage, 1, isUntaggedPage);
     refreshImages(selectedTagId, selectedFocusId);
+    refreshAttachments(1, selectedTagId, selectedFocusId);
     refreshTags(selectedFocusId, isArchivesPage, isTrashPage);
 
     // Reload preference
     const savedView = ViewPreferences.getPreference(selectedFocusId, selectedTagId, isArchivesPage, isTrashPage);
     setSelectedView(savedView);
-  }, [selectedTagId, selectedFocusId, isArchivesPage, isTrashPage, isUntaggedPage, resetPagination, refreshNotes, refreshImages, refreshTags]);
+  }, [selectedTagId, selectedFocusId, isArchivesPage, isTrashPage, isUntaggedPage, resetPagination, refreshNotes, refreshImages, refreshAttachments, refreshTags]);
 
   useEffect(() => {
     refreshNotes(selectedTagId, selectedFocusId, isArchivesPage, isTrashPage, notesPageNumber, isUntaggedPage);
@@ -112,6 +120,10 @@ function NotesPageContent({ noteId }) {
   useEffect(() => {
     refreshImages(selectedTagId, selectedFocusId, imagesPageNumber);
   }, [imagesPageNumber, selectedTagId, selectedFocusId, refreshImages]);
+
+  useEffect(() => {
+    refreshAttachments(attachmentsPageNumber, selectedTagId, selectedFocusId);
+  }, [attachmentsPageNumber, selectedTagId, selectedFocusId, refreshAttachments]);
 
   // Listen for notes:refresh events (e.g., after tag rename in TagDetailModal)
   useEffect(() => {
@@ -123,6 +135,15 @@ function NotesPageContent({ noteId }) {
     window.addEventListener('notes:refresh', handleRefresh);
     return () => window.removeEventListener('notes:refresh', handleRefresh);
   }, [handleNoteChange, refreshTags, refreshFocusModes, selectedFocusId, isArchivesPage, isTrashPage]);
+
+  // Listen for attachment refresh events (e.g., after deleting an attachment)
+  useEffect(() => {
+    function handleAttachmentRefresh() {
+      refreshAttachments(1, selectedTagId, selectedFocusId);
+    }
+    window.addEventListener('attachments:refresh', handleAttachmentRefresh);
+    return () => window.removeEventListener('attachments:refresh', handleAttachmentRefresh);
+  }, [refreshAttachments]);
 
   // Listen for view change commands from the command palette
   useEffect(() => {
@@ -229,7 +250,7 @@ function NotesPageContent({ noteId }) {
   if (selectedView === "list") {
     listClassName = "notes-list-container"
     editorClassName = "notes-editor-container";
-  } else if (selectedView === "card" || selectedView === "gallery") {
+  } else if (selectedView === "card" || selectedView === "gallery" || selectedView === "attachments") {
     listClassName = "notes-list-container grid";
     if (noteId === undefined || !isMobile()) {
       editorClassName = "notes-editor-container is-hidden";
@@ -261,12 +282,16 @@ function NotesPageContent({ noteId }) {
             images={images}
             imagesTotal={imagesTotal}
             isImagesLoading={isImagesLoading}
+            attachments={attachments}
+            attachmentsTotal={attachmentsTotal}
+            isAttachmentsLoading={isAttachmentsLoading}
             view={selectedView}
             onViewChange={handleViewChange}
             isGlobalView={isGlobalView}
             onGlobalViewToggle={handleGlobalViewToggle}
             onLoadMoreClick={handleLoadMoreNotes}
             onLoadMoreImagesClick={handleLoadMoreImages}
+            onLoadMoreAttachmentsClick={handleLoadMoreAttachments}
             onSidebarToggle={toggleSidebar}
             isMultiSelect={isMultiSelect}
             selectedIds={selectedIds}

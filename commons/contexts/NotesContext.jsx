@@ -15,6 +15,10 @@ export function NotesProvider({ children }) {
   const [imagesTotal, setImagesTotal] = useState(0);
   const [imagesPageNumber, setImagesPageNumber] = useState(1);
   const [isImagesLoading, setIsImagesLoading] = useState(true);
+  const [attachments, setAttachments] = useState([]);
+  const [attachmentsTotal, setAttachmentsTotal] = useState(0);
+  const [attachmentsPageNumber, setAttachmentsPageNumber] = useState(1);
+  const [isAttachmentsLoading, setIsAttachmentsLoading] = useState(false);
 
   const searchParams = useSearchParams();
 
@@ -99,6 +103,29 @@ export function NotesProvider({ children }) {
     setImagesPageNumber(prev => prev + 1);
   }, []);
 
+  const refreshAttachments = useCallback((pageNumber = 1, tagId = null, focusId = null) => {
+    setIsAttachmentsLoading(true);
+    return ApiClient.getAttachments(pageNumber, tagId, focusId)
+      .then(res => {
+        if (pageNumber > 1) {
+          setAttachments(prev => [...prev, ...res.attachments]);
+        } else {
+          setAttachments(res.attachments || []);
+        }
+        setAttachmentsTotal(res.total);
+      })
+      .catch(error => {
+        console.error('Error loading attachments:', error);
+      })
+      .finally(() => {
+        setIsAttachmentsLoading(false);
+      });
+  }, []);
+
+  const handleLoadMoreAttachments = useCallback(() => {
+    setAttachmentsPageNumber(prev => prev + 1);
+  }, []);
+
   const patchNote = useCallback((noteId, updates) => {
     setNotes(prevNotes =>
       prevNotes.map(note =>
@@ -112,6 +139,8 @@ export function NotesProvider({ children }) {
     setNotes([]);
     setImagesPageNumber(1);
     setImages([]);
+    setAttachmentsPageNumber(1);
+    setAttachments([]);
     setSelectedNote(null);
   }, []);
 
@@ -133,13 +162,21 @@ export function NotesProvider({ children }) {
       setImagesPageNumber,
       isImagesLoading,
 
+      // Attachments state
+      attachments,
+      attachmentsTotal,
+      attachmentsPageNumber,
+      isAttachmentsLoading,
+
       // Functions
       refreshNotes,
       refreshImages,
+      refreshAttachments,
       handleNoteChange,
       handlePinToggle,
       handleLoadMoreNotes,
       handleLoadMoreImages,
+      handleLoadMoreAttachments,
       patchNote,
       resetPagination
     }}>

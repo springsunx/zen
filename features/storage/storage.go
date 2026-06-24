@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,24 +14,28 @@ import (
 )
 
 type StorageConfig struct {
-	ConfigID              int    `json:"configId"`
-	Provider              string `json:"provider"`
-	Endpoint              string `json:"endpoint"`
-	Bucket                string `json:"bucket"`
-	AccessKey             string `json:"accessKey"`
-	SecretKey             string `json:"secretKey"`
-	Region                string `json:"region"`
-	PublicURL             string `json:"publicUrl"`
-	UseSSL                bool   `json:"useSSL"`
-	AttachmentsBucket     string `json:"attachmentsBucket"`
-	AttachmentsPublicURL  string `json:"attachmentsPublicUrl"`
+	ConfigID             int    `json:"configId"`
+	Provider             string `json:"provider"`
+	Endpoint             string `json:"endpoint"`
+	Bucket               string `json:"bucket"`
+	AccessKey            string `json:"accessKey"`
+	SecretKey            string `json:"secretKey"`
+	Region               string `json:"region"`
+	PublicURL            string `json:"publicUrl"`
+	UseSSL               bool   `json:"useSSL"`
+	AttachmentsBucket    string `json:"attachmentsBucket"`
+	AttachmentsPublicURL string `json:"attachmentsPublicUrl"`
 }
+
+// DefaultPresignedExpiry is the default lifetime for presigned URLs.
+const DefaultPresignedExpiry = 15 * time.Minute
 
 // Provider is the interface for file storage operations.
 type Provider interface {
-	Upload(filename string, reader io.Reader, size int64, contentType string) error
+	Upload(filename string, reader io.Reader, size int64, contentType string, metadata map[string]string) error
 	Delete(filename string) error
 	GetURL(filename string) string
+	GetPresignedURL(filename string, expiry time.Duration, contentDisposition string) string
 }
 
 // ── Local Provider ──
@@ -43,7 +48,7 @@ func NewLocalProvider(folder string) *LocalProvider {
 	return &LocalProvider{folder: folder}
 }
 
-func (p *LocalProvider) Upload(filename string, reader io.Reader, size int64, contentType string) error {
+func (p *LocalProvider) Upload(filename string, reader io.Reader, size int64, contentType string, metadata map[string]string) error {
 	dstPath := filepath.Join(p.folder, filename)
 	dst, err := os.Create(dstPath)
 	if err != nil {
@@ -68,6 +73,10 @@ func (p *LocalProvider) GetURL(filename string) string {
 	return "/images/" + filename
 }
 
+func (p *LocalProvider) GetPresignedURL(filename string, expiry time.Duration, contentDisposition string) string {
+	return "/images/" + filename
+}
+
 // ── Local Attachment Provider ──
 
 type LocalAttachmentProvider struct {
@@ -78,7 +87,7 @@ func NewLocalAttachmentProvider(folder string) *LocalAttachmentProvider {
 	return &LocalAttachmentProvider{folder: folder}
 }
 
-func (p *LocalAttachmentProvider) Upload(filename string, reader io.Reader, size int64, contentType string) error {
+func (p *LocalAttachmentProvider) Upload(filename string, reader io.Reader, size int64, contentType string, metadata map[string]string) error {
 	dstPath := filepath.Join(p.folder, filename)
 	dst, err := os.Create(dstPath)
 	if err != nil {
@@ -103,12 +112,15 @@ func (p *LocalAttachmentProvider) GetURL(filename string) string {
 	return "/attachments/" + filename
 }
 
+func (p *LocalAttachmentProvider) GetPresignedURL(filename string, expiry time.Duration, contentDisposition string) string {
+	return "/attachments/" + filename
+}
+
 // ── S3 Provider ──
 
 type S3Provider struct {
-	client    *S3Client
-	bucket    string
-	publicURL string
+	client *S3Client
+	bucket string
 }
 
 func newS3ClientFromConfig(config StorageConfig) (*S3Client, string, error) {
@@ -120,20 +132,8 @@ func newS3ClientFromConfig(config StorageConfig) (*S3Client, string, error) {
 	return client, endpoint, nil
 }
 
-func buildPublicURL(endpoint string, useSSL bool, bucket string, overrideURL string) string {
-	publicURL := overrideURL
-	if publicURL == "" {
-		scheme := "https"
-		if !useSSL {
-			scheme = "http"
-		}
-		publicURL = fmt.Sprintf("%s://%s/%s", scheme, endpoint, bucket)
-	}
-	return strings.TrimSuffix(publicURL, "/")
-}
-
 func NewS3Provider(config StorageConfig) (*S3Provider, error) {
-	client, endpoint, err := newS3ClientFromConfig(config)
+	client, _, err := newS3ClientFromConfig(config)
 	if err != nil {
 		return nil, err
 	}
@@ -148,17 +148,14 @@ func NewS3Provider(config StorageConfig) (*S3Provider, error) {
 		return nil, fmt.Errorf("bucket '%s' does not exist", config.Bucket)
 	}
 
-	publicURL := buildPublicURL(endpoint, config.UseSSL, config.Bucket, config.PublicURL)
-
 	return &S3Provider{
-		client:    client,
-		bucket:    config.Bucket,
-		publicURL: publicURL,
+		client: client,
+		bucket: config.Bucket,
 	}, nil
 }
 
 func NewS3AttachmentProvider(config StorageConfig) (*S3Provider, error) {
-	client, endpoint, err := newS3ClientFromConfig(config)
+	client, _, err := newS3ClientFromConfig(config)
 	if err != nil {
 		return nil, err
 	}
@@ -178,18 +175,15 @@ func NewS3AttachmentProvider(config StorageConfig) (*S3Provider, error) {
 		return nil, fmt.Errorf("attachments bucket '%s' does not exist", bucket)
 	}
 
-	publicURL := buildPublicURL(endpoint, config.UseSSL, bucket, config.AttachmentsPublicURL)
-
 	return &S3Provider{
-		client:    client,
-		bucket:    bucket,
-		publicURL: publicURL,
+		client: client,
+		bucket: bucket,
 	}, nil
 }
 
-func (p *S3Provider) Upload(filename string, reader io.Reader, size int64, contentType string) error {
+func (p *S3Provider) Upload(filename string, reader io.Reader, size int64, contentType string, metadata map[string]string) error {
 	ctx := context.Background()
-	err := p.client.PutObject(ctx, p.bucket, filename, reader, size, contentType)
+	err := p.client.PutObject(ctx, p.bucket, filename, reader, size, contentType, metadata)
 	if err != nil {
 		return fmt.Errorf("error uploading to S3: %w", err)
 	}
@@ -206,7 +200,21 @@ func (p *S3Provider) Delete(filename string) error {
 }
 
 func (p *S3Provider) GetURL(filename string) string {
-	return p.publicURL + "/" + filename
+	return p.GetPresignedURL(filename, DefaultPresignedExpiry, "")
+}
+
+func (p *S3Provider) GetPresignedURL(filename string, expiry time.Duration, contentDisposition string) string {
+	url, err := p.client.PresignGetObject(p.bucket, filename, expiry, contentDisposition)
+	if err != nil {
+		slog.Error("error generating presigned URL", "filename", filename, "error", err)
+		return ""
+	}
+	return url
+}
+
+// DownloadObject returns an io.ReadCloser for reading from S3.
+func (p *S3Provider) DownloadObject(filename string) (io.ReadCloser, error) {
+	return p.client.GetObject(context.Background(), p.bucket, filename)
 }
 
 // ── Config DB Operations ──
@@ -219,7 +227,6 @@ func GetConfig() (StorageConfig, error) {
 		FROM storage_config LIMIT 1
 	`).Scan(&c.ConfigID, &c.Provider, &c.Endpoint, &c.Bucket, &c.AccessKey, &c.SecretKey, &c.Region, &c.PublicURL, &useSSL, &c.AttachmentsBucket, &c.AttachmentsPublicURL)
 	if err != nil {
-		// Return default local config if no row exists
 		return StorageConfig{Provider: "local"}, nil
 	}
 	c.UseSSL = useSSL == 1
@@ -227,7 +234,6 @@ func GetConfig() (StorageConfig, error) {
 }
 
 func SaveConfig(c StorageConfig) error {
-	// Delete existing config (single-row table)
 	_, err := sqlite.DB.Exec("DELETE FROM storage_config")
 	if err != nil {
 		return fmt.Errorf("error clearing storage config: %w", err)
@@ -322,30 +328,36 @@ func TestS3Connection(config StorageConfig) error {
 		return fmt.Errorf("bucket '%s' does not exist", config.Bucket)
 	}
 
-	// Try a test upload
 	testKey := ".zen-test-" + fmt.Sprintf("%d", time.Now().UnixNano())
 	err = client.PutObject(ctx, config.Bucket, testKey,
-		strings.NewReader("test"), 4, "text/plain")
+		strings.NewReader("test"), 4, "text/plain", nil)
 	if err != nil {
 		return fmt.Errorf("upload test failed: %w", err)
 	}
 
-	// Clean up test object
 	_ = client.RemoveObject(ctx, config.Bucket, testKey)
 
 	return nil
 }
 
-// GetImageURL returns the public URL for an image based on current storage config.
-func GetImageURL(filename string) string {
-	provider := GetProvider()
-	return provider.GetURL(filename)
+// GetImagePresignedURL returns a presigned URL for an image (inline display).
+func GetImagePresignedURL(filename string) string {
+	return GetProvider().GetPresignedURL(filename, DefaultPresignedExpiry, "")
 }
 
-// GetAttachmentURL returns the public URL for an attachment based on current storage config.
+// GetAttachmentPresignedURL returns a presigned URL for an attachment with download filename.
+func GetAttachmentPresignedURL(filename string, originalName string) string {
+	return GetAttachmentProvider().GetPresignedURL(filename, DefaultPresignedExpiry, ContentDisposition(originalName))
+}
+
+// GetImageURL returns a URL for an image (presigned in S3 mode, local path otherwise).
+func GetImageURL(filename string) string {
+	return GetImagePresignedURL(filename)
+}
+
+// GetAttachmentURL returns a URL for an attachment (presigned in S3 mode, local path otherwise).
 func GetAttachmentURL(filename string) string {
-	provider := GetAttachmentProvider()
-	return provider.GetURL(filename)
+	return GetAttachmentPresignedURL(filename, "")
 }
 
 // IsS3Enabled checks if the current storage provider is S3.
@@ -355,4 +367,27 @@ func IsS3Enabled() bool {
 		return false
 	}
 	return config.Provider == "s3"
+}
+
+// ContentDisposition generates a Content-Disposition header value for downloading a file.
+// Uses RFC 5987 encoding for non-ASCII filenames.
+func ContentDisposition(originalName string) string {
+	if originalName == "" {
+		return "attachment"
+	}
+	if isASCII(originalName) {
+		return fmt.Sprintf(`attachment; filename="%s"`, originalName)
+	}
+	// RFC 5987: filename*=charset'language'value
+	encoded := url.PathEscape(originalName)
+	return fmt.Sprintf("attachment; filename*=UTF-8''%s", encoded)
+}
+
+func isASCII(s string) bool {
+	for _, r := range s {
+		if r > 127 {
+			return false
+		}
+	}
+	return true
 }

@@ -1,11 +1,14 @@
 import { h } from "../../assets/preact.esm.js"
-import { ListViewIcon, CardViewIcon, GalleryViewIcon, BrushCleaningIcon, MinusIcon, PlusIcon } from "../../commons/components/Icon.jsx";
+import { ListViewIcon, CardViewIcon, GalleryViewIcon, AttachmentsIcon, BrushCleaningIcon, MinusIcon, PlusIcon } from "../../commons/components/Icon.jsx";
 import useSearchParams from "../../commons/components/useSearchParams.jsx";
 import { openModal } from "../../commons/components/Modal.jsx";
+import { showToast } from "../../commons/components/Toast.jsx";
 import { AppProvider, useAppContext } from '../../commons/contexts/AppContext.jsx';
 import { NotesProvider, useNotes } from "../../commons/contexts/NotesContext.jsx";
 import { HamburgerIcon } from '../../commons/components/Icon.jsx';
 import ButtonGroup from '../../commons/components/ButtonGroup.jsx';
+import Button from '../../commons/components/Button.jsx';
+import ApiClient from "../../commons/http/ApiClient.js";
 import navigateTo from "../../commons/utils/navigateTo.js";
 import isMobile from "../../commons/utils/isMobile.js";
 import TrashClearModal from "./TrashClearModal.jsx"
@@ -86,6 +89,11 @@ export default function NotesListToolbar({ onViewChange, view, cardSize, onCardS
         icon: GalleryViewIcon,
         onClick: () => onViewChange("gallery"),
         title: t('notes.view.gallery')
+      },
+      {
+        icon: AttachmentsIcon,
+        onClick: () => onViewChange("attachments"),
+        title: t('notes.view.attachments')
       }
     ];
   }
@@ -149,6 +157,34 @@ function Toolbar({ actions, listName, className, view, cardSize = 240, onCardSiz
             data-tooltip={t('notes.cardSize.tooltip')}
           />
           <span className="card-size-icon" role="button" title={t('notes.cardSize.increase')} aria-label={t('notes.cardSize.increase')} data-tooltip={t('notes.cardSize.increase')} onClick={inc}><PlusIcon /></span>
+        </div>
+      )}
+      {view === 'gallery' && isMobile() !== true && (
+        <div className="toolbar-cleanup">
+          <Button onClick={async () => {
+            try {
+              const res = await ApiClient.cleanupImages();
+              showToast(t('images.cleanup.toast', { missing: res?.RemovedMissing||0, orphans: res?.RemovedOrphans||0, registered: res?.Registered||0, linksRebuilt: res?.LinksRebuilt||0 }));
+              window.dispatchEvent(new CustomEvent('attachments:refresh'));
+            } catch (e) {
+              console.error('Cleanup images failed:', e);
+              showToast(t('images.cleanup.fail'));
+            }
+          }}>{t('images.cleanup.button')}</Button>
+        </div>
+      )}
+      {view === 'attachments' && isMobile() !== true && (
+        <div className="toolbar-cleanup">
+          <Button onClick={async () => {
+            try {
+              const res = await ApiClient.cleanupAttachments();
+              showToast(t('attachments.cleanup.toast', { orphans: res?.removedOrphans||0, linksRebuilt: res?.linksRebuilt||0 }));
+              window.dispatchEvent(new CustomEvent('attachments:refresh'));
+            } catch (e) {
+              console.error('Cleanup attachments failed:', e);
+              showToast(t('attachments.cleanup.fail'));
+            }
+          }}>{t('attachments.cleanup.button')}</Button>
         </div>
       )}
     </div>

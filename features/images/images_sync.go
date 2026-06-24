@@ -12,9 +12,15 @@ import (
 	"strings"
 	"zen/commons/queue"
 	"zen/features/notes"
+	"zen/features/storage"
 )
 
 func SyncImagesFromDisk() error {
+	if storage.IsS3Enabled() {
+		slog.Info("skipping image sync: S3 mode enabled")
+		return nil
+	}
+
 	slog.Info("starting image sync job")
 
 	diskImages, err := scanImagesDirectory()

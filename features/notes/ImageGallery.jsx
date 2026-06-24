@@ -1,4 +1,4 @@
-import { h, useState } from "../../assets/preact.esm.js";
+import { h, useState, useMemo } from "../../assets/preact.esm.js";
 import ApiClient from "../../commons/http/ApiClient.js";
 import { t } from "../../commons/i18n/index.js";
 
@@ -12,6 +12,35 @@ export default function ImageGallery({ images = [] }) {
   const [itemsState, setItemsState] = useState(images);
   const [openIndex, setOpenIndex] = useState(null);
   const urls = itemsState.map(img => `/images/${img.filename}`);
+
+  // Split into local and S3 groups
+  const { localImages, s3Images } = useMemo(() => {
+    const local = [];
+    const s3 = [];
+    for (const img of itemsState) {
+      if (img.storage === "s3") {
+        s3.push(img);
+      } else {
+        local.push(img);
+      }
+    }
+    return { localImages: local, s3Images: s3 };
+  }, [itemsState]);
+
+  const hasBothGroups = localImages.length > 0 && s3Images.length > 0;
+
+  function renderTile(img, globalIndex) {
+    return (
+      <div className="image-gallery-tile" key={img.filename} onClick={() => setOpenIndex(globalIndex)}>
+        <div className="tile-actions">
+          <div className="tile-action" title={t('common.delete')} aria-label={t('common.delete')} data-tooltip={t('common.delete')} onClick={(e) => handleDelete(e, globalIndex)}>
+            <svg viewBox="0 0 24 24" width="16" height="16"><path d="M3 6h18" stroke="white" stroke-width="2"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" stroke="white" stroke-width="2"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" stroke="white" stroke-width="2"/><line x1="10" x2="10" y1="11" y2="17" stroke="white" stroke-width="2"/><line x1="14" x2="14" y1="11" y2="17" stroke="white" stroke-width="2"/></svg>
+          </div>
+        </div>
+        <img src={`/images/${img.filename}`} loading="lazy" alt="" />
+      </div>
+    );
+  }
 
   async function handleDelete(e, idx) {
     e.stopPropagation();
@@ -44,20 +73,20 @@ export default function ImageGallery({ images = [] }) {
     }
   }
 
-  const items = itemsState.map((img, index) => (
-    <div className="image-gallery-tile" key={img.filename} onClick={() => setOpenIndex(index)}>
-      <div className="tile-actions">
-        <div className="tile-action" title={t('common.delete')} aria-label={t('common.delete')} data-tooltip={t('common.delete')} onClick={(e) => handleDelete(e, index)}>
-          <svg viewBox="0 0 24 24" width="16" height="16"><path d="M3 6h18" stroke="white" stroke-width="2"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" stroke="white" stroke-width="2"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" stroke="white" stroke-width="2"/><line x1="10" x2="10" y1="11" y2="17" stroke="white" stroke-width="2"/><line x1="14" x2="14" y1="11" y2="17" stroke="white" stroke-width="2"/></svg>
-        </div>
-      </div>
-      <img src={`/images/${img.filename}`} loading="lazy" alt="" />
-    </div>
-  ));
+  // Build the sorted list: local first, S3 second
+  const sortedImages = [...localImages, ...s3Images];
+  const localCount = localImages.length;
 
   return (
     <div className="image-gallery image-gallery-uniform">
-      {items}
+      {hasBothGroups && localImages.length > 0 && (
+        <div className="gallery-section-header">{t('gallery.section.local')}</div>
+      )}
+      {localImages.map((img, i) => renderTile(img, i))}
+      {hasBothGroups && s3Images.length > 0 && (
+        <div className="gallery-section-header">{t('gallery.section.s3')}</div>
+      )}
+      {s3Images.map((img, i) => renderTile(img, localCount + i))}
       {openIndex !== null && (
         <GalleryLightbox images={urls} startIndex={openIndex} onClose={() => setOpenIndex(null)} />
       )}

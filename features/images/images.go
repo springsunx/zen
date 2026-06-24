@@ -27,16 +27,34 @@ type ImagesResponseEnvelope struct {
 	Total  int     `json:"total"`
 }
 
+type ImageNoteRef struct {
+	NoteID int    `json:"noteId"`
+	Title  string `json:"title"`
+}
+
+type ImageTagBrief struct {
+	TagID int    `json:"tagId"`
+	Name  string `json:"name"`
+	Color string `json:"color"`
+}
+
+type ImageLinkedNote struct {
+	ImageNoteRef
+	Tags []ImageTagBrief `json:"tags"`
+}
+
 type Image struct {
-	Filename    string    `json:"filename"`
-	URL         string    `json:"url"`
-	Width       int       `json:"width"`
-	Height      int       `json:"height"`
-	Format      string    `json:"format"`
-	AspectRatio float64   `json:"aspectRatio"`
-	FileSize    int64     `json:"fileSize"`
-	Caption     *string   `json:"caption"`
-	CreatedAt   time.Time `json:"createdAt"`
+	Filename    string           `json:"filename"`
+	URL         string           `json:"url"`
+	Width       int              `json:"width"`
+	Height      int              `json:"height"`
+	Format      string           `json:"format"`
+	AspectRatio float64          `json:"aspectRatio"`
+	FileSize    int64            `json:"fileSize"`
+	Caption     *string          `json:"caption"`
+	Storage     string           `json:"storage"`
+	LinkedNotes []ImageLinkedNote `json:"linkedNotes"`
+	CreatedAt   time.Time        `json:"createdAt"`
 }
 
 type ImageRecord struct {
@@ -166,22 +184,10 @@ func HandleUploadImage(w http.ResponseWriter, r *http.Request) {
 		contentType = "application/octet-stream"
 	}
 
-	if err := provider.Upload(filename, file, handler.Size, contentType); err != nil {
+	if err := provider.Upload(filename, file, handler.Size, contentType, nil); err != nil {
 		err = fmt.Errorf("error uploading image: %w", err)
 		utils.SendErrorResponse(w, "IMAGE_UPLOAD_FAILED", "Error uploading image.", err, http.StatusInternalServerError)
 		return
-	}
-
-	// For local provider, also sync to disk for backward compatibility
-	if storage.IsS3Enabled() {
-		// Still save a local copy for thumbnails/intelligence processing
-		localPath := filepath.Join("images", filename)
-		if _, seekErr := file.Seek(0, 0); seekErr == nil {
-			if dst, createErr := os.Create(localPath); createErr == nil {
-				io.Copy(dst, file)
-				dst.Close()
-			}
-		}
 	}
 
 	imageRecord := ImageRecord{
@@ -272,10 +278,6 @@ func HandleDeleteImage(w http.ResponseWriter, r *http.Request) {
         utils.SendErrorResponse(w, "IMAGE_DELETE_FAILED", "Error deleting image file", err, http.StatusInternalServerError)
         return
     }
-
-    // Also try to remove local copy (for S3 mode where we keep local copies)
-    imgPath := filepath.Join("images", filename)
-    os.Remove(imgPath) // ignore error
 
     // Delete DB record
     if err := DeleteImage(filename); err != nil {

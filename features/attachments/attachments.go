@@ -4,10 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
+	"zen/commons/sqlite"
 	"zen/commons/utils"
 	"zen/features/storage"
 )
@@ -37,20 +38,9 @@ func HandleUploadAttachment(w http.ResponseWriter, r *http.Request) {
 	filename := fmt.Sprintf("%d%s", time.Now().UnixNano(), ext)
 
 	provider := storage.GetAttachmentProvider()
-	if err := provider.Upload(filename, file, handler.Size, contentType); err != nil {
+	if err := provider.Upload(filename, file, handler.Size, contentType, nil); err != nil {
 		utils.SendErrorResponse(w, "ATTACHMENT_UPLOAD_FAILED", "Error uploading attachment.", err, http.StatusInternalServerError)
 		return
-	}
-
-	// For S3 mode, also save a local copy
-	if storage.IsS3Enabled() {
-		localPath := filepath.Join("attachments", filename)
-		if _, seekErr := file.Seek(0, 0); seekErr == nil {
-			if dst, createErr := os.Create(localPath); createErr == nil {
-				_, _ = fmt.Fprint(dst, "")
-				dst.Close()
-			}
-		}
 	}
 
 	// If noteId is provided, link attachment to note
@@ -98,4 +88,102 @@ func HandleDeleteAttachment(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+type AttachmentsResponse struct {
+	Attachments []Attachment `json:"attachments"`
+	Total       int          `json:"total"`
+}
+
+func HandleGetAttachments(w http.ResponseWriter, r *http.Request) {
+	page := 1
+	if p := r.URL.Query().Get("page"); p != "" {
+		if parsed, err := fmt.Sscanf(p, "%d", &page); parsed != 1 || err != nil || page < 1 {
+			page = 1
+		}
+	}
+
+	tagID := 0
+	if t := r.URL.Query().Get("tagId"); t != "" {
+		fmt.Sscanf(t, "%d", &tagID)
+	}
+	focusID := 0
+	if f := r.URL.Query().Get("focusId"); f != "" {
+		fmt.Sscanf(f, "%d", &focusID)
+	}
+
+	attachments, total, err := GetAllAttachmentsPaginated(page, tagID, focusID)
+	if err != nil {
+		utils.SendErrorResponse(w, "ATTACHMENTS_FETCH_FAILED", "Error fetching attachments.", err, http.StatusInternalServerError)
+		return
+	}
+	if attachments == nil {
+		attachments = []Attachment{}
+	}
+
+	resp := AttachmentsResponse{
+		Attachments: attachments,
+		Total:       total,
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}
+
+type CleanupResult struct {
+	LinksRebuilt   int      `json:"linksRebuilt"`
+	RemovedOrphans int      `json:"removedOrphans"`
+	OrphanFiles    []string `json:"orphanFiles"`
+}
+
+func HandleCleanupAttachments(w http.ResponseWriter, r *http.Request) {
+	var res CleanupResult
+	attachmentRegex := regexp.MustCompile(`\[.*?\]\(/attachments/([^)]+)\)`)
+
+	// Get all note contents
+	type noteContent struct {
+		NoteID  int
+		Content string
+	}
+	var allNotes []noteContent
+	rows, err := sqlite.DB.Query("SELECT note_id, content FROM notes WHERE deleted_at IS NULL")
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var nc noteContent
+			if err := rows.Scan(&nc.NoteID, &nc.Content); err != nil {
+				continue
+			}
+			allNotes = append(allNotes, nc)
+		}
+	}
+
+	// Clear all existing note_attachments links, then rebuild from content
+	_, _ = sqlite.DB.Exec("DELETE FROM note_attachments")
+
+	for _, note := range allNotes {
+		matches := attachmentRegex.FindAllStringSubmatch(note.Content, -1)
+		for _, m := range matches {
+			if len(m) > 1 {
+				filename := m[1]
+				if LinkAttachmentToNote(note.NoteID, filename) == nil {
+					res.LinksRebuilt++
+				}
+			}
+		}
+	}
+
+	// Remove orphaned attachments (no links in note_attachments after rebuild)
+	orphans, err := GetOrphanedAttachments()
+	if err == nil {
+		provider := storage.GetAttachmentProvider()
+		for _, att := range orphans {
+			_ = provider.Delete(att.Filename)
+			_ = DeleteAttachment(att.Filename)
+			res.RemovedOrphans++
+			res.OrphanFiles = append(res.OrphanFiles, att.Filename)
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(res)
 }

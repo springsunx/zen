@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -67,8 +68,8 @@ func (c *S3Client) BucketExists(ctx context.Context, bucket string) (bool, error
 	return false, fmt.Errorf("unexpected status %d", resp.StatusCode)
 }
 
-// PutObject uploads data to the given bucket/key.
-func (c *S3Client) PutObject(ctx context.Context, bucket, key string, body io.Reader, size int64, contentType string) error {
+// PutObject uploads data to the given bucket/key with optional metadata.
+func (c *S3Client) PutObject(ctx context.Context, bucket, key string, body io.Reader, size int64, contentType string, metadata map[string]string) error {
 	data, err := io.ReadAll(body)
 	if err != nil {
 		return fmt.Errorf("reading body: %w", err)
@@ -81,6 +82,9 @@ func (c *S3Client) PutObject(ctx context.Context, bucket, key string, body io.Re
 	}
 	if contentType != "" {
 		req.Header.Set("Content-Type", contentType)
+	}
+	for k, v := range metadata {
+		req.Header.Set("x-amz-meta-"+k, v)
 	}
 	req.ContentLength = int64(len(data))
 
@@ -117,11 +121,89 @@ func (c *S3Client) RemoveObject(ctx context.Context, bucket, key string) error {
 	defer resp.Body.Close()
 	io.Copy(io.Discard, resp.Body)
 
-	// S3 returns 204 No Content on successful delete
 	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("DELETE failed with status %d", resp.StatusCode)
 	}
 	return nil
+}
+
+// GetObject downloads the object at the given bucket/key.
+func (c *S3Client) GetObject(ctx context.Context, bucket, key string) (io.ReadCloser, error) {
+	url := fmt.Sprintf("%s://%s/%s/%s", c.scheme(), c.endpoint, bucket, key)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	if err := c.sign(req, nil); err != nil {
+		return nil, err
+	}
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		resp.Body.Close()
+		return nil, fmt.Errorf("GET failed with status %d", resp.StatusCode)
+	}
+	return resp.Body, nil
+}
+
+// PresignGetObject generates a presigned URL for downloading an object.
+// contentDisposition is optional (e.g. `attachment; filename="report.pdf"`).
+func (c *S3Client) PresignGetObject(bucket, key string, expiry time.Duration, contentDisposition string) (string, error) {
+	now := time.Now().UTC()
+	dateStr := now.Format("20060102T150405Z")
+	dateShort := now.Format("20060102")
+	expirySec := int(expiry.Seconds())
+
+	credentialScope := dateShort + "/" + c.region + "/s3/aws4_request"
+
+	canonicalURI := "/" + bucket + "/" + key
+	canonicalURI = encodePath(canonicalURI)
+
+	// Build query parameters sorted alphabetically by encoded name
+	params := []string{
+		"X-Amz-Algorithm=" + queryEscape("AWS4-HMAC-SHA256"),
+		"X-Amz-Credential=" + queryEscape(c.accessKey+"/"+credentialScope),
+		"X-Amz-Date=" + queryEscape(dateStr),
+		"X-Amz-Expires=" + queryEscape(fmt.Sprintf("%d", expirySec)),
+		"X-Amz-SignedHeaders=" + queryEscape("host"),
+	}
+	if contentDisposition != "" {
+		// "response-content-disposition" sorts after "X-Amz-*" in ASCII (r > X)
+		params = append(params, "response-content-disposition="+queryEscape(contentDisposition))
+	}
+	canonicalQueryString := strings.Join(params, "&")
+
+	canonicalHeaders := "host:" + c.endpoint + "\n"
+
+	canonicalRequest := strings.Join([]string{
+		"GET",
+		canonicalURI,
+		canonicalQueryString,
+		canonicalHeaders,
+		"host",
+		"UNSIGNED-PAYLOAD",
+	}, "\n")
+
+	canonicalRequestHash := sha256Hex([]byte(canonicalRequest))
+
+	stringToSign := "AWS4-HMAC-SHA256\n" + dateStr + "\n" + credentialScope + "\n" + canonicalRequestHash
+
+	signingKey := c.deriveSigningKey(dateShort)
+	sig := hmacSHA256(signingKey, stringToSign)
+	sigHex := hex.EncodeToString(sig)
+
+	finalURL := fmt.Sprintf("%s://%s%s?%s&X-Amz-Signature=%s",
+		c.scheme(), c.endpoint, canonicalURI, canonicalQueryString, sigHex)
+
+	return finalURL, nil
+}
+
+// queryEscape percent-encodes a string for use in S3 query parameters.
+// S3 requires %20 for spaces (not +).
+func queryEscape(s string) string {
+	return strings.ReplaceAll(url.QueryEscape(s), "+", "%20")
 }
 
 // ── AWS Signature V4 ──
@@ -142,7 +224,6 @@ func (c *S3Client) sign(req *http.Request, body []byte) error {
 	if canonicalURI == "" {
 		canonicalURI = "/"
 	}
-	// URI-encode each segment
 	canonicalURI = encodePath(canonicalURI)
 
 	canonicalQueryString := req.URL.RawQuery
@@ -152,7 +233,22 @@ func (c *S3Client) sign(req *http.Request, body []byte) error {
 	if req.Header.Get("Content-Type") != "" {
 		signedHeaderKeys = append(signedHeaderKeys, "content-type")
 	}
-	// Sort for consistency
+	// Add any x-amz-meta-* headers
+	for k := range req.Header {
+		lk := strings.ToLower(k)
+		if strings.HasPrefix(lk, "x-amz-meta-") && lk != "x-amz-meta-" {
+			found := false
+			for _, existing := range signedHeaderKeys {
+				if existing == lk {
+					found = true
+					break
+				}
+			}
+			if !found {
+				signedHeaderKeys = append(signedHeaderKeys, lk)
+			}
+		}
+	}
 	sortStrings(signedHeaderKeys)
 
 	var canonicalHeaders string
@@ -183,18 +279,14 @@ func (c *S3Client) sign(req *http.Request, body []byte) error {
 
 	canonicalRequestHash := sha256Hex([]byte(canonicalRequest))
 
-	// String to sign
 	credentialScope := dateShort + "/" + c.region + "/s3/aws4_request"
 	stringToSign := "AWS4-HMAC-SHA256\n" + dateStr + "\n" + credentialScope + "\n" + canonicalRequestHash
 
-	// Signing key
 	signingKey := c.deriveSigningKey(dateShort)
 
-	// Signature
 	sig := hmacSHA256(signingKey, stringToSign)
 	sigHex := hex.EncodeToString(sig)
 
-	// Authorization header
 	auth := "AWS4-HMAC-SHA256 Credential=" + c.accessKey + "/" + credentialScope + ", SignedHeaders=" + signedHeaders + ", Signature=" + sigHex
 	req.Header.Set("Authorization", auth)
 
@@ -220,12 +312,8 @@ func hmacSHA256(key []byte, data string) []byte {
 	return mac.Sum(nil)
 }
 
-// encodePath applies minimal URI encoding for S3 (encode only reserved chars in path).
+// encodePath applies minimal URI encoding for S3.
 func encodePath(path string) string {
-	// S3 expects path segments to be split by "/" and each segment URI-encoded.
-	// For simplicity, handle the common case: just return as-is since keys are
-	// typically ASCII alphanumeric with common delimiters.
-	// Only encode characters that break the canonical request.
 	parts := strings.Split(path, "/")
 	for i, p := range parts {
 		parts[i] = strings.ReplaceAll(p, " ", "%20")
@@ -233,7 +321,7 @@ func encodePath(path string) string {
 	return strings.Join(parts, "/")
 }
 
-// sortStrings performs insertion sort (good enough for ≤5 elements).
+// sortStrings performs insertion sort (good enough for ≤10 elements).
 func sortStrings(s []string) {
 	for i := 1; i < len(s); i++ {
 		for j := i; j > 0 && s[j] < s[j-1]; j-- {

@@ -3,6 +3,8 @@ package images
 import (
 	"fmt"
 	"log/slog"
+	"os"
+	"path/filepath"
 	"zen/commons/sqlite"
 	"zen/features/storage"
 )
@@ -130,9 +132,11 @@ func GetAllImages(filter ImagesFilter) ([]Image, int, error) {
 		images = append(images, image)
 	}
 
-	// Populate URL field based on current storage config
+	// Populate URL, Storage, and LinkedNotes fields
 	for i := range images {
 		images[i].URL = storage.GetImageURL(images[i].Filename)
+		images[i].Storage = detectStorage("images", images[i].Filename)
+		images[i].LinkedNotes = getImageLinkedNotes(images[i].Filename)
 	}
 
 	return images, total, nil
@@ -408,4 +412,63 @@ func DeleteImageLinks(filename string) error {
         return err
     }
     return nil
+}
+
+func detectStorage(dir, filename string) string {
+	localPath := filepath.Join(dir, filename)
+	if _, err := os.Stat(localPath); err == nil {
+		return "local"
+	}
+	if storage.IsS3Enabled() {
+		return "s3"
+	}
+	return "local"
+}
+
+func getImageLinkedNotes(filename string) []ImageLinkedNote {
+	rows, err := sqlite.DB.Query(`
+		SELECT n.note_id, n.title
+		FROM note_images ni
+		JOIN notes n ON ni.note_id = n.note_id
+		WHERE ni.filename = ?
+		ORDER BY n.updated_at DESC
+	`, filename)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+
+	var notes []ImageLinkedNote
+	for rows.Next() {
+		var note ImageLinkedNote
+		if err := rows.Scan(&note.NoteID, &note.Title); err != nil {
+			continue
+		}
+		note.Tags = getImageNoteTags(note.NoteID)
+		notes = append(notes, note)
+	}
+	return notes
+}
+
+func getImageNoteTags(noteID int) []ImageTagBrief {
+	rows, err := sqlite.DB.Query(`
+		SELECT t.tag_id, t.name, COALESCE(t.color, '')
+		FROM note_tags nt
+		JOIN tags t ON nt.tag_id = t.tag_id
+		WHERE nt.note_id = ?
+	`, noteID)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+
+	var tags []ImageTagBrief
+	for rows.Next() {
+		var tag ImageTagBrief
+		if err := rows.Scan(&tag.TagID, &tag.Name, &tag.Color); err != nil {
+			continue
+		}
+		tags = append(tags, tag)
+	}
+	return tags
 }

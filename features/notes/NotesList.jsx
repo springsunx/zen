@@ -3,12 +3,14 @@ import NotesListToolbar from './NotesListToolbar.jsx';
 import Link from '../../commons/components/Link.jsx';
 import Spinner from '../../commons/components/Spinner.jsx';
 import Button from '../../commons/components/Button.jsx';
-import { PinIcon, CheckboxUncheckedIcon, CheckboxCheckedIcon, NotesIcon, ImagesIcon } from '../../commons/components/Icon.jsx';
+import { PinIcon, CheckboxUncheckedIcon, CheckboxCheckedIcon, NotesIcon, ImagesIcon, AttachmentsIcon } from '../../commons/components/Icon.jsx';
 import renderMarkdown from '../../commons/utils/renderMarkdown.js';
 import formatDate from '../../commons/utils/formatDate.js';
 import isMobile from "../../commons/utils/isMobile.js";
 import useLongPress from "../../commons/utils/useLongPress.js";
 import ImageGallery from "./ImageGallery.jsx";
+import ImageTable from "./ImageTable.jsx";
+import AttachmentList from "./AttachmentList.jsx";
 import NotesEditorModal from './NotesEditorModal.jsx';
 import { NotesProvider, useNotes } from "../../commons/contexts/NotesContext.jsx";
 import { AppProvider } from '../../commons/contexts/AppContext.jsx';
@@ -18,7 +20,7 @@ import "./NotesList.css";
 import { t } from "../../commons/i18n/index.js";
 import { TAG_COLORS } from "../tags/TagDetailModal.jsx";
 
-export default function NotesList({ notes = [], total, isLoading, images = [], imagesTotal, isImagesLoading, view, onViewChange, onLoadMoreClick, onLoadMoreImagesClick, isMultiSelect, selectedIds, onMultiSelectStart, onToggleSelect, cardSize = 240, onCardSizeChange = () => {}, isGlobalView = false, onGlobalViewToggle = () => {} }) {
+export default function NotesList({ notes = [], total, isLoading, images = [], imagesTotal, isImagesLoading, attachments = [], attachmentsTotal, isAttachmentsLoading, view, onViewChange, onLoadMoreClick, onLoadMoreImagesClick, onLoadMoreAttachmentsClick, isMultiSelect, selectedIds, onMultiSelectStart, onToggleSelect, cardSize = 240, onCardSizeChange = () => {}, isGlobalView = false, onGlobalViewToggle = () => {} }) {
   let listClassName = "notes-list";
   let content = <div className="notes-list-spinner"><Spinner /></div>;
   let loadMoreHandler = onLoadMoreClick;
@@ -36,14 +38,21 @@ export default function NotesList({ notes = [], total, isLoading, images = [], i
       </div>
     );
   } else if (view === "gallery") {
-    listClassName = "notes-gallery";
-    items = <ImageGallery images={images} />;
+    listClassName = "notes-image-table";
+    items = <ImageTable images={images} />;
     loadMoreHandler = onLoadMoreImagesClick;
     currentTotal = imagesTotal;
     currentItems = images;
+  } else if (view === "attachments") {
+    listClassName = "notes-attachments-list";
+    items = <AttachmentList attachments={attachments} />;
+    loadMoreHandler = onLoadMoreAttachmentsClick;
+    currentTotal = attachmentsTotal;
+    currentItems = attachments;
   }
 
-  if ((view === "gallery" && !isImagesLoading) || (view !== "gallery" && !isLoading)) {
+  const isViewLoading = (view === "gallery" && isImagesLoading) || (view === "attachments" && isAttachmentsLoading) || (view !== "gallery" && view !== "attachments" && isLoading);
+  if (!isViewLoading) {
     content = (
       <div className={listClassName} style={view==="card" ? {"--card-min-width": `${cardSize}px`, "--card-height": `${Math.round(cardSize*1.75)}px`, } : null}>
         {items}
@@ -215,6 +224,10 @@ function EmptyList({ items, view }) {
 
   if (view === "gallery") {
     return <EmptyState icon={<ImagesIcon />} title={t('notes.empty.images.title')} description={t('notes.empty.images.desc')} />;
+  }
+
+  if (view === "attachments") {
+    return <EmptyState icon={<AttachmentsIcon />} title={t('notes.empty.attachments.title')} description={t('notes.empty.attachments.desc')} />;
   }
 
   return <EmptyState icon={<NotesIcon />} title={t('notes.empty.notes.title')} description={t('notes.empty.notes.desc')} />;

@@ -4,14 +4,17 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strconv"
 	"sync"
 	"time"
 	"zen/commons/queue"
 	"zen/features/images"
 	"zen/features/notes"
+	"zen/features/storage"
 )
 
 var processingMutex sync.Mutex
@@ -126,13 +129,42 @@ func embedImage(filename string) error {
 		return fmt.Errorf("failed to get image metadata: %w", err)
 	}
 
-	imagesFolder := os.Getenv("IMAGES_FOLDER")
-	if imagesFolder == "" {
-		imagesFolder = "./images"
-	}
-	imagePath := fmt.Sprintf("%s/%s", imagesFolder, filename)
+	var imagePath string
+	var tempFile string
 
-	return EmbedImage(
+	if storage.IsS3Enabled() {
+		provider := storage.GetProvider()
+		s3Provider, ok := provider.(*storage.S3Provider)
+		if !ok {
+			return fmt.Errorf("S3 enabled but provider is not S3Provider")
+		}
+		reader, dlErr := s3Provider.DownloadObject(filename)
+		if dlErr != nil {
+			return fmt.Errorf("failed to download image from S3: %w", dlErr)
+		}
+		defer reader.Close()
+
+		f, createErr := os.CreateTemp("", "zen-img-*"+filepath.Ext(filename))
+		if createErr != nil {
+			return fmt.Errorf("failed to create temp file: %w", createErr)
+		}
+		tempFile = f.Name()
+		if _, copyErr := io.Copy(f, reader); copyErr != nil {
+			f.Close()
+			os.Remove(tempFile)
+			return fmt.Errorf("failed to write temp file: %w", copyErr)
+		}
+		f.Close()
+		imagePath = tempFile
+	} else {
+		imagesFolder := os.Getenv("IMAGES_FOLDER")
+		if imagesFolder == "" {
+			imagesFolder = "./images"
+		}
+		imagePath = fmt.Sprintf("%s/%s", imagesFolder, filename)
+	}
+
+	err = EmbedImage(
 		filename,
 		imagePath,
 		image.Width,
@@ -141,6 +173,12 @@ func embedImage(filename string) error {
 		image.FileSize,
 		image.Format,
 	)
+
+	if tempFile != "" {
+		os.Remove(tempFile)
+	}
+
+	return err
 }
 
 func deleteImageEmbeddings(filename string) error {

@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 	"zen/commons/auth"
@@ -146,8 +148,10 @@ func newRouter() *http.ServeMux {
 	addPrivateRoute(mux, "DELETE /api/images/{filename}/", images.HandleDeleteImage)
 	addPrivateRoute(mux, "POST /api/images/cleanup", images.HandleCleanupImages)
 
+	addPrivateRoute(mux, "GET /api/attachments/", attachments.HandleGetAttachments)
 	addPrivateRoute(mux, "POST /api/attachments/", attachments.HandleUploadAttachment)
 	addPrivateRoute(mux, "DELETE /api/attachments/{filename}/", attachments.HandleDeleteAttachment)
+	addPrivateRoute(mux, "POST /api/attachments/cleanup", attachments.HandleCleanupAttachments)
 
 	addPrivateRoute(mux, "POST /api/import/", settings.HandleImport)
 	addPrivateRoute(mux, "GET /api/export/", settings.HandleExport)
@@ -244,13 +248,65 @@ func handleStaticAssets(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleUploadedImages(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Cache-Control", "public, max-age=31536000") // 1 year
-	http.StripPrefix("/images/", http.FileServer(http.Dir("images"))).ServeHTTP(w, r)
+	serveStorageFile(w, r, "/images/", false)
 }
 
 func handleUploadedAttachments(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Cache-Control", "public, max-age=31536000") // 1 year
-	http.StripPrefix("/attachments/", http.FileServer(http.Dir("attachments"))).ServeHTTP(w, r)
+	serveStorageFile(w, r, "/attachments/", true)
+}
+
+// serveStorageFile serves a file from local disk or redirects to a presigned S3 URL.
+func serveStorageFile(w http.ResponseWriter, r *http.Request, prefix string, isAttachment bool) {
+	filename := strings.TrimPrefix(r.URL.Path, prefix)
+	filename = strings.TrimSuffix(filename, "/")
+	if filename == "" {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Look up original name for attachments (for content-disposition)
+	var originalName string
+	if isAttachment {
+		if att, err := attachments.GetAttachmentByFilename(filename); err == nil {
+			originalName = att.OriginalName
+		}
+	}
+
+	// Determine local directory
+	var dir string
+	if isAttachment {
+		dir = "attachments"
+	} else {
+		dir = "images"
+	}
+
+	// Check if file exists locally first
+	localPath := filepath.Join(dir, filename)
+	if _, statErr := os.Stat(localPath); statErr == nil {
+		// File exists on disk — serve locally
+		if isAttachment && originalName != "" {
+			w.Header().Set("Content-Disposition", storage.ContentDisposition(originalName))
+		}
+		w.Header().Set("Cache-Control", "public, max-age=31536000")
+		http.StripPrefix(prefix, http.FileServer(http.Dir(dir))).ServeHTTP(w, r)
+		return
+	}
+
+	// File not on disk — if S3 is enabled, redirect to presigned URL
+	if storage.IsS3Enabled() {
+		var presignedURL string
+		if isAttachment {
+			presignedURL = storage.GetAttachmentPresignedURL(filename, originalName)
+		} else {
+			presignedURL = storage.GetImagePresignedURL(filename)
+		}
+		if presignedURL != "" {
+			http.Redirect(w, r, presignedURL, http.StatusFound)
+			return
+		}
+	}
+
+	http.NotFound(w, r)
 }
 
 func addPrivateRoute(mux *http.ServeMux, pattern string, handlerFunc func(w http.ResponseWriter, r *http.Request)) {

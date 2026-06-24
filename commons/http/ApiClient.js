@@ -370,12 +370,23 @@ async function cleanupImages() {
   return await request('POST', '/api/images/cleanup');
 }
 
+async function getAttachments(page = 1, tagId = null, focusId = null) {
+  let url = `/api/attachments/?page=${page}`;
+  if (tagId) url += `&tagId=${tagId}`;
+  if (focusId) url += `&focusId=${focusId}`;
+  return await request('GET', url);
+}
+
 async function uploadAttachment(formData) {
   return await request('POST', '/api/attachments/', formData);
 }
 
 async function deleteAttachment(filename) {
   return await request('DELETE', `/api/attachments/${encodeURIComponent(filename)}/`);
+}
+
+async function cleanupAttachments() {
+  return await request('POST', '/api/attachments/cleanup');
 }
 
 // ─── Storage ───
@@ -540,8 +551,10 @@ export default {
   deleteImage,
   forceDeleteImage,
   cleanupImages,
+  getAttachments,
   uploadAttachment,
   deleteAttachment,
+  cleanupAttachments,
   search,
   getSimilarImages,
   getStorageConfig,
