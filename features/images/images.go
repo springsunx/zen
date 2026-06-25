@@ -1,6 +1,7 @@
 package images
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"image"
@@ -328,35 +329,37 @@ func HandleCleanupImages(w http.ResponseWriter, r *http.Request) {
 	// ── Collect existing note_images links ──
 	existingLinks := collectExistingLinks()
 
-	// ── Rebuild note_images links (shared by both modes) ──
-	for filename, noteIDs := range referencedInContent {
-		for _, nid := range noteIDs {
-			if existingLinks[filename] != nil && existingLinks[filename][nid] {
-				continue
-			}
-			if LinkImageToNote(nid, filename) == nil {
-				res.LinksRebuilt++
-			}
-		}
-	}
-
 	if isS3 {
 		// ── S3: Register note-referenced images missing from DB ──
-		for filename, noteIDs := range referencedInContent {
+		s3provider := storage.GetProvider()
+		s3p, _ := s3provider.(*storage.S3Provider)
+		for filename := range referencedInContent {
 			if dbFilenames[filename] || !isImageFile(filename) {
 				continue
 			}
-			if _, err := CreateImage(ImageRecord{Filename: filename}); err == nil {
+			record := ImageRecord{Filename: filename}
+			if s3p != nil {
+				if reader, dlErr := s3p.DownloadObject(filename); dlErr == nil {
+					data, _ := io.ReadAll(reader)
+					reader.Close()
+					if len(data) > 0 {
+						record.FileSize = int64(len(data))
+						if info, imgErr := getImageInfo(bytes.NewReader(data)); imgErr == nil {
+							record.Width = info.Width
+							record.Height = info.Height
+							record.Format = info.Format
+							record.AspectRatio = info.AspectRatio
+						}
+					}
+				}
+			}
+			if _, err := CreateImage(record); err == nil {
 				res.Registered++
 				res.RegisteredFiles = append(res.RegisteredFiles, filename)
-			}
-			for _, nid := range noteIDs {
-				_ = LinkImageToNote(nid, filename)
 			}
 		}
 
 		// ── S3: Delete unused DB records and S3 files ──
-		s3provider := storage.GetProvider()
 		forEachAllImages(func(im Image) error {
 			if len(referencedInContent[im.Filename]) > 0 {
 				return nil
@@ -412,6 +415,18 @@ func HandleCleanupImages(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}
+
+	// ── Rebuild note_images links (after registration, both modes) ──
+	for filename, noteIDs := range referencedInContent {
+		for _, nid := range noteIDs {
+			if existingLinks[filename] != nil && existingLinks[filename][nid] {
+				continue
+			}
+			if LinkImageToNote(nid, filename) == nil {
+				res.LinksRebuilt++
+			}
+		}
+	}
 
 		// ── Local: Remove DB records with missing files ──
 		forEachAllImages(func(im Image) error {
