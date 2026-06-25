@@ -258,6 +258,11 @@ func GetFilteredTags(focusModeID int, isArchived, isDeleted bool, section string
 
 	joinNote := statusJoin(statusCol)
 
+	var havingClause string
+	if statusCol == "archived" || statusCol == "deleted" {
+		havingClause = "HAVING COUNT(n.note_id) > 0"
+	}
+
 	var q string
 	var args []interface{}
 
@@ -309,9 +314,10 @@ func GetFilteredTags(focusModeID int, isArchived, isDeleted bool, section string
 					t.tag_id IN (SELECT id FROM focus_tags)
 				GROUP BY
 					t.tag_id, t.name, t.parent_id, t.sort_order
+				%s
 				ORDER BY
 					t.tag_id ASC
-			`, joinNote)
+			`, joinNote, havingClause)
 			args = []interface{}{focusModeID}
 		} else {
 			q = fmt.Sprintf(`
@@ -327,10 +333,11 @@ func GetFilteredTags(focusModeID int, isArchived, isDeleted bool, section string
 				%s
 				GROUP BY
 					t.tag_id, t.name, t.parent_id, t.sort_order
+				%s
 				ORDER BY
 					COALESCE(t.sort_order, 2147483647) ASC,
 					note_count DESC
-			`, joinNote)
+			`, joinNote, havingClause)
 			args = []interface{}{}
 		}
 	}

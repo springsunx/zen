@@ -51,16 +51,14 @@ func HandleGetTags(w http.ResponseWriter, r *http.Request) {
 	// Build tree structure for non-search queries
 	var responseTags []Tag
 	if query == "" {
-		// In focus mode, only keep parent-child relationships where both are in the focus set
-		if focusModeID != 0 {
-			tagIDs := make(map[int]bool)
-			for _, t := range tags {
-				tagIDs[t.TagID] = true
-			}
-			for i := range tags {
-				if tags[i].ParentID != nil && !tagIDs[*tags[i].ParentID] {
-					tags[i].ParentID = nil
-				}
+		// Promote orphaned child tags to root when their parent is not in the result set
+		tagIDs := make(map[int]bool)
+		for _, t := range tags {
+			tagIDs[t.TagID] = true
+		}
+		for i := range tags {
+			if tags[i].ParentID != nil && !tagIDs[*tags[i].ParentID] {
+				tags[i].ParentID = nil
 			}
 		}
 		responseTags = BuildTagTree(tags)

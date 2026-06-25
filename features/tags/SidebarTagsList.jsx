@@ -8,11 +8,10 @@ import { useAppContext } from "../../commons/contexts/AppContext.jsx";
 import { t } from "../../commons/i18n/index.js";
 
 function sectionTitle() {
-  const path = window.location.pathname;
-  const params = new URLSearchParams(window.location.search);
-  if (params.get("isArchived") === "true") return t('nav.archives');
-  if (params.get("isDeleted") === "true") return t('nav.trash');
-  if (path.includes('/templates/')) return t('nav.templates');
+  const section = getCurrentSection();
+  if (section === "archived") return t('nav.archives');
+  if (section === "deleted") return t('nav.trash');
+  if (section === "templates") return t('nav.templates');
   return t('nav.notes');
 }
 
@@ -20,24 +19,38 @@ function isCanvas() {
   return window.location.pathname.includes('/canvases/');
 }
 
-function buildTagUrl(tagId) {
+function getCurrentSection() {
+  const path = window.location.pathname;
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("isArchived") === "true") return "archived";
+  if (params.get("isDeleted") === "true") return "deleted";
+  if (path.includes('/templates/')) return "templates";
+  return "notes";
+}
+
+function buildSectionParams() {
+  const section = getCurrentSection();
   const currentParams = new URLSearchParams(window.location.search);
-  const focusId = currentParams.get('focusId');
   const p = new URLSearchParams();
+  const focusId = currentParams.get('focusId');
   if (focusId) p.set('focusId', focusId);
+  if (section === "archived") p.set('isArchived', 'true');
+  if (section === "deleted") p.set('isDeleted', 'true');
+  return { section, p };
+}
+
+function buildTagUrl(tagId) {
+  const { section, p } = buildSectionParams();
   p.set('tagId', tagId);
-  const q = p.toString();
-  return '/notes/' + (q ? '?' + q : '');
+  const base = section === "templates" ? '/templates/' : '/notes/';
+  return base + (p.toString() ? '?' + p.toString() : '');
 }
 
 function buildUntaggedUrl() {
-  const currentParams = new URLSearchParams(window.location.search);
-  const focusId = currentParams.get('focusId');
-  const p = new URLSearchParams();
-  if (focusId) p.set('focusId', focusId);
+  const { section, p } = buildSectionParams();
   p.set('isUntagged', 'true');
-  const q = p.toString();
-  return '/notes/' + (q ? '?' + q : '');
+  const base = section === "templates" ? '/templates/' : '/notes/';
+  return base + (p.toString() ? '?' + p.toString() : '');
 }
 
 function TagTreeNode({ tag, depth, onEditClick, onMove, dragState, onDragStart, onDragOver, onDrop, expandedTagIds, onToggle }) {
