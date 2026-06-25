@@ -414,14 +414,15 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   }
 
   function handleTemplateApply(templateTitle, templateContent, templateTags) {
-    if (templateTitle && templateTitle.trim() !== "") setTitle(templateTitle);
-    updateContent(templateContent);
-    if (templateTags && templateTags.length > 0) setTags(templateTags);
+    if (title === "" && templateTitle && templateTitle.trim() !== "") setTitle(templateTitle);
+    const inserted = content ? content + "\n\n" + templateContent : templateContent;
+    updateContent(inserted);
+    if (tags.length === 0 && templateTags && templateTags.length > 0) setTags(templateTags);
     setTimeout(() => {
       if (textareaRef.current) {
         textareaRef.current.focus();
-        textareaRef.current.selectionStart = templateContent.length;
-        textareaRef.current.selectionEnd = templateContent.length;
+        textareaRef.current.selectionStart = inserted.length;
+        textareaRef.current.selectionEnd = inserted.length;
       }
     }, 0);
   }
@@ -570,7 +571,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   }
 
   const showImageDropzone = isEditable === true;
-  const shouldShowTemplatePicker = showTemplatePicker && isNewNote === true && isEditable === true && title === "" && content === "";
+  const shouldShowTemplatePicker = (showTemplatePicker && isEditable === true) || (isNewNote === true && isEditable === true && title === "" && content === "");
 
   // ─── Render ───
   return (
