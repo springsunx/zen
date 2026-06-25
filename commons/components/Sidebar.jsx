@@ -71,7 +71,7 @@ export default function Sidebar() {
         <div className="sidebar-fixed">
           <FocusSwitcher focusModes={focusModes} />
 
-          <Link className="sidebar-button new" to={newNoteLink()}>
+          <Link className="sidebar-button new" to={newNoteLink()} shouldPreserveSearchParams>
             <NewIcon />
             {t("nav.new")}
           </Link>
