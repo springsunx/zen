@@ -76,7 +76,7 @@ export default function Lightbox({ selectedImage, imageDetails, onClose }) {
 
   function handleSimilarImageClick(image) {
     const imageWithUrl = {
-      url: `/images/${image.filename}`,
+      url: image.url,
       width: image.width,
       height: image.height,
       aspectRatio: image.aspectRatio,
@@ -95,7 +95,7 @@ export default function Lightbox({ selectedImage, imageDetails, onClose }) {
     const gridImages = similarImages.map((image, index) => (
       <img
         key={image.filename}
-        src={`/images/${image.filename}`}
+        src={image.url}
         alt=""
         className="lightbox-similar-image reveal-animate"
         style={`--reveal-index: ${index + 1}`}

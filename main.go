@@ -47,6 +47,7 @@ func main() {
 	port := flag.String("port", getEnv("PORT", "8080"), "server port")
 	dataFolder := flag.String("data", getEnv("DATA_FOLDER", "."), "database directory")
 	imagesFolder := flag.String("images", getEnv("IMAGES_FOLDER", "./images"), "image storage directory")
+	attachmentsFolder := flag.String("attachments", getEnv("ATTACHMENTS_FOLDER", "./attachments"), "attachment storage directory")
 	showVersion := flag.Bool("version", false, "print version and exit")
 	flag.Parse()
 
@@ -60,6 +61,7 @@ func main() {
 	os.Setenv("PORT", *port)
 	os.Setenv("DATA_FOLDER", *dataFolder)
 	os.Setenv("IMAGES_FOLDER", *imagesFolder)
+	os.Setenv("ATTACHMENTS_FOLDER", *attachmentsFolder)
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -68,14 +70,18 @@ func main() {
 		}
 	}()
 
-	path := os.Getenv("IMAGES_FOLDER")
-	if path == "" {
-		path = "./images"
+	imagesDir := os.Getenv("IMAGES_FOLDER")
+	if imagesDir == "" {
+		imagesDir = "./images"
 	}
-	if err := os.MkdirAll("images", 0755); err != nil {
+	if err := os.MkdirAll(imagesDir, 0755); err != nil {
 		panic(err)
 	}
-	if err := os.MkdirAll("attachments", 0755); err != nil {
+	attachmentsDir := os.Getenv("ATTACHMENTS_FOLDER")
+	if attachmentsDir == "" {
+		attachmentsDir = "./attachments"
+	}
+	if err := os.MkdirAll(attachmentsDir, 0755); err != nil {
 		panic(err)
 	}
 
@@ -276,9 +282,15 @@ func serveStorageFile(w http.ResponseWriter, r *http.Request, prefix string, isA
 	// Determine local directory
 	var dir string
 	if isAttachment {
-		dir = "attachments"
+		dir = os.Getenv("ATTACHMENTS_FOLDER")
+		if dir == "" {
+			dir = "./attachments"
+		}
 	} else {
-		dir = "images"
+		dir = os.Getenv("IMAGES_FOLDER")
+		if dir == "" {
+			dir = "./images"
+		}
 	}
 
 	// Check if file exists locally first
@@ -332,7 +344,6 @@ func addPrivateRoute(mux *http.ServeMux, pattern string, handlerFunc func(w http
 func runBackgroundTasks() {
 	trashCleanupFrequency := 30 * 24 * time.Hour       // 30 days
 	sessionCleanupFrequency := 24 * time.Hour          // 24 hours
-	imageSyncFrequency := 24 * time.Hour               // 24 hours
 	intelligenceProcessingFrequency := 5 * time.Minute // 5 minutes
 
 	go func() {
@@ -345,12 +356,6 @@ func runBackgroundTasks() {
 	go func() {
 		for range time.Tick(sessionCleanupFrequency) {
 			session.DeleteExpiredSessions()
-		}
-	}()
-
-	go func() {
-		for range time.Tick(imageSyncFrequency) {
-			images.SyncImagesFromDisk()
 		}
 	}()
 

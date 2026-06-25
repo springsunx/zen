@@ -22,6 +22,16 @@ import (
 
 const IMAGES_LIMIT = 100
 
+func isImageFile(filename string) bool {
+	ext := strings.ToLower(filepath.Ext(filename))
+	switch ext {
+	case ".jpg", ".jpeg", ".png", ".gif":
+		return true
+	default:
+		return false
+	}
+}
+
 type ImagesResponseEnvelope struct {
 	Images []Image `json:"images"`
 	Total  int     `json:"total"`
@@ -207,7 +217,7 @@ func HandleUploadImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	image.URL = provider.GetURL(filename)
+	image.URL = storage.GetImageURL(filename)
 
 	queue.AddImageTask(filename, queue.QUEUE_IMAGE_PROCESS, "process")
 
@@ -289,158 +299,200 @@ func HandleDeleteImage(w http.ResponseWriter, r *http.Request) {
 }
 
 
-// HandleCleanupImages scans DB images and removes records whose files are missing
-// and removes orphaned images (no note_images link) by deleting both file and record.
-// Also registers image files on disk that have no DB record, and rebuilds note_images links
-// from note content.
+// HandleCleanupImages cleans up image records and files.
+// Local mode: registers disk files, rebuilds links, removes missing/orphaned files.
+// S3 mode: registers note-referenced images, rebuilds links, deletes unused S3 files.
 func HandleCleanupImages(w http.ResponseWriter, r *http.Request) {
-    type result struct {
-        RemovedMissing int      `json:"removedMissing"`
-        RemovedOrphans int      `json:"removedOrphans"`
-        Registered     int      `json:"registered"`
-        LinksRebuilt   int      `json:"linksRebuilt"`
-        MissingFiles   []string `json:"missingFiles"`
-        OrphanFiles    []string `json:"orphanFiles"`
-        RegisteredFiles []string `json:"registeredFiles"`
-    }
-    res := result{}
+	type result struct {
+		RemovedMissing  int      `json:"removedMissing"`
+		RemovedOrphans  int      `json:"removedOrphans"`
+		Registered      int      `json:"registered"`
+		LinksRebuilt    int      `json:"linksRebuilt"`
+		MissingFiles    []string `json:"missingFiles"`
+		OrphanFiles     []string `json:"orphanFiles"`
+		RegisteredFiles []string `json:"registeredFiles"`
+	}
+	res := result{}
+	isS3 := storage.IsS3Enabled()
 
-    // ── Step 1: Register files on disk that have no DB record ──
-    dbFilenames := make(map[string]bool)
-    for page := 1; ; page++ {
-        imgs, total, e := GetAllImages(NewImagesFilter(page, 0, 0))
-        if e != nil || len(imgs) == 0 { break }
-        _ = total
-        for _, im := range imgs {
-            dbFilenames[im.Filename] = true
-        }
-        if len(imgs) < IMAGES_LIMIT { break }
-    }
+	// ── Collect DB filenames ──
+	dbFilenames := make(map[string]bool)
+	forEachAllImages(func(im Image) error {
+		dbFilenames[im.Filename] = true
+		return nil
+	})
 
-    entries, err := os.ReadDir("images")
-    if err == nil {
-        for _, entry := range entries {
-            if entry.IsDir() { continue }
-            fname := entry.Name()
-            if dbFilenames[fname] { continue }
+	// ── Collect note image references ──
+	referencedInContent := collectNoteImageRefs()
 
-            // New file — register it
-            fullPath := filepath.Join("images", fname)
-            f, openErr := os.Open(fullPath)
-            if openErr != nil { continue }
+	// ── Collect existing note_images links ──
+	existingLinks := collectExistingLinks()
 
-            info, imgErr := getImageInfo(f)
-            f.Close()
-            if imgErr != nil { continue }
+	// ── Rebuild note_images links (shared by both modes) ──
+	for filename, noteIDs := range referencedInContent {
+		for _, nid := range noteIDs {
+			if existingLinks[filename] != nil && existingLinks[filename][nid] {
+				continue
+			}
+			if LinkImageToNote(nid, filename) == nil {
+				res.LinksRebuilt++
+			}
+		}
+	}
 
-            fi, statErr := entry.Info()
-            if statErr != nil { continue }
+	if isS3 {
+		// ── S3: Register note-referenced images missing from DB ──
+		for filename, noteIDs := range referencedInContent {
+			if dbFilenames[filename] || !isImageFile(filename) {
+				continue
+			}
+			if _, err := CreateImage(ImageRecord{Filename: filename}); err == nil {
+				res.Registered++
+				res.RegisteredFiles = append(res.RegisteredFiles, filename)
+			}
+			for _, nid := range noteIDs {
+				_ = LinkImageToNote(nid, filename)
+			}
+		}
 
-            ext := strings.ToLower(filepath.Ext(fname))
-            format := strings.TrimPrefix(ext, ".")
+		// ── S3: Delete unused DB records and S3 files ──
+		s3provider := storage.GetProvider()
+		forEachAllImages(func(im Image) error {
+			if len(referencedInContent[im.Filename]) > 0 {
+				return nil
+			}
+			_ = s3provider.Delete(im.Filename)
+			_ = DeleteImageLinks(im.Filename)
+			_ = DeleteImage(im.Filename)
+			res.RemovedOrphans++
+			res.OrphanFiles = append(res.OrphanFiles, im.Filename)
+			return nil
+		})
+	} else {
+		// ── Local: Register disk files missing from DB ──
+		imagesDir := os.Getenv("IMAGES_FOLDER")
+		if imagesDir == "" {
+			imagesDir = "./images"
+		}
+		if entries, err := os.ReadDir(imagesDir); err == nil {
+			for _, entry := range entries {
+				if entry.IsDir() {
+					continue
+				}
+				fname := entry.Name()
+				if dbFilenames[fname] || !isImageFile(fname) {
+					continue
+				}
+				fullPath := filepath.Join(imagesDir, fname)
+				f, openErr := os.Open(fullPath)
+				if openErr != nil {
+					continue
+				}
+				info, imgErr := getImageInfo(f)
+				f.Close()
+				if imgErr != nil {
+					continue
+				}
+				fi, statErr := entry.Info()
+				if statErr != nil {
+					continue
+				}
+				ext := strings.ToLower(filepath.Ext(fname))
+				record := ImageRecord{
+					Filename:    fname,
+					Width:       info.Width,
+					Height:      info.Height,
+					Format:      strings.TrimPrefix(ext, "."),
+					AspectRatio: info.AspectRatio,
+					FileSize:    fi.Size(),
+				}
+				if _, err := CreateImage(record); err == nil {
+					res.Registered++
+					res.RegisteredFiles = append(res.RegisteredFiles, fname)
+				}
+			}
+		}
 
-            imageRecord := ImageRecord{
-                Filename:    fname,
-                Width:       info.Width,
-                Height:      info.Height,
-                Format:      format,
-                AspectRatio: info.AspectRatio,
-                FileSize:    fi.Size(),
-                Caption:     nil,
-            }
-            _, createErr := CreateImage(imageRecord)
-            if createErr == nil {
-                res.Registered++
-                res.RegisteredFiles = append(res.RegisteredFiles, fname)
-            }
-        }
-    }
+		// ── Local: Remove DB records with missing files ──
+		forEachAllImages(func(im Image) error {
+			path := filepath.Join(imagesDir, im.Filename)
+			if _, err := os.Stat(path); err != nil {
+				_ = DeleteImageLinks(im.Filename)
+				_ = DeleteImage(im.Filename)
+				res.RemovedMissing++
+				res.MissingFiles = append(res.MissingFiles, im.Filename)
+			}
+			return nil
+		})
 
-    // ── Step 2: Rebuild note_images links from note content ──
-    imageRegex := regexp.MustCompile(`!\[.*?\]\(/images/([^)]+)\)`)
-    allNotes, noteErr := GetAllNoteContents()
-    if noteErr == nil {
-        // Collect existing links to avoid double-counting rebuilds
-        existingLinks := make(map[string]map[int]bool) // filename -> set of noteIDs
-        for page := 1; ; page++ {
-            imgs, total, e := GetAllImages(NewImagesFilter(page, 0, 0))
-            if e != nil || len(imgs) == 0 { break }
-            _ = total
-            for _, im := range imgs {
-                noteIDs, linkErr := GetLinkedNotesByImage(im.Filename)
-                if linkErr == nil {
-                    for _, nid := range noteIDs {
-                        if existingLinks[im.Filename] == nil {
-                            existingLinks[im.Filename] = make(map[int]bool)
-                        }
-                        existingLinks[im.Filename][nid] = true
-                    }
-                }
-            }
-            if len(imgs) < IMAGES_LIMIT { break }
-        }
+		// ── Local: Remove orphaned files ──
+		if orphans, e := GetOrphanedImages(); e == nil {
+			for _, im := range orphans {
+				if len(referencedInContent[im.Filename]) > 0 {
+					continue
+				}
+				_ = os.Remove(filepath.Join(imagesDir, im.Filename))
+				_ = DeleteImageLinks(im.Filename)
+				_ = DeleteImage(im.Filename)
+				res.RemovedOrphans++
+				res.OrphanFiles = append(res.OrphanFiles, im.Filename)
+			}
+		}
+	}
 
-        for _, note := range allNotes {
-            matches := imageRegex.FindAllStringSubmatch(note.Content, -1)
-            for _, m := range matches {
-                if len(m) > 1 {
-                    filename := m[1]
-                    // Only count as rebuilt if not already linked
-                    if existingLinks[filename] != nil && existingLinks[filename][note.NoteID] {
-                        continue
-                    }
-                    if LinkImageToNote(note.NoteID, filename) == nil {
-                        res.LinksRebuilt++
-                    }
-                }
-            }
-        }
-    }
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(res)
+}
 
-    // ── Step 3: Remove DB records with missing files ──
-    for page := 1; ; page++ {
-        imgs, total, e := GetAllImages(NewImagesFilter(page, 0, 0))
-        if e != nil || len(imgs) == 0 { break }
-        _ = total
-        for _, im := range imgs {
-            path := filepath.Join("images", im.Filename)
-            if _, statErr := os.Stat(path); statErr != nil {
-                _ = DeleteImageLinks(im.Filename)
-                _ = DeleteImage(im.Filename)
-                res.RemovedMissing++
-                res.MissingFiles = append(res.MissingFiles, im.Filename)
-            }
-        }
-        if len(imgs) < IMAGES_LIMIT { break }
-    }
+// ── Helpers ──
 
-    // ── Step 4: Remove orphaned images (no links, no reference in note content) ──
-    if orphans, e := GetOrphanedImages(); e == nil {
-        // Collect all filenames referenced in note content
-        referencedInContent := make(map[string]bool)
-        for _, note := range allNotes {
-            matches := imageRegex.FindAllStringSubmatch(note.Content, -1)
-            for _, m := range matches {
-                if len(m) > 1 {
-                    referencedInContent[m[1]] = true
-                }
-            }
-        }
+var imageRefRegex = regexp.MustCompile(`!\[.*?\]\(/images/([^)]+)\)`)
 
-        for _, im := range orphans {
-            // Only delete if also not referenced in note content
-            if referencedInContent[im.Filename] {
-                continue
-            }
-            path := filepath.Join("images", im.Filename)
-            _ = os.Remove(path)
-            _ = DeleteImageLinks(im.Filename)
-            _ = DeleteImage(im.Filename)
-            res.RemovedOrphans++
-            res.OrphanFiles = append(res.OrphanFiles, im.Filename)
-        }
-    }
+func forEachAllImages(fn func(Image) error) {
+	for page := 1; ; page++ {
+		imgs, _, err := GetAllImages(NewImagesFilter(page, 0, 0))
+		if err != nil || len(imgs) == 0 {
+			return
+		}
+		for _, im := range imgs {
+			_ = fn(im)
+		}
+		if len(imgs) < IMAGES_LIMIT {
+			return
+		}
+	}
+}
 
-    w.Header().Set("Content-Type", "application/json")
-    json.NewEncoder(w).Encode(res)
+func collectNoteImageRefs() map[string][]int {
+	refs := make(map[string][]int)
+	notes, err := GetAllNoteContents()
+	if err != nil {
+		return refs
+	}
+	for _, note := range notes {
+		for _, m := range imageRefRegex.FindAllStringSubmatch(note.Content, -1) {
+			if len(m) > 1 {
+				refs[m[1]] = append(refs[m[1]], note.NoteID)
+			}
+		}
+	}
+	return refs
+}
+
+func collectExistingLinks() map[string]map[int]bool {
+	links := make(map[string]map[int]bool)
+	forEachAllImages(func(im Image) error {
+		noteIDs, err := GetLinkedNotesByImage(im.Filename)
+		if err != nil {
+			return nil
+		}
+		if links[im.Filename] == nil {
+			links[im.Filename] = make(map[int]bool)
+		}
+		for _, nid := range noteIDs {
+			links[im.Filename][nid] = true
+		}
+		return nil
+	})
+	return links
 }

@@ -124,7 +124,7 @@ export default function AttachmentList({ attachments = [] }) {
         <div className="attachment-row" key={att.filename}>
           <div className="col-name">
             <span className="attachment-file-icon">{getFileIcon(att.contentType)}</span>
-            <a href={`/attachments/${att.filename}`} target="_blank" rel="noopener" title={att.originalName}>
+            <a href={att.url} target="_blank" rel="noopener" title={att.originalName}>
               {att.originalName}
             </a>
           </div>

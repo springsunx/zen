@@ -667,7 +667,7 @@ func handleUploadImage(args map[string]interface{}) ToolCallResult {
 		// Image was uploaded but record failed - still return URL
 	}
 
-	imageURL := provider.GetURL(uniqueFilename)
+	imageURL := storage.GetImageURL(uniqueFilename)
 
 	return ToolCallResult{
 		Content: []ToolContent{{

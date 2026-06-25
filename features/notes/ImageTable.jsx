@@ -69,7 +69,7 @@ function collectTags(linkedNotes) {
 export default function ImageTable({ images = [] }) {
   const { patchNote } = useNotes();
   const [openIndex, setOpenIndex] = useState(null);
-  const urls = images.map(img => `/images/${img.filename}`);
+  const urls = images.map(img => img.url);
 
   async function handleDelete(e, filename, referencedBy) {
     e.stopPropagation();
@@ -118,10 +118,10 @@ export default function ImageTable({ images = [] }) {
         return (
           <div className="image-row" key={img.filename}>
             <div className="col-thumb" onClick={() => setOpenIndex(images.indexOf(img))}>
-              <img src={`/images/${img.filename}`} className="image-thumb" loading="lazy" alt="" />
+              <img src={img.url} className="image-thumb" loading="lazy" alt="" />
             </div>
             <div className="col-filename">
-              <a href={`/images/${img.filename}`} target="_blank" rel="noopener" title={img.filename}>
+              <a href={img.url} target="_blank" rel="noopener" title={img.filename}>
                 {img.filename}
               </a>
             </div>

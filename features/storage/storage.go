@@ -27,15 +27,11 @@ type StorageConfig struct {
 	AttachmentsPublicURL string `json:"attachmentsPublicUrl"`
 }
 
-// DefaultPresignedExpiry is the default lifetime for presigned URLs.
-const DefaultPresignedExpiry = 15 * time.Minute
 
 // Provider is the interface for file storage operations.
 type Provider interface {
 	Upload(filename string, reader io.Reader, size int64, contentType string, metadata map[string]string) error
 	Delete(filename string) error
-	GetURL(filename string) string
-	GetPresignedURL(filename string, expiry time.Duration, contentDisposition string) string
 }
 
 // ── Local Provider ──
@@ -69,13 +65,7 @@ func (p *LocalProvider) Delete(filename string) error {
 	return nil
 }
 
-func (p *LocalProvider) GetURL(filename string) string {
-	return "/images/" + filename
-}
 
-func (p *LocalProvider) GetPresignedURL(filename string, expiry time.Duration, contentDisposition string) string {
-	return "/images/" + filename
-}
 
 // ── Local Attachment Provider ──
 
@@ -108,13 +98,7 @@ func (p *LocalAttachmentProvider) Delete(filename string) error {
 	return nil
 }
 
-func (p *LocalAttachmentProvider) GetURL(filename string) string {
-	return "/attachments/" + filename
-}
 
-func (p *LocalAttachmentProvider) GetPresignedURL(filename string, expiry time.Duration, contentDisposition string) string {
-	return "/attachments/" + filename
-}
 
 // ── S3 Provider ──
 
@@ -199,18 +183,7 @@ func (p *S3Provider) Delete(filename string) error {
 	return nil
 }
 
-func (p *S3Provider) GetURL(filename string) string {
-	return p.GetPresignedURL(filename, DefaultPresignedExpiry, "")
-}
 
-func (p *S3Provider) GetPresignedURL(filename string, expiry time.Duration, contentDisposition string) string {
-	url, err := p.client.PresignGetObject(p.bucket, filename, expiry, contentDisposition)
-	if err != nil {
-		slog.Error("error generating presigned URL", "filename", filename, "error", err)
-		return ""
-	}
-	return url
-}
 
 // DownloadObject returns an io.ReadCloser for reading from S3.
 func (p *S3Provider) DownloadObject(filename string) (io.ReadCloser, error) {
@@ -340,24 +313,18 @@ func TestS3Connection(config StorageConfig) error {
 	return nil
 }
 
-// GetImagePresignedURL returns a presigned URL for an image (inline display).
-func GetImagePresignedURL(filename string) string {
-	return GetProvider().GetPresignedURL(filename, DefaultPresignedExpiry, "")
-}
 
-// GetAttachmentPresignedURL returns a presigned URL for an attachment with download filename.
-func GetAttachmentPresignedURL(filename string, originalName string) string {
-	return GetAttachmentProvider().GetPresignedURL(filename, DefaultPresignedExpiry, ContentDisposition(originalName))
-}
 
-// GetImageURL returns a URL for an image (presigned in S3 mode, local path otherwise).
+// GetImageURL returns a URL for an image via the server proxy endpoint.
+// The server handles both local files and S3 proxying transparently.
 func GetImageURL(filename string) string {
-	return GetImagePresignedURL(filename)
+	return "/images/" + filename
 }
 
-// GetAttachmentURL returns a URL for an attachment (presigned in S3 mode, local path otherwise).
+// GetAttachmentURL returns a URL for an attachment via the server proxy endpoint.
+// The server handles both local files and S3 proxying transparently.
 func GetAttachmentURL(filename string) string {
-	return GetAttachmentPresignedURL(filename, "")
+	return "/attachments/" + filename
 }
 
 // IsS3Enabled checks if the current storage provider is S3.
