@@ -68,7 +68,13 @@ func GetAllNotes(filter NotesFilter) ([]Note, int, error) {
 			LEFT JOIN
 				tags t2 ON nt2.tag_id = t2.tag_id
 			WHERE
-				t.tag_id = ? AND %s
+				t.tag_id IN (
+					WITH RECURSIVE descendants(id) AS (
+						SELECT ? UNION ALL
+						SELECT t3.tag_id FROM tags t3 INNER JOIN descendants d ON t3.parent_id = d.id
+					)
+					SELECT id FROM descendants
+				) AND %s
 			GROUP BY
 				n.note_id
 			ORDER BY

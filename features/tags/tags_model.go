@@ -243,6 +243,26 @@ func statusJoin(statusCol string) string {
 	return "LEFT JOIN note_tags nt ON t.tag_id = nt.tag_id LEFT JOIN notes n ON nt.note_id = n.note_id AND n.deleted_at IS NULL AND n.archived_at IS NULL"
 }
 
+// parentHasNotesSubquery returns an EXISTS subquery that checks whether a tag
+// has at least one child tag with notes matching the given status.
+func parentHasNotesSubquery(statusCol string) string {
+	var condition string
+	switch statusCol {
+	case "archived":
+		condition = "nc.archived_at IS NOT NULL"
+	case "deleted":
+		condition = "nc.deleted_at IS NOT NULL"
+	default:
+		condition = "nc.deleted_at IS NULL AND nc.archived_at IS NULL"
+	}
+	return fmt.Sprintf(`EXISTS (
+		SELECT 1 FROM tags child
+		JOIN note_tags ntc ON child.tag_id = ntc.tag_id
+		JOIN notes nc ON ntc.note_id = nc.note_id AND %s
+		WHERE child.parent_id = t.tag_id
+	)`, condition)
+}
+
 // GetFilteredTags returns tags filtered by focus mode, status, and section.
 func GetFilteredTags(focusModeID int, isArchived, isDeleted bool, section string, query string) ([]Tag, error) {
 	tags := []Tag{}
@@ -257,11 +277,7 @@ func GetFilteredTags(focusModeID int, isArchived, isDeleted bool, section string
 	}
 
 	joinNote := statusJoin(statusCol)
-
-	var havingClause string
-	if statusCol == "archived" || statusCol == "deleted" {
-		havingClause = "HAVING COUNT(n.note_id) > 0"
-	}
+	havingClause := fmt.Sprintf("HAVING COUNT(n.note_id) > 0 OR %s", parentHasNotesSubquery(statusCol))
 
 	var q string
 	var args []interface{}
@@ -283,7 +299,11 @@ func GetFilteredTags(focusModeID int, isArchived, isDeleted bool, section string
 			GROUP BY
 				t.tag_id, t.name, t.parent_id, t.sort_order
 			HAVING
-				COUNT(tt.template_id) > 0
+				COUNT(tt.template_id) > 0 OR EXISTS (
+					SELECT 1 FROM tags child
+					JOIN template_tags ttc ON child.tag_id = ttc.tag_id
+					WHERE child.parent_id = t.tag_id
+				)
 			ORDER BY
 				COALESCE(t.sort_order, 2147483647) ASC,
 				note_count DESC
@@ -692,4 +712,53 @@ func GetUntaggedCount(isArchived, isDeleted bool, section string) (int, error) {
 		return 0, fmt.Errorf("error counting untagged: %w", err)
 	}
 	return count, nil
+}
+
+// CleanupUnusedTags deletes tags that are not referenced by any note, template,
+// or focus mode, and are not parent tags (have no children).
+func CleanupUnusedTags() (int, error) {
+	tx, err := sqlite.DB.Begin()
+	if err != nil {
+		return 0, fmt.Errorf("error starting transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	rows, err := tx.Query(`
+		SELECT t.tag_id FROM tags t
+		WHERE NOT EXISTS (SELECT 1 FROM note_tags nt WHERE nt.tag_id = t.tag_id)
+		  AND NOT EXISTS (SELECT 1 FROM template_tags tt WHERE tt.tag_id = t.tag_id)
+		  AND NOT EXISTS (SELECT 1 FROM focus_mode_tags ft WHERE ft.tag_id = t.tag_id)
+		  AND NOT EXISTS (SELECT 1 FROM tags child WHERE child.parent_id = t.tag_id)
+	`)
+	if err != nil {
+		return 0, fmt.Errorf("error finding unused tags: %w", err)
+	}
+	defer rows.Close()
+
+	var tagIDs []int
+	for rows.Next() {
+		var id int
+		if err := rows.Scan(&id); err != nil {
+			slog.Error("error scanning unused tag id", "error", err)
+			continue
+		}
+		tagIDs = append(tagIDs, id)
+	}
+
+	if len(tagIDs) == 0 {
+		return 0, nil
+	}
+
+	for _, id := range tagIDs {
+		if _, err := tx.Exec("DELETE FROM tags WHERE tag_id = ?", id); err != nil {
+			slog.Error("error deleting unused tag", "tag_id", id, "error", err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return 0, fmt.Errorf("error committing cleanup: %w", err)
+	}
+
+	slog.Info("unused tags cleaned up", "count", len(tagIDs))
+	return len(tagIDs), nil
 }

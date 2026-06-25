@@ -359,6 +359,14 @@ func runBackgroundTasks() {
 			intelligence.ProcessQueues()
 		}
 	}()
+
+	tagCleanupFrequency := 24 * time.Hour
+	go func() {
+		tags.CleanupUnusedTags() // Run immediately on server start
+		for range time.Tick(tagCleanupFrequency) {
+			tags.CleanupUnusedTags()
+		}
+	}()
 }
 
 func getEnv(key, fallback string) string {
