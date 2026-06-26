@@ -294,29 +294,7 @@ func handleToolsList(req Request) *Response {
 				"required": []string{"image_data", "filename"},
 			},
 		},
-		{
-			Name:        "append_image_to_note",
-			Description: "Append an image link to a note's content",
-			InputSchema: map[string]interface{}{
-				"type": "object",
-				"properties": map[string]interface{}{
-					"noteId": map[string]interface{}{
-						"type":        "number",
-						"description": "The ID of the note to append the image to",
-					},
-					"image_path": map[string]interface{}{
-						"type":        "string",
-						"description": "The image path returned from upload_image (e.g., /images/filename.jpg)",
-					},
-					"description": map[string]interface{}{
-						"type":        "string",
-						"description": "Optional description/alt text for the image",
-						"default":     "",
-					},
-				},
-				"required": []string{"noteId", "image_path"},
-			},
-		},
+
 	}
 
 	result := ToolListResult{Tools: tools}
@@ -352,8 +330,6 @@ func handleToolsCall(req Request) *Response {
 		result = handleCreateNote(params.Arguments)
 	case "upload_image":
 		result = handleUploadImage(params.Arguments)
-	case "append_image_to_note":
-		result = handleAppendImageToNote(params.Arguments)
 	default:
 		return createErrorResponse(req.ID, -32601, "Unknown tool", params.Name)
 	}
@@ -672,65 +648,11 @@ func handleUploadImage(args map[string]interface{}) ToolCallResult {
 	return ToolCallResult{
 		Content: []ToolContent{{
 			Type: "text",
-			Text: fmt.Sprintf("Image uploaded successfully!\n\nFilename: %s\nURL: %s\n\nUse this URL in append_image_to_note to add it to a note.", uniqueFilename, imageURL),
+			Text: fmt.Sprintf("Image uploaded successfully!\n\nFilename: %s\nURL: %s\n\nUse this URL to embed the image in a note.", uniqueFilename, imageURL),
 		}},
 	}
 }
 
-func handleAppendImageToNote(args map[string]interface{}) ToolCallResult {
-	noteIDFloat, ok := args["noteId"].(float64)
-	if !ok {
-		return ToolCallResult{
-			Content: []ToolContent{{Type: "text", Text: "Error: noteId parameter is required"}},
-			IsError: true,
-		}
-	}
-	noteID := int(noteIDFloat)
-
-	imagePath, ok := args["image_path"].(string)
-	if !ok || imagePath == "" {
-		return ToolCallResult{
-			Content: []ToolContent{{Type: "text", Text: "Error: image_path parameter is required"}},
-			IsError: true,
-		}
-	}
-
-	description := ""
-	if d, ok := args["description"].(string); ok {
-		description = d
-	}
-
-	// Get existing note
-	note, err := notes.GetNoteByID(noteID)
-	if err != nil {
-		slog.Error("MCP append image error - note not found", "error", err)
-		return ToolCallResult{
-			Content: []ToolContent{{Type: "text", Text: "Error: note not found"}},
-			IsError: true,
-		}
-	}
-
-	// Append image markdown to content
-	imageMarkdown := fmt.Sprintf("\n\n![%s](%s)", description, imagePath)
-	note.Content += imageMarkdown
-
-	// Update note
-	updatedNote, err := notes.UpdateNote(note)
-	if err != nil {
-		slog.Error("MCP append image error - update failed", "error", err)
-		return ToolCallResult{
-			Content: []ToolContent{{Type: "text", Text: "Error updating note: " + err.Error()}},
-			IsError: true,
-		}
-	}
-
-	return ToolCallResult{
-		Content: []ToolContent{{
-			Type: "text",
-			Text: fmt.Sprintf("Image appended to note successfully!\n\nNote: %s (ID: %d)\nImage: %s", updatedNote.Title, updatedNote.NoteID, imagePath),
-		}},
-	}
-}
 
 func createErrorResponse(id interface{}, code int, message string, data interface{}) *Response {
 	return &Response{
