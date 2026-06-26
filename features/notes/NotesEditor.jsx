@@ -415,14 +415,19 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
 
   function handleTemplateApply(templateTitle, templateContent, templateTags) {
     if (title === "" && templateTitle && templateTitle.trim() !== "") setTitle(templateTitle);
-    const inserted = content ? content + "\n\n" + templateContent : templateContent;
+    const ta = textareaRef.current;
+    const currentVal = ta ? ta.value : content;
+    const cursorPos = ta ? ta.selectionStart : currentVal.length;
+    const inserted = currentVal.slice(0, cursorPos) + templateContent + currentVal.slice(cursorPos);
     updateContent(inserted);
     if (tags.length === 0 && templateTags && templateTags.length > 0) setTags(templateTags);
+    setShowTemplatePicker(false);
     setTimeout(() => {
-      if (textareaRef.current) {
-        textareaRef.current.focus();
-        textareaRef.current.selectionStart = inserted.length;
-        textareaRef.current.selectionEnd = inserted.length;
+      if (ta) {
+        ta.focus();
+        const newPos = cursorPos + templateContent.length;
+        ta.selectionStart = newPos;
+        ta.selectionEnd = newPos;
       }
     }, 0);
   }
