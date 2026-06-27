@@ -9,7 +9,8 @@ import (
 )
 
 type CreateTokenRequest struct {
-	Name string `json:"name"`
+	Name          string `json:"name"`
+	AllowedTagIDs []int  `json:"allowedTagIds,omitempty"`
 }
 
 type CreateTokenResponse struct {
@@ -45,6 +46,15 @@ func HandleCreateMCPToken(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		utils.SendErrorResponse(w, "MCP_TOKEN_CREATE_FAILED", "Error creating MCP token.", err, http.StatusInternalServerError)
 		return
+	}
+
+	// If allowed tags specified, bind them to the token
+	if len(req.AllowedTagIDs) > 0 {
+		if err := SetTokenAllowedTags(tokenInfo.TokenID, req.AllowedTagIDs); err != nil {
+			utils.SendErrorResponse(w, "MCP_TOKEN_TAG_FAILED", "Error binding tags to token.", err, http.StatusInternalServerError)
+			return
+		}
+		tokenInfo.AllowedTagIDs = req.AllowedTagIDs
 	}
 
 	response := CreateTokenResponse{

@@ -100,19 +100,24 @@ type ToolContent struct {
 	Text string `json:"text"`
 }
 
-func validateAccessToken(r *http.Request) bool {
+func extractTokenID(r *http.Request) int {
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" {
-		return false
+		return 0
 	}
 
 	if !strings.HasPrefix(authHeader, "Bearer ") {
-		return false
+		return 0
 	}
 
 	token := strings.TrimPrefix(authHeader, "Bearer ")
 
-	return ValidateMCPToken(token)
+	id, err := GetTokenIDByToken(token)
+	if err != nil {
+		slog.Error("MCP token validation failed", "error", err)
+		return 0
+	}
+	return id
 }
 
 func HandleMCP(w http.ResponseWriter, r *http.Request) {
@@ -131,7 +136,8 @@ func HandleMCP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !validateAccessToken(r) {
+	tokenID := extractTokenID(r)
+	if tokenID == 0 {
 		utils.SendErrorResponse(w, "UNAUTHORIZED", "Valid access token required", nil, http.StatusUnauthorized)
 		return
 	}
@@ -142,7 +148,7 @@ func HandleMCP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := handleMCPMessage(req)
+	response := handleMCPMessage(req, tokenID)
 	if response == nil {
 		w.WriteHeader(http.StatusOK)
 		return
@@ -153,7 +159,7 @@ func HandleMCP(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-func handleMCPMessage(req Request) interface{} {
+func handleMCPMessage(req Request, tokenID int) interface{} {
 	switch req.Method {
 	case "initialize":
 		return handleInitialize(req)
@@ -162,7 +168,7 @@ func handleMCPMessage(req Request) interface{} {
 	case "tools/list":
 		return handleToolsList(req)
 	case "tools/call":
-		return handleToolsCall(req)
+		return handleToolsCall(req, tokenID)
 	default:
 		return createErrorResponse(req.ID, -32601, "Method not found", nil)
 	}
@@ -294,8 +300,29 @@ func handleToolsList(req Request) *Response {
 				"required": []string{"image_data", "filename"},
 			},
 		},
-
-	}
+		{
+			Name:        "update_note",
+			Description: "Update an existing note's title and/or content. Only notes tagged with this token's allowed tags can be modified.",
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"noteId": map[string]interface{}{
+						"type":        "number",
+						"description": "The ID of the note to update",
+					},
+					"title": map[string]interface{}{
+						"type":        "string",
+						"description": "Optional new title for the note",
+					},
+					"content": map[string]interface{}{
+						"type":        "string",
+						"description": "Optional new content for the note (supports markdown)",
+					},
+				},
+				"required": []string{"noteId"},
+			},
+		},
+}
 
 	result := ToolListResult{Tools: tools}
 
@@ -306,7 +333,7 @@ func handleToolsList(req Request) *Response {
 	}
 }
 
-func handleToolsCall(req Request) *Response {
+func handleToolsCall(req Request, tokenID int) *Response {
 	var params ToolCallParams
 	paramBytes, err := json.Marshal(req.Params)
 	if err != nil {
@@ -328,6 +355,8 @@ func handleToolsCall(req Request) *Response {
 		result = handleGetNote(params.Arguments)
 	case "create_note":
 		result = handleCreateNote(params.Arguments)
+	case "update_note":
+		result = handleUpdateNote(params.Arguments, tokenID)
 	case "upload_image":
 		result = handleUploadImage(params.Arguments)
 	default:
@@ -568,6 +597,86 @@ func handleCreateNote(args map[string]interface{}) ToolCallResult {
 	}
 }
 
+func handleUpdateNote(args map[string]interface{}, tokenID int) ToolCallResult {
+	noteIDFloat, ok := args["noteId"].(float64)
+	if !ok {
+		return ToolCallResult{
+			Content: []ToolContent{{Type: "text", Text: "Error: noteId parameter is required"}},
+			IsError: true,
+		}
+	}
+	noteID := int(noteIDFloat)
+
+	// ── Permission check: tag-based ──
+	allowed, err := IsNoteAllowedForToken(noteID, tokenID)
+	if err != nil {
+		slog.Error("MCP permission check error", "error", err)
+		return ToolCallResult{
+			Content: []ToolContent{{Type: "text", Text: "Error checking note permissions"}},
+			IsError: true,
+		}
+	}
+	if !allowed {
+		return ToolCallResult{
+			Content: []ToolContent{{
+				Type: "text",
+				Text: "Error: this token does not have permission to modify this note. " +
+					"The note must be tagged with one of the tags allowed for this token.",
+			}},
+			IsError: true,
+		}
+	}
+
+	// ── Get existing note ──
+	existingNote, err := notes.GetNoteByID(noteID)
+	if err != nil {
+		slog.Error("MCP get note error", "error", err)
+		return ToolCallResult{
+			Content: []ToolContent{{Type: "text", Text: "Error retrieving note: " + err.Error()}},
+			IsError: true,
+		}
+	}
+
+	// ── Apply partial updates ──
+	if title, ok := args["title"].(string); ok {
+		existingNote.Title = title
+	}
+	if content, ok := args["content"].(string); ok {
+		existingNote.Content = content
+	}
+
+	// ── Save ──
+	updatedNote, err := notes.UpdateNote(existingNote)
+	if err != nil {
+		slog.Error("MCP update note error", "error", err)
+		return ToolCallResult{
+			Content: []ToolContent{{Type: "text", Text: "Error updating note: " + err.Error()}},
+			IsError: true,
+		}
+	}
+
+	// ── Build response ──
+	var text strings.Builder
+	text.WriteString(fmt.Sprintf("Note updated successfully!\n\n"))
+	text.WriteString(fmt.Sprintf("**%s** (ID: %d)\n", updatedNote.Title, updatedNote.NoteID))
+	text.WriteString(fmt.Sprintf("Updated: %s\n", updatedNote.UpdatedAt.Format("2006-01-02 15:04:05")))
+
+	if len(updatedNote.Tags) > 0 {
+		tagNames := make([]string, len(updatedNote.Tags))
+		for i, tag := range updatedNote.Tags {
+			tagNames[i] = tag.Name
+		}
+		text.WriteString(fmt.Sprintf("Tags: %s\n", strings.Join(tagNames, ", ")))
+	}
+
+	text.WriteString("\n---\n\n")
+	text.WriteString(updatedNote.Content)
+
+	return ToolCallResult{
+		Content: []ToolContent{{Type: "text", Text: text.String()}},
+	}
+}
+
 func handleUploadImage(args map[string]interface{}) ToolCallResult {
 	imageData, ok := args["image_data"].(string)
 	if !ok || imageData == "" {
@@ -652,7 +761,6 @@ func handleUploadImage(args map[string]interface{}) ToolCallResult {
 		}},
 	}
 }
-
 
 func createErrorResponse(id interface{}, code int, message string, data interface{}) *Response {
 	return &Response{

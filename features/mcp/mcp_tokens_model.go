@@ -12,10 +12,11 @@ import (
 )
 
 type MCPToken struct {
-	TokenID   int       `json:"tokenId"`
-	Name      string    `json:"name"`
-	CreatedAt time.Time `json:"createdAt"`
-	IsActive  bool      `json:"isActive"`
+	TokenID       int       `json:"tokenId"`
+	Name          string    `json:"name"`
+	CreatedAt     time.Time `json:"createdAt"`
+	IsActive      bool      `json:"isActive"`
+	AllowedTagIDs []int     `json:"allowedTagIds,omitempty"`
 }
 
 type MCPTokenRecord struct {
@@ -61,6 +62,14 @@ func GetAllMCPTokens() ([]MCPToken, error) {
 			return tokens, err
 		}
 		token.IsActive = isActiveInt == 1
+
+		// Load allowed tags for this token
+		allowedTagIDs, tagErr := GetTokenAllowedTagIDs(token.TokenID)
+		if tagErr != nil {
+			slog.Error("error fetching token allowed tags", "tokenId", token.TokenID, "error", tagErr)
+		}
+		token.AllowedTagIDs = allowedTagIDs
+
 		tokens = append(tokens, token)
 	}
 
@@ -171,4 +180,107 @@ func ValidateMCPToken(plainToken string) bool {
 	}
 
 	return true
+}
+
+// ─── Token-ID lookup ───
+
+func GetTokenIDByToken(plainToken string) (int, error) {
+	hasher := sha256.New()
+	hasher.Write([]byte(plainToken))
+	tokenHash := hex.EncodeToString(hasher.Sum(nil))
+
+	var tokenID int
+	err := sqlite.DB.QueryRow(
+		"SELECT token_id FROM mcp_tokens WHERE token_hash = ? AND is_active = 1",
+		tokenHash,
+	).Scan(&tokenID)
+	if err != nil {
+		slog.Error("MCP token lookup failed", "error", err)
+		return 0, fmt.Errorf("token not found or inactive: %w", err)
+	}
+	return tokenID, nil
+}
+
+// ─── Tag-based permission functions ───
+
+// GetTokenAllowedTagIDs returns the tag IDs directly assigned to this token.
+func GetTokenAllowedTagIDs(tokenID int) ([]int, error) {
+	rows, err := sqlite.DB.Query(
+		"SELECT tag_id FROM mcp_token_tags WHERE token_id = ?", tokenID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching token allowed tags: %w", err)
+	}
+	defer rows.Close()
+
+	var ids []int
+	for rows.Next() {
+		var id int
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("error scanning tag id: %w", err)
+		}
+		ids = append(ids, id)
+	}
+	return ids, nil
+}
+
+// SetTokenAllowedTags replaces the allowed-tag set for a token (inside a transaction).
+func SetTokenAllowedTags(tokenID int, tagIDs []int) error {
+	tx, err := sqlite.DB.Begin()
+	if err != nil {
+		return fmt.Errorf("error starting transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.Exec("DELETE FROM mcp_token_tags WHERE token_id = ?", tokenID); err != nil {
+		return fmt.Errorf("error clearing token tags: %w", err)
+	}
+
+	for _, tagID := range tagIDs {
+		if _, err := tx.Exec(
+			"INSERT INTO mcp_token_tags (token_id, tag_id) VALUES (?, ?)",
+			tokenID, tagID,
+		); err != nil {
+			return fmt.Errorf("error inserting token tag: %w", err)
+		}
+	}
+
+	return tx.Commit()
+}
+
+// IsNoteAllowedForToken checks whether a note is tagged with at least one tag
+// that the token is allowed to access (with recursive tag hierarchy).
+// If the token has allowed tags but none match the note, the note cannot be modified.
+func IsNoteAllowedForToken(noteID, tokenID int) (bool, error) {
+	// First check: does this token have any allowed tags at all?
+	// An empty allow list means no notes are permitted.
+	allowedTags, err := GetTokenAllowedTagIDs(tokenID)
+	if err != nil {
+		return false, err
+	}
+	if len(allowedTags) == 0 {
+		return false, nil // no tags selected = no notes allowed
+	}
+
+	query := `
+		WITH RECURSIVE allowed_tags(id) AS (
+			SELECT tag_id FROM mcp_token_tags WHERE token_id = ?
+			UNION ALL
+			SELECT t.tag_id FROM tags t
+			INNER JOIN allowed_tags a ON t.parent_id = a.id
+		)
+		SELECT 1 FROM note_tags nt
+		WHERE nt.note_id = ? AND nt.tag_id IN (SELECT id FROM allowed_tags)
+		LIMIT 1
+	`
+
+	var exists int
+	err = sqlite.DB.QueryRow(query, tokenID, noteID).Scan(&exists)
+	if err == sql.ErrNoRows {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("error checking note permission: %w", err)
+	}
+	return true, nil
 }

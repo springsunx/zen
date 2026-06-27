@@ -3,6 +3,7 @@ import Input from "../../commons/components/Input.jsx";
 import Button from "../../commons/components/Button.jsx";
 import ApiClient from "../../commons/http/ApiClient.js";
 import formatDate from "../../commons/utils/formatDate.js";
+import NotesEditorTags from "../tags/NotesEditorTags.jsx";
 import { t } from "../../commons/i18n/index.js";
 
 export default function McpPane() {
@@ -12,6 +13,9 @@ export default function McpPane() {
   const [newlyCreatedToken, setNewlyCreatedToken] = useState(null);
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState("");
+
+  // Tag selector — uses NotesEditorTags directly for exact same UX as notes editor
+  const [selectedTags, setSelectedTags] = useState([]);
 
   useEffect(() => {
     loadTokens();
@@ -33,10 +37,20 @@ export default function McpPane() {
     setError("");
   }
 
+  function handleAddTag(tag) {
+    setSelectedTags(prev => {
+      if (prev.some(t => t.tagId === tag.tagId || t.tagId === -1)) return prev;
+      return [...prev, { tagId: tag.tagId, name: tag.name, color: tag.color }];
+    });
+  }
+
+  function handleRemoveTag(tag) {
+    setSelectedTags(prev => prev.filter(t => t.tagId !== tag.tagId));
+  }
+
   async function handleCreateToken() {
     if (!newTokenName.trim()) {
       setError(t('settings.mcp.err.nameRequired'));
-
       return;
     }
 
@@ -45,11 +59,13 @@ export default function McpPane() {
 
     try {
       const response = await ApiClient.createToken({
-        name: newTokenName.trim()
+        name: newTokenName.trim(),
+        allowedTagIds: selectedTags.map(t => t.tagId)
       });
-      
+
       setNewlyCreatedToken(response.token);
       setNewTokenName("");
+      setSelectedTags([]);
       setTokens([response.tokenInfo, ...tokens]);
     } catch (err) {
       console.error('Create token error:', err);
@@ -58,7 +74,7 @@ export default function McpPane() {
     }
   }
 
-  async function revokeToken(tokenId, tokenName) {
+  async function revokeToken(tokenId) {
     try {
       await ApiClient.deleteToken(tokenId);
       setTokens(tokens.filter(token => token.tokenId !== tokenId));
@@ -67,18 +83,23 @@ export default function McpPane() {
     }
   }
 
+  // ─── Token items ───
+
   const tokenItems = tokens.map(token => (
     <div key={token.tokenId} className="mcp-token-item">
       <div className="mcp-token-info">
         <div className="mcp-token-name">{token.name}</div>
         <div className="mcp-token-date" title={token.createdAt}>{formatDate(new Date(token.createdAt))}</div>
+        {token.allowedTagIds && token.allowedTagIds.length > 0 && (
+          <div className="mcp-token-allowed-tags">{t('settings.mcp.tags.count', { count: token.allowedTagIds.length })}</div>
+        )}
       </div>
-      <Button variant="danger" onClick={() => revokeToken(token.tokenId, token.name)}>{t('settings.mcp.btn.revoke')}</Button>
+      <Button variant="danger" onClick={() => revokeToken(token.tokenId)}>{t('settings.mcp.btn.revoke')}</Button>
     </div>
   ));
 
   const buttonText = isCreating ? t('settings.mcp.btn.generating') : t('settings.mcp.btn.generate');
-  
+
   let tokenDisplay = null;
   if (newlyCreatedToken) {
     tokenDisplay = (
@@ -108,7 +129,7 @@ export default function McpPane() {
     <div className="settings-tab-content">
       <h3>{t('settings.mcp.title')}</h3>
       <p>{t('settings.mcp.desc')}</p>
-      
+
       <div className="mcp-token-creator">
         <Input
           id="mcp-token-name"
@@ -120,6 +141,16 @@ export default function McpPane() {
           isDisabled={isCreating}
           onChange={handleNameChange}
         />
+
+        <label className="mcp-token-tag-label">{t('settings.mcp.tags.label')}</label>
+        <NotesEditorTags
+          tags={selectedTags}
+          isEditable={true}
+          canCreateTag={false}
+          onAddTag={handleAddTag}
+          onRemoveTag={handleRemoveTag}
+        />
+
         <Button variant="primary" onClick={handleCreateToken} isDisabled={isCreating || !newTokenName.trim()}>
           {buttonText}
         </Button>

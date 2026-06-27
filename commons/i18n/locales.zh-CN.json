@@ -88,6 +88,8 @@
   "settings.mcp.tokens.none": "尚未创建令牌。请在上方创建你的第一个令牌。",
   "settings.mcp.btn.revoke": "撤销",
   "settings.mcp.err.nameRequired": "请填写令牌名称",
+  "settings.mcp.tags.label": "允许的标签（搜索并选择标签来限制此令牌）",
+  "settings.mcp.tags.count": "限制于 {count} 个标签",
   "settings.security.ph.current": "请输入当前密码",
   "settings.security.ph.new": "请输入新密码",
   "settings.security.ph.confirm": "请确认新密码",

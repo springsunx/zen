@@ -356,6 +356,19 @@
                 .input-container {
                     margin-bottom: var(--spacing-1);
                 }
+
+                .mcp-token-tag-label {
+                    display: block;
+                    font-size: 13px;
+                    font-weight: 500;
+                    margin-bottom: 8px;
+                    margin-top: 12px;
+                    color: var(--text-primary);
+                }
+
+                .notes-editor-tags {
+                    margin-bottom: 12px;
+                }
             }
 
             .mcp-token-display {
@@ -429,6 +442,12 @@
                             .mcp-token-date {
                                 font-size: 12px;
                                 color: var(--neutral-400);
+                            }
+
+                            .mcp-token-allowed-tags {
+                                font-size: 11px;
+                                color: var(--primary-color);
+                                margin-top: 4px;
                             }
                         }
 

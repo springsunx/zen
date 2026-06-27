@@ -88,6 +88,8 @@
   "settings.mcp.tokens.none": "No tokens created yet. Create your first token above.",
   "settings.mcp.btn.revoke": "Revoke",
   "settings.mcp.err.nameRequired": "Token name is required",
+  "settings.mcp.tags.label": "Allowed Tags (search and select tags to restrict this token)",
+  "settings.mcp.tags.count": "Restricted to {count} tag(s)",
   "settings.security.ph.current": "Enter current password",
   "settings.security.ph.new": "Enter new password",
   "settings.security.ph.confirm": "Confirm new password",
