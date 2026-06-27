@@ -38,6 +38,29 @@ English | [中文](./readme-cn.md)
 * Markdown render internal note links, open in modal or navigate on click
 * Press <kbd>Ctrl+L</kbd> in the editor to search and insert internal note links
 
+### New Features
+* AI assistant with multi-provider config, conversation history, floating panel, and double-<kbd>Ctrl</kbd> to activate
+* Slash commands: headings (/h1 /h2 /h3), callouts (/v1-/v5), lists (/l1 /l2 /l3), table, /link
+* Command palette (<kbd>Ctrl+Shift+P</kbd>)
+* Tag hierarchy with colors, focus mode, and pinyin matching for search
+* Backlinks panel with collapse/expand toggle
+* S3-compatible image and attachment storage with presigned URLs and <kbd>Ctrl+V</kbd> paste
+* Export/import preserves tag hierarchy, color, sortOrder, and pinned notes; YAML frontmatter support
+* Bulk note actions (pin, archive, delete) with content size display
+* Note list action buttons (pin, archive, delete) and edit button
+* Dark theme support for highlight.js code blocks
+* Editor expanded to 1200px with fit-to-window button
+* Canvas server-side persistence with middle-mouse-button panning
+* Code block wrap toggle and width adaptation
+* Insert full AI conversation button
+* Security hardening: XSS sanitization, SSRF protection, prompt injection prevention
+* Copy markdown button next to TOC toggle
+* Auto-hide empty tags, auto-cleanup unused tags, parent tag includes child notes
+* Dynamic tag counts and section titles
+* MCP tools: create_note, image upload
+* Save without exiting editor
+* NotesEditor refactoring with improved edit flow
+
 ### Experimental Features
 * Canvas for spatial organization of notes and images (stored as [JSON Canvas](https://jsoncanvas.org/docs/apps/))
 * Semantic search for notes and images (via [Zen Intelligence](https://github.com/sheshbabu/zen-intelligence))
