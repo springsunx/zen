@@ -1,6 +1,7 @@
 package clipboard
 
 import (
+	"fmt"
 	"path/filepath"
 	"strings"
 	"zen/features/storage"
@@ -21,6 +22,25 @@ type ClipboardMessage struct {
 
 const CLIPBOARD_LIMIT = 50
 
+// rowScanner is satisfied by both *sql.Row and *sql.Rows.
+type rowScanner interface {
+	Scan(dest ...interface{}) error
+}
+
+// scanMessage scans a row into a ClipboardMessage and sets the URL for file types.
+func scanMessage(s rowScanner) (ClipboardMessage, error) {
+	var msg ClipboardMessage
+	err := s.Scan(&msg.ID, &msg.Type, &msg.Content, &msg.Filename,
+		&msg.OriginalName, &msg.ContentType, &msg.FileSize, &msg.CreatedAt)
+	if err != nil {
+		return ClipboardMessage{}, fmt.Errorf("scan clipboard message: %w", err)
+	}
+	if msg.Type == "file" && msg.Filename != "" {
+		msg.URL = "/api/clipboard/file/" + msg.Filename
+	}
+	return msg, nil
+}
+
 // isImageFile checks whether a filename has an image extension.
 func isImageFile(filename string) bool {
 	ext := strings.ToLower(filepath.Ext(filename))
@@ -40,3 +60,7 @@ func fileProvider(filename string) storage.Provider {
 	}
 	return storage.GetAttachmentProvider()
 }
+
+// messageColumns is the common SELECT column list used in all clipboard queries.
+const messageColumns = `id, type, COALESCE(content,''), COALESCE(filename,''),
+	COALESCE(original_name,''), COALESCE(content_type,''), COALESCE(file_size,0), created_at`

@@ -36,7 +36,6 @@ func HandlePushText(w http.ResponseWriter, r *http.Request) {
 
 	id, _ := result.LastInsertId()
 
-	// Return the newly created message
 	msg, err := getMessageByID(id)
 	if err != nil {
 		utils.SendErrorResponse(w, "FETCH_FAILED", "Error retrieving saved message.", err, http.StatusInternalServerError)
@@ -50,23 +49,12 @@ func HandlePushText(w http.ResponseWriter, r *http.Request) {
 
 // getMessageByID fetches a single clipboard message by its ID.
 func getMessageByID(id int64) (ClipboardMessage, error) {
-	var msg ClipboardMessage
-	err := sqlite.DB.QueryRow(`
-		SELECT id, type, COALESCE(content,''), COALESCE(filename,''), COALESCE(original_name,''),
-		       COALESCE(content_type,''), COALESCE(file_size,0), created_at
-		FROM clipboard_messages WHERE id = ?
-	`, id).Scan(&msg.ID, &msg.Type, &msg.Content, &msg.Filename,
-		&msg.OriginalName, &msg.ContentType, &msg.FileSize, &msg.CreatedAt)
+	row := sqlite.DB.QueryRow(
+		"SELECT "+messageColumns+" FROM clipboard_messages WHERE id = ?", id,
+	)
+	msg, err := scanMessage(row)
 	if err != nil {
-		return ClipboardMessage{}, fmt.Errorf("error fetching message id=%d: %w", id, err)
-	}
-	if msg.Type == "file" && msg.Filename != "" {
-		msg.URL = clipboardFileURL(msg.Filename)
+		return ClipboardMessage{}, fmt.Errorf("fetch message %d: %w", id, err)
 	}
 	return msg, nil
-}
-
-// clipboardFileURL returns the download URL for a clipboard file.
-func clipboardFileURL(filename string) string {
-	return "/api/clipboard/file/" + filename
 }

@@ -31,13 +31,14 @@ func HandleListContent(w http.ResponseWriter, r *http.Request) {
 	var countQuery string
 	var args []interface{}
 
+	baseQuery := "FROM clipboard_messages"
 	if msgType == "text" || msgType == "file" {
-		countQuery = "SELECT COUNT(*) FROM clipboard_messages WHERE type = ?"
-		rowsQuery = "SELECT id, type, COALESCE(content,''), COALESCE(filename,''), COALESCE(original_name,''), COALESCE(content_type,''), COALESCE(file_size,0), created_at FROM clipboard_messages WHERE type = ? ORDER BY id DESC LIMIT ?"
+		countQuery = "SELECT COUNT(*) " + baseQuery + " WHERE type = ?"
+		rowsQuery = "SELECT " + messageColumns + " " + baseQuery + " WHERE type = ? ORDER BY id DESC LIMIT ?"
 		args = append(args, msgType, limit)
 	} else {
-		countQuery = "SELECT COUNT(*) FROM clipboard_messages"
-		rowsQuery = "SELECT id, type, COALESCE(content,''), COALESCE(filename,''), COALESCE(original_name,''), COALESCE(content_type,''), COALESCE(file_size,0), created_at FROM clipboard_messages ORDER BY id DESC LIMIT ?"
+		countQuery = "SELECT COUNT(*) " + baseQuery
+		rowsQuery = "SELECT " + messageColumns + " " + baseQuery + " ORDER BY id DESC LIMIT ?"
 		args = append(args, limit)
 	}
 
@@ -55,14 +56,10 @@ func HandleListContent(w http.ResponseWriter, r *http.Request) {
 
 	messages := make([]ClipboardMessage, 0)
 	for rows.Next() {
-		var msg ClipboardMessage
-		if err := rows.Scan(&msg.ID, &msg.Type, &msg.Content, &msg.Filename,
-			&msg.OriginalName, &msg.ContentType, &msg.FileSize, &msg.CreatedAt); err != nil {
+		msg, err := scanMessage(rows)
+		if err != nil {
 			slog.Error("error scanning clipboard message", "error", err)
 			continue
-		}
-		if msg.Type == "file" && msg.Filename != "" {
-			msg.URL = clipboardFileURL(msg.Filename)
 		}
 		messages = append(messages, msg)
 	}
@@ -77,22 +74,14 @@ func HandleListContent(w http.ResponseWriter, r *http.Request) {
 
 // HandleLatestContent returns the most recent clipboard message.
 func HandleLatestContent(w http.ResponseWriter, r *http.Request) {
-	var msg ClipboardMessage
-	err := sqlite.DB.QueryRow(`
-		SELECT id, type, COALESCE(content,''), COALESCE(filename,''), COALESCE(original_name,''),
-		       COALESCE(content_type,''), COALESCE(file_size,0), created_at
-		FROM clipboard_messages ORDER BY id DESC LIMIT 1
-	`).Scan(&msg.ID, &msg.Type, &msg.Content, &msg.Filename,
-		&msg.OriginalName, &msg.ContentType, &msg.FileSize, &msg.CreatedAt)
+	row := sqlite.DB.QueryRow(
+		"SELECT " + messageColumns + " FROM clipboard_messages ORDER BY id DESC LIMIT 1",
+	)
+	msg, err := scanMessage(row)
 	if err != nil {
-		// No messages yet - return empty response
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte("{}"))
 		return
-	}
-
-	if msg.Type == "file" && msg.Filename != "" {
-		msg.URL = clipboardFileURL(msg.Filename)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
