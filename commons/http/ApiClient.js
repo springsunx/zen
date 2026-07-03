@@ -506,6 +506,39 @@ async function deleteCanvas(canvasId) {
   return await request('DELETE', `/api/canvases/${canvasId}/`);
 }
 
+// ─── Clipboard ───
+
+async function pushClipboardText(payload) {
+  return await request('POST', '/api/clipboard/text', payload);
+}
+
+async function uploadClipboardFile(file, content) {
+  const fd = new FormData();
+  fd.append('file', file);
+  if (content) fd.append('content', content);
+  return await request('POST', '/api/clipboard/upload', fd);
+}
+
+async function getClipboardContent(params) {
+  const q = new URLSearchParams();
+  if (params?.limit) q.append('limit', params.limit);
+  if (params?.type) q.append('type', params.type);
+  const url = '/api/clipboard/content/' + (q.toString() ? '?' + q : '');
+  return await request('GET', url);
+}
+
+async function getLatestClipboardContent() {
+  return await request('GET', '/api/clipboard/content/latest');
+}
+
+async function revokeClipboardItem(id) {
+  return await request('DELETE', `/api/clipboard/revoke/${id}/`);
+}
+
+async function saveClipboardAsNote(id) {
+  return await request('POST', `/api/clipboard/${id}/note/`);
+}
+
 export default {
   request,
   checkUser,
@@ -577,4 +610,10 @@ export default {
   createCanvas,
   updateCanvas,
   deleteCanvas,
+  pushClipboardText,
+  uploadClipboardFile,
+  getClipboardContent,
+  getLatestClipboardContent,
+  revokeClipboardItem,
+  saveClipboardAsNote,
 };

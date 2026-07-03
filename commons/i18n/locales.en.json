@@ -457,5 +457,25 @@
   "command.lang.auto": "Language: Auto",
   "command.lang.en": "Language: English",
   "command.lang.zh": "Language: 中文",
-  "command.category.settings": "Settings"
+  "command.category.settings": "Settings",
+
+  "nav.clipboard": "Clipboard",
+  "clipboard.subtitle": "Quick file & text transfer between phone and computer",
+  "clipboard.textPlaceholder": "Paste text or type here...",
+  "clipboard.chooseFile": "Choose file to send",
+  "clipboard.send": "Send",
+  "clipboard.download": "Download",
+  "clipboard.copy": "Copy",
+  "clipboard.empty.title": "No clipboard items",
+  "clipboard.empty.description": "Upload a file or paste text to get started",
+  "clipboard.toast.emptyInput": "Please enter text or select a file",
+  "clipboard.toast.sendFailed": "Failed to send",
+  "clipboard.toast.deleteFailed": "Failed to delete",
+  "clipboard.toast.copied": "Copied to clipboard",
+  "clipboard.toast.copyFailed": "Failed to copy",
+  "clipboard.copyLink": "Copy link",
+  "clipboard.confirmDeleteMessage": "Delete this clipboard item?",
+  "clipboard.confirmDeleteTitle": "Delete",
+  "clipboard.saveAsNote": "Save as note",
+  "clipboard.toast.saveAsNoteFailed": "Failed to save as note"
 }

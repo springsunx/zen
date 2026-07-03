@@ -5,10 +5,11 @@ import FocusSwitcher from "../../features/focus/FocusSwitcher.jsx";
 import SearchMenu from "../../features/search/SearchMenu.jsx";
 import SettingsModal from "../../features/settings/SettingsModal.jsx";
 import { openModal } from "./Modal.jsx";
-import { NotesIcon, SearchIcon, NewIcon, ArchiveIcon, TrashIcon, BoardIcon, SettingsIcon, TemplatesIcon } from "./Icon.jsx";
+import { NotesIcon, SearchIcon, NewIcon, ArchiveIcon, TrashIcon, BoardIcon, SettingsIcon, TemplatesIcon, ClipboardIcon } from "./Icon.jsx";
 import { useAppContext } from "../../commons/contexts/AppContext.jsx";
 import { useLayout } from "../../commons/contexts/LayoutContext.jsx";
 import { t } from "../../commons/i18n/index.js";
+import navigateTo from "../utils/navigateTo.js";
 import "./Sidebar.css";
 
 export default function Sidebar() {
@@ -91,6 +92,10 @@ export default function Sidebar() {
             <TemplatesIcon />
             {t("nav.templates")}
           </Link>
+          <div className="sidebar-button clipboard" onClick={() => navigateTo('/clipboard/')}>
+            <ClipboardIcon />
+            {t("nav.clipboard")}
+          </div>
           <Link className="sidebar-button archives" activeClassName="is-active" to={archiveLink}>
             <ArchiveIcon />
             {t("nav.archives")}
@@ -105,11 +110,13 @@ export default function Sidebar() {
           </div>
         </div>
 
-        <div className="sidebar-scrollable">
-          <div className="sidebar-section">
-            <SidebarTagsList tags={tags} />
+        {!window.location.pathname.includes('/clipboard/') && (
+          <div className="sidebar-scrollable">
+            <div className="sidebar-section">
+              <SidebarTagsList tags={tags} />
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </>
   );

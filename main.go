@@ -19,6 +19,7 @@ import (
 	"zen/commons/sqlite"
 	"zen/features/attachments"
 	"zen/features/canvas"
+	"zen/features/clipboard"
 	"zen/features/ai"
 	"zen/features/focus"
 	"zen/features/images"
@@ -200,6 +201,15 @@ func newRouter() *http.ServeMux {
 	addPrivateRoute(mux, "POST /api/canvases/", canvas.HandleCreateCanvas)
 	addPrivateRoute(mux, "PUT /api/canvases/{canvasId}/", canvas.HandleUpdateCanvas)
 	addPrivateRoute(mux, "DELETE /api/canvases/{canvasId}/", canvas.HandleDeleteCanvas)
+
+	// Clipboard — phone↔computer file/text transfer
+	addPrivateRoute(mux, "POST /api/clipboard/text", clipboard.HandlePushText)
+	addPrivateRoute(mux, "POST /api/clipboard/upload", clipboard.HandleUploadFile)
+	addPrivateRoute(mux, "DELETE /api/clipboard/revoke/{id}/", clipboard.HandleRevoke)
+	addPrivateRoute(mux, "POST /api/clipboard/{id}/note/", clipboard.HandleSaveAsNote)
+	addPrivateRoute(mux, "GET /api/clipboard/content/", clipboard.HandleListContent)
+	addPrivateRoute(mux, "GET /api/clipboard/content/latest", clipboard.HandleLatestContent)
+	mux.HandleFunc("GET /api/clipboard/file/", clipboard.HandleDownloadFile)
 
 	mux.HandleFunc("POST /mcp", mcp.HandleMCP)
 	mux.HandleFunc("OPTIONS /mcp", mcp.HandleMCP)

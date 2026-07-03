@@ -2,7 +2,7 @@ import { h } from "../../assets/preact.esm.js"
 import Link from './Link.jsx';
 import SearchMenu from "../../features/search/SearchMenu.jsx";
 import { openModal } from "./Modal.jsx";
-import { NotesIcon, SearchIcon, NewIcon } from "./Icon.jsx";
+import { NotesIcon, SearchIcon, NewIcon, ClipboardIcon } from "./Icon.jsx";
 import "./MobileNavbar.css";
 import { t } from "../../commons/i18n/index.js";
 
@@ -20,6 +20,8 @@ export default function MobileNavbar() {
           <SearchIcon />{t('nav.search')}        </div>
         <Link className="mobile-navbar-button" to="/notes/new" shouldPreserveSearchParams>
           <NewIcon />{t('nav.new')}        </Link>
+        <Link className="mobile-navbar-button" to="/clipboard/">
+          <ClipboardIcon />{t('nav.clipboard')}        </Link>
       </div>
     </div>
   );
