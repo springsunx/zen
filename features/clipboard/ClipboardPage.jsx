@@ -17,13 +17,12 @@ export default function ClipboardPage() {
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [textInput, setTextInput] = useState('');
-  const [selectedFile, setSelectedFile] = useState(null);
+  const [selectedFiles, setSelectedFiles] = useState([]);
   const [deleteTarget, setDeleteTarget] = useState(null);
 
   useEffect(() => {
     refreshMessages();
   }, []);
-
 
   function refreshMessages() {
     setIsLoading(true);
@@ -44,29 +43,49 @@ export default function ClipboardPage() {
   }
 
   function handleFileChange(e) {
-    const file = e.target.files[0];
-    if (file) {
-      setSelectedFile(file);
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) {
+      setSelectedFiles(prev => [...prev, ...files]);
     }
   }
 
+  function handleRemoveFile(index) {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  }
+
+  function handleClearFiles() {
+    setSelectedFiles([]);
+    const fileInput = document.querySelector('.clipboard-file-input');
+    if (fileInput) fileInput.value = '';
+  }
+
   function handleSend() {
-    if (textInput.trim() === '' && selectedFile === null) {
+    const hasText = textInput.trim() !== '';
+    const hasFiles = selectedFiles.length > 0;
+
+    if (!hasText && !hasFiles) {
       showToast(t('clipboard.toast.emptyInput'));
       return;
     }
 
-    const sendPromise = textInput.trim() !== '' && selectedFile !== null
-      ? ApiClient.uploadClipboardFile(selectedFile, textInput.trim())
-      : textInput.trim() !== ''
-        ? ApiClient.pushClipboardText({ content: textInput.trim() })
-        : ApiClient.uploadClipboardFile(selectedFile);
+    let sendPromise;
+
+    if (hasText && !hasFiles) {
+      // Text only
+      sendPromise = ApiClient.pushClipboardText({ content: textInput.trim() });
+    } else if (hasFiles) {
+      // Upload each file sequentially with the same text
+      const content = hasText ? textInput.trim() : '';
+      const uploads = selectedFiles.map(file => () => ApiClient.uploadClipboardFile(file, content));
+      sendPromise = uploads.reduce((p, fn) => p.then(fn), Promise.resolve());
+    } else {
+      sendPromise = Promise.resolve();
+    }
 
     sendPromise
       .then(() => {
         setTextInput('');
-        setSelectedFile(null);
-        // Reset file input
+        setSelectedFiles([]);
         const fileInput = document.querySelector('.clipboard-file-input');
         if (fileInput) fileInput.value = '';
         refreshMessages();
@@ -135,10 +154,10 @@ export default function ClipboardPage() {
     content = <div className="clipboard-list">{items}</div>;
   }
 
-  const canSend = textInput.trim() !== '' || selectedFile !== null;
+  const canSend = textInput.trim() !== '' || selectedFiles.length > 0;
 
-  const fileLabel = selectedFile
-    ? selectedFile.name + ' (' + Math.round(selectedFile.size / 1024) + ' KB)'
+  const fileLabel = selectedFiles.length > 0
+    ? selectedFiles.length + t('clipboard.filesSelected')
     : t('clipboard.chooseFile');
 
   return (
@@ -168,20 +187,33 @@ export default function ClipboardPage() {
                 <span className="clipboard-file-label-text">{fileLabel}</span>
                 <input
                   type="file"
+                  multiple
                   className="clipboard-file-input"
                   onChange={handleFileChange}
                 />
               </label>
-              {selectedFile && (
+              {selectedFiles.length > 0 && (
                 <button
                   className="clipboard-clear-file"
-                  onClick={() => { setSelectedFile(null); document.querySelector('.clipboard-file-input').value = ''; }}
+                  onClick={handleClearFiles}
                   title={t('common.clear')}
                 >
                   &times;
                 </button>
               )}
             </div>
+
+            {selectedFiles.length > 0 && (
+              <div className="clipboard-file-list">
+                {selectedFiles.map((file, i) => (
+                  <div key={i} className="clipboard-file-chip">
+                    <span className="clipboard-file-chip-name">{file.name}</span>
+                    <span className="clipboard-file-chip-size">({Math.round(file.size / 1024)} KB)</span>
+                    <button className="clipboard-file-chip-remove" onClick={() => handleRemoveFile(i)}>&times;</button>
+                  </div>
+                ))}
+              </div>
+            )}
 
             <button
               className={'clipboard-send-btn' + (canSend ? '' : ' is-disabled')}
@@ -259,7 +291,6 @@ function ClipboardItem({ message, onDelete, onSaveAsNote }) {
   if (isFile) {
     let sizeInfo = formatFileSize(message.fileSize) + ' · ' + timeAgo;
     if (message.content) {
-      // Text + file: text is primary, file shown as attachment
       icon = <ClipboardIcon />;
       primaryInfo = message.content.length > 120
         ? message.content.substring(0, 120) + '...'
@@ -282,7 +313,6 @@ function ClipboardItem({ message, onDelete, onSaveAsNote }) {
         </div>
       );
     } else {
-      // File only
       icon = <DownloadIcon />;
       primaryInfo = message.originalName || message.filename;
       secondaryInfo = sizeInfo;

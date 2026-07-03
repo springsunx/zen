@@ -463,6 +463,7 @@
   "clipboard.subtitle": "Quick file & text transfer between phone and computer",
   "clipboard.textPlaceholder": "Paste text or type here...",
   "clipboard.chooseFile": "Choose file to send",
+  "clipboard.filesSelected": " file(s) selected",
   "clipboard.send": "Send",
   "clipboard.download": "Download",
   "clipboard.copy": "Copy",

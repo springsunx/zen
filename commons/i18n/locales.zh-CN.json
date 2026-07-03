@@ -466,6 +466,7 @@
   "clipboard.subtitle": "手机与电脑之间快速传输文件和文本",
   "clipboard.textPlaceholder": "粘贴或输入文本...",
   "clipboard.chooseFile": "选择要发送的文件",
+  "clipboard.filesSelected": " 个文件已选择",
   "clipboard.send": "发送",
   "clipboard.download": "下载",
   "clipboard.copy": "复制",
