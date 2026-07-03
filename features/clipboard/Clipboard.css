@@ -17,6 +17,12 @@
   }
 }
 
+@media screen and (max-width: 948px) {
+  .clipboard-page-content {
+    padding-bottom: calc(var(--mobile-navbar-height) + var(--safe-area-bottom) + var(--spacing-3));
+  }
+}
+
 .clipboard-spinner {
   display: flex;
   justify-content: center;
