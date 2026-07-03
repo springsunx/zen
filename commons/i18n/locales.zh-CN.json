@@ -478,6 +478,7 @@
   "clipboard.toast.copied": "已复制到剪贴板",
   "clipboard.toast.copyFailed": "复制失败",
   "clipboard.copyLink": "复制链接",
+  "clipboard.view": "查看",
   "clipboard.confirmDeleteMessage": "确定删除此剪贴板条目？",
   "clipboard.confirmDeleteTitle": "删除",
   "clipboard.saveAsNote": "存为笔记",

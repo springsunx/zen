@@ -258,6 +258,14 @@
     height: 18px;
     stroke: var(--neutral-500);
   }
+
+  &.clickable {
+    cursor: pointer;
+
+    &:hover {
+      background: var(--neutral-200);
+    }
+  }
 }
 
 .clipboard-item-body {

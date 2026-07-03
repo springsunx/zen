@@ -252,8 +252,15 @@ export default function ClipboardPage() {
 
 function ClipboardItem({ message, onDelete, onSaveAsNote }) {
   const isFile = message.type === 'file';
+  const isImage = isFile && /\.(jpg|jpeg|png|gif)$/i.test(message.filename || '');
 
   function handleDownload() {
+    if (message.url) {
+      window.open(message.url, '_blank');
+    }
+  }
+
+  function handleViewImage() {
     if (message.url) {
       window.open(message.url, '_blank');
     }
@@ -356,7 +363,9 @@ function ClipboardItem({ message, onDelete, onSaveAsNote }) {
 
   return (
     <div className={`clipboard-item clipboard-item-${isFile ? 'file' : 'text'}`}>
-      <div className="clipboard-item-icon">{icon}</div>
+      <div className={`clipboard-item-icon${isImage ? ' clickable' : ''}`} onClick={isImage ? handleViewImage : undefined} title={isImage ? t('clipboard.view') : ''}>
+        {icon}
+      </div>
       <div className="clipboard-item-body">
         <div className="clipboard-item-primary">{primaryInfo}</div>
         <div className="clipboard-item-secondary">{secondaryInfo}</div>

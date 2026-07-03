@@ -475,6 +475,7 @@
   "clipboard.toast.copied": "Copied to clipboard",
   "clipboard.toast.copyFailed": "Failed to copy",
   "clipboard.copyLink": "Copy link",
+  "clipboard.view": "View",
   "clipboard.confirmDeleteMessage": "Delete this clipboard item?",
   "clipboard.confirmDeleteTitle": "Delete",
   "clipboard.saveAsNote": "Save as note",
