@@ -466,6 +466,7 @@
   "clipboard.filesSelected": " file(s) selected",
   "clipboard.send": "Send",
   "clipboard.download": "Download",
+  "clipboard.downloadAll": "Download all",
   "clipboard.copy": "Copy",
   "clipboard.empty.title": "No clipboard items",
   "clipboard.empty.description": "Upload a file or paste text to get started",

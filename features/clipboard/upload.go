@@ -33,8 +33,9 @@ func HandleUploadFile(w http.ResponseWriter, r *http.Request) {
 		contentType = "application/octet-stream"
 	}
 
-	// Read optional text content
+	// Read optional text content and batch_id
 	textContent := r.FormValue("content")
+	batchID := r.FormValue("batch_id")
 
 	// Generate unique filename preserving extension
 	ext := filepath.Ext(originalName)
@@ -47,13 +48,21 @@ func HandleUploadFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Insert clipboard record (include content if provided)
+	// Insert clipboard record (include content and batch_id if provided)
 	var insertQuery string
 	var insertArgs []interface{}
-	if textContent != "" {
+	if textContent != "" && batchID != "" {
+		insertQuery = `INSERT INTO clipboard_messages (type, content, batch_id, filename, original_name, content_type, file_size)
+			 VALUES ('file', ?, ?, ?, ?, ?, ?)`
+		insertArgs = []interface{}{textContent, batchID, filename, originalName, contentType, handler.Size}
+	} else if textContent != "" {
 		insertQuery = `INSERT INTO clipboard_messages (type, content, filename, original_name, content_type, file_size)
 			 VALUES ('file', ?, ?, ?, ?, ?)`
 		insertArgs = []interface{}{textContent, filename, originalName, contentType, handler.Size}
+	} else if batchID != "" {
+		insertQuery = `INSERT INTO clipboard_messages (type, batch_id, filename, original_name, content_type, file_size)
+			 VALUES ('file', ?, ?, ?, ?, ?)`
+		insertArgs = []interface{}{batchID, filename, originalName, contentType, handler.Size}
 	} else {
 		insertQuery = `INSERT INTO clipboard_messages (type, filename, original_name, content_type, file_size)
 			 VALUES ('file', ?, ?, ?, ?)`

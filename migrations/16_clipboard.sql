@@ -8,5 +8,8 @@ CREATE TABLE IF NOT EXISTS clipboard_messages (
     original_name TEXT,                           -- 原始文件名
     content_type  TEXT,                           -- MIME 类型
     file_size     INTEGER,                        -- 文件字节数
+    batch_id      TEXT,                           -- 批量发送的组 ID
     created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX IF NOT EXISTS idx_clipboard_messages_batch_id ON clipboard_messages(batch_id);

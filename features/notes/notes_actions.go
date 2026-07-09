@@ -5,70 +5,128 @@ import (
 	"log/slog"
 	"time"
 	"zen/commons/sqlite"
+	"zen/features/attachments"
+	"zen/features/images"
+	"zen/features/storage"
 )
 
 func ForceDeleteNote(noteID int) error {
-	tx, err := sqlite.DB.Begin()
+	// Collect filenames before deleting links
+	imageFilenames := collectNoteImageFilenames(noteID)
+	attachmentFilenames := collectNoteAttachmentFilenames(noteID)
 
+	tx, err := sqlite.DB.Begin()
 	if err != nil {
 		err = fmt.Errorf("error starting transaction: %w", err)
 		slog.Error(err.Error())
 		return err
 	}
-
 	defer tx.Rollback()
 
-	query := `
-		DELETE FROM
-			note_tags
-		WHERE
-			note_id = ?
-	`
-
-	_, err = tx.Exec(query, noteID)
-	if err != nil {
-		err = fmt.Errorf("error deleting tags: %w", err)
-		slog.Error(err.Error())
-		return err
+	if _, err = tx.Exec("DELETE FROM note_tags WHERE note_id = ?", noteID); err != nil {
+		slog.Error("error deleting tags", "error", err)
+		return fmt.Errorf("error deleting tags: %w", err)
 	}
 
-	query = `
-		DELETE FROM
-			note_images
-		WHERE
-			note_id = ?
-	`
-
-	_, err = tx.Exec(query, noteID)
-	if err != nil {
-		err = fmt.Errorf("error deleting note images: %w", err)
-		slog.Error(err.Error())
-		return err
+	if _, err = tx.Exec("DELETE FROM note_images WHERE note_id = ?", noteID); err != nil {
+		slog.Error("error deleting note images", "error", err)
+		return fmt.Errorf("error deleting note images: %w", err)
 	}
 
-	query = `
-		DELETE FROM
-			notes
-		WHERE
-			note_id = ?
-	`
-
-	_, err = tx.Exec(query, noteID)
-	if err != nil {
-		err = fmt.Errorf("error deleting note: %w", err)
-		slog.Error(err.Error())
-		return err
+	if _, err = tx.Exec("DELETE FROM note_attachments WHERE note_id = ?", noteID); err != nil {
+		slog.Error("error deleting note attachments", "error", err)
+		return fmt.Errorf("error deleting note attachments: %w", err)
 	}
 
-	err = tx.Commit()
-
-	if err != nil {
-		err = fmt.Errorf("error deleting note: %w", err)
-		slog.Error(err.Error())
-		return err
+	if _, err = tx.Exec("DELETE FROM notes WHERE note_id = ?", noteID); err != nil {
+		slog.Error("error deleting note", "error", err)
+		return fmt.Errorf("error deleting note: %w", err)
 	}
+
+	if err = tx.Commit(); err != nil {
+		slog.Error("error committing note deletion", "error", err)
+		return fmt.Errorf("error committing note deletion: %w", err)
+	}
+
+	// Post-commit: clean up orphaned images and attachments from storage
+	cleanupOrphanedImages(imageFilenames)
+	cleanupOrphanedAttachments(attachmentFilenames)
 
 	return nil
+}
+
+func collectNoteImageFilenames(noteID int) []string {
+	rows, err := sqlite.DB.Query("SELECT filename FROM note_images WHERE note_id = ?", noteID)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+	var filenames []string
+	for rows.Next() {
+		var fn string
+		if rows.Scan(&fn) == nil {
+			filenames = append(filenames, fn)
+		}
+	}
+	return filenames
+}
+
+func collectNoteAttachmentFilenames(noteID int) []string {
+	rows, err := sqlite.DB.Query("SELECT filename FROM note_attachments WHERE note_id = ?", noteID)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+	var filenames []string
+	for rows.Next() {
+		var fn string
+		if rows.Scan(&fn) == nil {
+			filenames = append(filenames, fn)
+		}
+	}
+	return filenames
+}
+
+func cleanupOrphanedImages(filenames []string) {
+	imgProvider := storage.GetProvider()
+	for _, fn := range filenames {
+		var count int
+		if err := sqlite.DB.QueryRow("SELECT COUNT(*) FROM note_images WHERE filename = ?", fn).Scan(&count); err != nil {
+			slog.Error("error checking image references", "filename", fn, "error", err)
+			continue
+		}
+		if count > 0 {
+			continue
+		}
+		// No other notes reference this image — delete from DB and storage
+		if err := images.DeleteImage(fn); err != nil {
+			slog.Error("error deleting image record", "filename", fn, "error", err)
+		}
+		if delErr := imgProvider.Delete(fn); delErr != nil {
+			slog.Error("error deleting image file from storage", "filename", fn, "error", delErr)
+		}
+	}
+}
+
+func cleanupOrphanedAttachments(filenames []string) {
+	attProvider := storage.GetAttachmentProvider()
+	for _, fn := range filenames {
+		var count int
+		if err := sqlite.DB.QueryRow("SELECT COUNT(*) FROM note_attachments WHERE filename = ?", fn).Scan(&count); err != nil {
+			slog.Error("error checking attachment references", "filename", fn, "error", err)
+			continue
+		}
+		if count > 0 {
+			continue
+		}
+		// No other notes reference this attachment — delete from DB and storage
+		if err := attachments.DeleteAttachment(fn); err != nil {
+			slog.Error("error deleting attachment record", "filename", fn, "error", err)
+		}
+		if delErr := attProvider.Delete(fn); delErr != nil {
+			slog.Error("error deleting attachment file from storage", "filename", fn, "error", delErr)
+		}
+	}
 }
 
 func SoftDeleteNote(noteID int) error {

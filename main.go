@@ -206,6 +206,8 @@ func newRouter() *http.ServeMux {
 	addPrivateRoute(mux, "POST /api/clipboard/text", clipboard.HandlePushText)
 	addPrivateRoute(mux, "POST /api/clipboard/upload", clipboard.HandleUploadFile)
 	addPrivateRoute(mux, "DELETE /api/clipboard/revoke/{id}/", clipboard.HandleRevoke)
+	addPrivateRoute(mux, "DELETE /api/clipboard/batch/{batch_id}/", clipboard.HandleRevokeBatch)
+	addPrivateRoute(mux, "DELETE /api/clipboard/batch/{batch_id}/text/", clipboard.HandleDeleteBatchText)
 	addPrivateRoute(mux, "POST /api/clipboard/{id}/note/", clipboard.HandleSaveAsNote)
 	addPrivateRoute(mux, "GET /api/clipboard/content/", clipboard.HandleListContent)
 	addPrivateRoute(mux, "GET /api/clipboard/content/latest", clipboard.HandleLatestContent)

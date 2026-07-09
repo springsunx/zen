@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -129,14 +130,18 @@ func HandleGetAttachments(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(resp)
 }
 
-type CleanupResult struct {
-	LinksRebuilt   int      `json:"linksRebuilt"`
-	RemovedOrphans int      `json:"removedOrphans"`
-	OrphanFiles    []string `json:"orphanFiles"`
-}
 
 func HandleCleanupAttachments(w http.ResponseWriter, r *http.Request) {
-	var res CleanupResult
+	type result struct {
+		LinksRebuilt    int      `json:"linksRebuilt"`
+		RemovedOrphans  int      `json:"removedOrphans"`
+		RemovedMissing  int      `json:"removedMissing"`
+		Registered      int      `json:"registered"`
+		OrphanFiles     []string `json:"orphanFiles"`
+		MissingFiles    []string `json:"missingFiles"`
+		RegisteredFiles []string `json:"registeredFiles"`
+	}
+	var res result
 	attachmentRegex := regexp.MustCompile(`\[.*?\]\(/attachments/([^)]+)\)`)
 
 	// Get all note contents
@@ -154,6 +159,50 @@ func HandleCleanupAttachments(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			allNotes = append(allNotes, nc)
+		}
+	}
+
+	// ── Collect DB filenames and note-referenced filenames ──
+	dbFilenames := make(map[string]bool)
+	allAtts, _ := GetAllAttachments()
+	for _, att := range allAtts {
+		dbFilenames[att.Filename] = true
+	}
+
+	referencedInContent := make(map[string]bool)
+	for _, note := range allNotes {
+		for _, m := range attachmentRegex.FindAllStringSubmatch(note.Content, -1) {
+			if len(m) > 1 {
+				referencedInContent[m[1]] = true
+			}
+		}
+	}
+
+	// ── Register disk files missing from DB ──
+	attachmentsDir := "attachments"
+	if entries, dirErr := readDir(attachmentsDir); dirErr == nil {
+		for _, fname := range entries {
+			if dbFilenames[fname] {
+				continue
+			}
+			if _, createErr := CreateAttachment(fname, fname, "application/octet-stream", 0); createErr == nil {
+				res.Registered++
+				res.RegisteredFiles = append(res.RegisteredFiles, fname)
+			}
+		}
+	}
+
+	// ── Remove DB records with missing local files ──
+	provider := storage.GetAttachmentProvider()
+	if !storage.IsS3Enabled() {
+		for _, att := range allAtts {
+			localPath := filepath.Join(attachmentsDir, att.Filename)
+			if _, statErr := os.Stat(localPath); statErr != nil {
+				_ = provider.Delete(att.Filename)
+				_ = DeleteAttachment(att.Filename)
+				res.RemovedMissing++
+				res.MissingFiles = append(res.MissingFiles, att.Filename)
+			}
 		}
 	}
 
@@ -175,8 +224,10 @@ func HandleCleanupAttachments(w http.ResponseWriter, r *http.Request) {
 	// Remove orphaned attachments (no links in note_attachments after rebuild)
 	orphans, err := GetOrphanedAttachments()
 	if err == nil {
-		provider := storage.GetAttachmentProvider()
 		for _, att := range orphans {
+			if referencedInContent[att.Filename] {
+				continue
+			}
 			_ = provider.Delete(att.Filename)
 			_ = DeleteAttachment(att.Filename)
 			res.RemovedOrphans++
@@ -186,4 +237,18 @@ func HandleCleanupAttachments(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(res)
+}
+
+func readDir(dir string) ([]string, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+	var names []string
+	for _, e := range entries {
+		if !e.IsDir() {
+			names = append(names, e.Name())
+		}
+	}
+	return names, nil
 }

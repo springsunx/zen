@@ -17,6 +17,7 @@ type ClipboardMessage struct {
 	ContentType  string `json:"contentType,omitempty"`
 	FileSize     int64  `json:"fileSize,omitempty"`
 	URL          string `json:"url,omitempty"`
+	BatchID      string `json:"batchId,omitempty"`
 	CreatedAt    string `json:"createdAt"`
 }
 
@@ -31,7 +32,7 @@ type rowScanner interface {
 func scanMessage(s rowScanner) (ClipboardMessage, error) {
 	var msg ClipboardMessage
 	err := s.Scan(&msg.ID, &msg.Type, &msg.Content, &msg.Filename,
-		&msg.OriginalName, &msg.ContentType, &msg.FileSize, &msg.CreatedAt)
+		&msg.OriginalName, &msg.ContentType, &msg.FileSize, &msg.CreatedAt, &msg.BatchID)
 	if err != nil {
 		return ClipboardMessage{}, fmt.Errorf("scan clipboard message: %w", err)
 	}
@@ -63,4 +64,4 @@ func fileProvider(filename string) storage.Provider {
 
 // messageColumns is the common SELECT column list used in all clipboard queries.
 const messageColumns = `id, type, COALESCE(content,''), COALESCE(filename,''),
-	COALESCE(original_name,''), COALESCE(content_type,''), COALESCE(file_size,0), created_at`
+	COALESCE(original_name,''), COALESCE(content_type,''), COALESCE(file_size,0), created_at, COALESCE(batch_id,'')`

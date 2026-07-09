@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 	"zen/commons/queue"
+	"zen/commons/sqlite"
 	"zen/commons/utils"
 	"zen/features/storage"
 )
@@ -301,8 +302,9 @@ func HandleDeleteImage(w http.ResponseWriter, r *http.Request) {
 
 
 // HandleCleanupImages cleans up image records and files.
-// Local mode: registers disk files, rebuilds links, removes missing/orphaned files.
-// S3 mode: registers note-referenced images, rebuilds links, deletes unused S3 files.
+// Local mode: registers disk files, removes missing/orphaned files.
+// S3 mode: registers note-referenced images, deletes unused S3 files.
+// Both modes: full rebuild of note_images links from note content.
 func HandleCleanupImages(w http.ResponseWriter, r *http.Request) {
 	type result struct {
 		RemovedMissing  int      `json:"removedMissing"`
@@ -325,9 +327,6 @@ func HandleCleanupImages(w http.ResponseWriter, r *http.Request) {
 
 	// ── Collect note image references ──
 	referencedInContent := collectNoteImageRefs()
-
-	// ── Collect existing note_images links ──
-	existingLinks := collectExistingLinks()
 
 	if isS3 {
 		// ── S3: Register note-referenced images missing from DB ──
@@ -416,18 +415,6 @@ func HandleCleanupImages(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-	// ── Rebuild note_images links (after registration, both modes) ──
-	for filename, noteIDs := range referencedInContent {
-		for _, nid := range noteIDs {
-			if existingLinks[filename] != nil && existingLinks[filename][nid] {
-				continue
-			}
-			if LinkImageToNote(nid, filename) == nil {
-				res.LinksRebuilt++
-			}
-		}
-	}
-
 		// ── Local: Remove DB records with missing files ──
 		forEachAllImages(func(im Image) error {
 			path := filepath.Join(imagesDir, im.Filename)
@@ -451,6 +438,17 @@ func HandleCleanupImages(w http.ResponseWriter, r *http.Request) {
 				_ = DeleteImage(im.Filename)
 				res.RemovedOrphans++
 				res.OrphanFiles = append(res.OrphanFiles, im.Filename)
+			}
+		}
+	}
+
+	// ── Rebuild ALL note_images links from note content ──
+	// Delete all existing links first, then recreate from content
+	_, _ = sqlite.DB.Exec("DELETE FROM note_images")
+	for filename, noteIDs := range referencedInContent {
+		for _, nid := range noteIDs {
+			if LinkImageToNote(nid, filename) == nil {
+				res.LinksRebuilt++
 			}
 		}
 	}
@@ -494,20 +492,3 @@ func collectNoteImageRefs() map[string][]int {
 	return refs
 }
 
-func collectExistingLinks() map[string]map[int]bool {
-	links := make(map[string]map[int]bool)
-	forEachAllImages(func(im Image) error {
-		noteIDs, err := GetLinkedNotesByImage(im.Filename)
-		if err != nil {
-			return nil
-		}
-		if links[im.Filename] == nil {
-			links[im.Filename] = make(map[int]bool)
-		}
-		for _, nid := range noteIDs {
-			links[im.Filename][nid] = true
-		}
-		return nil
-	})
-	return links
-}

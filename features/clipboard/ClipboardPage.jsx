@@ -3,7 +3,7 @@ import Sidebar from '../../commons/components/Sidebar.jsx';
 import MobileNavbar from '../../commons/components/MobileNavbar.jsx';
 import Spinner from '../../commons/components/Spinner.jsx';
 import EmptyState from '../../commons/components/EmptyState.jsx';
-import { ClipboardIcon, CopyIcon, DownloadIcon, LinkIcon, StickyNoteIcon, TrashIcon, UploadIcon } from '../../commons/components/Icon.jsx';
+import { ClipboardIcon, CopyIcon, DownloadIcon, LinkIcon, StickyNoteIcon, TrashIcon, UploadIcon, CloseIcon } from '../../commons/components/Icon.jsx';
 import ApiClient from "../../commons/http/ApiClient.js";
 import { showToast } from "../../commons/components/Toast.jsx";
 import { ModalBackdrop, ModalContainer, ModalHeader, ModalContent, ModalFooter } from "../../commons/components/Modal.jsx";
@@ -19,6 +19,9 @@ export default function ClipboardPage() {
   const [textInput, setTextInput] = useState('');
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [isSending, setIsSending] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(-1);
+  const [lightboxImages, setLightboxImages] = useState([]);
 
   useEffect(() => {
     refreshMessages();
@@ -59,24 +62,33 @@ export default function ClipboardPage() {
     if (fileInput) fileInput.value = '';
   }
 
+  function genId() {
+    // Simple UUID v4
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+      const r = Math.random() * 16 | 0;
+      return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+    });
+  }
+
   function handleSend() {
     const hasText = textInput.trim() !== '';
     const hasFiles = selectedFiles.length > 0;
 
-    if (!hasText && !hasFiles) {
-      showToast(t('clipboard.toast.emptyInput'));
+    if (isSending || (!hasText && !hasFiles)) {
+      if (!hasText && !hasFiles) showToast(t('clipboard.toast.emptyInput'));
       return;
     }
+
+    setIsSending(true);
 
     let sendPromise;
 
     if (hasText && !hasFiles) {
-      // Text only
       sendPromise = ApiClient.pushClipboardText({ content: textInput.trim() });
     } else if (hasFiles) {
-      // Upload each file sequentially with the same text
       const content = hasText ? textInput.trim() : '';
-      const uploads = selectedFiles.map(file => () => ApiClient.uploadClipboardFile(file, content));
+      const batchId = selectedFiles.length > 1 ? genId() : '';
+      const uploads = selectedFiles.map(file => () => ApiClient.uploadClipboardFile(file, content, batchId));
       sendPromise = uploads.reduce((p, fn) => p.then(fn), Promise.resolve());
     } else {
       sendPromise = Promise.resolve();
@@ -93,6 +105,9 @@ export default function ClipboardPage() {
       .catch(error => {
         console.error('Error sending to clipboard:', error);
         showToast(t('clipboard.toast.sendFailed'));
+      })
+      .finally(() => {
+        setIsSending(false);
       });
   }
 
@@ -107,15 +122,46 @@ export default function ClipboardPage() {
       });
   }
 
+  function handleSaveBatchAsNote(batchId) {
+    ApiClient.saveClipboardBatchAsNote(batchId)
+      .then(note => {
+        navigateTo(`/notes/${note.noteId}`);
+      })
+      .catch(error => {
+        console.error('Error saving batch as note:', error);
+        showToast(t('clipboard.toast.saveAsNoteFailed'));
+      });
+  }
+
+  function handleDeleteBatchText(batchId) {
+    ApiClient.deleteClipboardBatchText(batchId)
+      .then(() => {
+        refreshMessages();
+      })
+      .catch(error => {
+        console.error('Error deleting batch text:', error);
+        showToast(t('clipboard.toast.deleteFailed'));
+      });
+  }
+
   function handleDelete(id) {
-    setDeleteTarget(id);
+    setDeleteTarget({ type: 'single', id });
+  }
+
+  function handleDeleteBatch(batchId) {
+    setDeleteTarget({ type: 'batch', batchId });
   }
 
   function handleDeleteConfirm() {
     if (deleteTarget === null) return;
-    const id = deleteTarget;
+    const target = deleteTarget;
     setDeleteTarget(null);
-    ApiClient.revokeClipboardItem(id)
+
+    const promise = target.type === 'batch'
+      ? ApiClient.revokeClipboardBatch(target.batchId)
+      : ApiClient.revokeClipboardItem(target.id);
+
+    promise
       .then(() => {
         refreshMessages();
       })
@@ -136,10 +182,24 @@ export default function ClipboardPage() {
     }
   }
 
+  // Open lightbox at a specific image index
+  function openLightbox(images, index) {
+    setLightboxImages(images);
+    setLightboxIndex(index);
+  }
+
+  function closeLightbox() {
+    setLightboxIndex(-1);
+    setLightboxImages([]);
+  }
+
+  // Group messages by batch_id
+  const groups = groupMessages(messages);
+
   let content;
   if (isLoading === true) {
     content = <div className="clipboard-spinner"><Spinner /></div>;
-  } else if (messages.length === 0) {
+  } else if (groups.length === 0) {
     content = (
       <EmptyState
         icon={<ClipboardIcon />}
@@ -148,13 +208,28 @@ export default function ClipboardPage() {
       />
     );
   } else {
-    const items = messages.map(msg => (
-      <ClipboardItem key={msg.id} message={msg} onDelete={() => handleDelete(msg.id)} onSaveAsNote={() => handleSaveAsNote(msg.id)} />
-    ));
+    const items = groups.map((group, i) => {
+      if (group.type === 'batch') {
+        return (
+          <BatchGroup
+            key={group.batchId || 'g' + i}
+            group={group}
+            onDeleteBatch={() => handleDeleteBatch(group.batchId)}
+            onDeleteFile={handleDelete}
+            onSaveBatchAsNote={() => handleSaveBatchAsNote(group.batchId)}
+            onDeleteBatchText={() => handleDeleteBatchText(group.batchId)}
+            onOpenLightbox={(images, idx) => openLightbox(images, idx)}
+          />
+        );
+      }
+      return (
+        <ClipboardItem key={group.msg.id} message={group.msg} onDelete={() => handleDelete(group.msg.id)} onSaveAsNote={() => handleSaveAsNote(group.msg.id)} onOpenLightbox={group.isImage ? () => openLightbox([group.msg], 0) : undefined} />
+      );
+    });
     content = <div className="clipboard-list">{items}</div>;
   }
 
-  const canSend = textInput.trim() !== '' || selectedFiles.length > 0;
+  const canSend = !isSending && (textInput.trim() !== '' || selectedFiles.length > 0);
 
   const fileLabel = selectedFiles.length > 0
     ? selectedFiles.length + t('clipboard.filesSelected')
@@ -246,36 +321,212 @@ export default function ClipboardPage() {
           </ModalContainer>
         </ModalBackdrop>
       )}
+
+      {/* Lightbox */}
+      {lightboxIndex >= 0 && lightboxImages.length > 0 && (
+        <div className="clipboard-lightbox-backdrop" onClick={closeLightbox}>
+          <div className="clipboard-lightbox-content" onClick={e => e.stopPropagation()}>
+            <button className="clipboard-lightbox-close" onClick={closeLightbox}>&times;</button>
+            {lightboxImages.length > 1 && lightboxIndex > 0 && (
+              <button className="clipboard-lightbox-nav clipboard-lightbox-prev" onClick={() => setLightboxIndex(i => i - 1)}>&lsaquo;</button>
+            )}
+            {lightboxImages.length > 1 && lightboxIndex < lightboxImages.length - 1 && (
+              <button className="clipboard-lightbox-nav clipboard-lightbox-next" onClick={() => setLightboxIndex(i => i + 1)}>&rsaquo;</button>
+            )}
+            <img src={lightboxImages[lightboxIndex].url} alt={lightboxImages[lightboxIndex].name} className="clipboard-lightbox-img" />
+            <div className="clipboard-lightbox-info">
+              {lightboxImages[lightboxIndex].name}
+              {lightboxImages.length > 1 && ` (${lightboxIndex + 1}/${lightboxImages.length})`}
+            </div>
+          </div>
+        </div>
+      )}
     </LayoutProvider>
   );
 }
 
-function ClipboardItem({ message, onDelete, onSaveAsNote }) {
-  const isFile = message.type === 'file';
-  const isImage = isFile && /\.(jpg|jpeg|png|gif)$/i.test(message.filename || '');
+// ─── Batch grouping ───
 
-  function handleDownload() {
-    if (message.url) {
-      window.open(message.url, '_blank');
+function groupMessages(messages) {
+  const groups = [];
+  const batchMap = {};
+
+  for (const msg of messages) {
+    if (msg.batchId) {
+      if (!batchMap[msg.batchId]) {
+        batchMap[msg.batchId] = {
+          batchId: msg.batchId,
+          content: '',
+          files: [],
+          createdAt: msg.createdAt,
+        };
+      }
+      if (msg.type === 'file') {
+        batchMap[msg.batchId].files.push(msg);
+      }
+      if (msg.content && !batchMap[msg.batchId].content) {
+        batchMap[msg.batchId].content = msg.content;
+      }
+      if (msg.createdAt > batchMap[msg.batchId].createdAt) {
+        batchMap[msg.batchId].createdAt = msg.createdAt;
+      }
+    } else {
+      const isImage = msg.type === 'file' && /\.(jpg|jpeg|png|gif)$/i.test(msg.filename || '');
+      groups.push({ type: 'single', msg, isImage });
     }
   }
 
+  // Add batches in reverse chronological order (newest first, matching message order)
+  const batchIds = Object.keys(batchMap).sort((a, b) => {
+    const aTime = batchMap[a].createdAt;
+    const bTime = batchMap[b].createdAt;
+    return aTime > bTime ? -1 : aTime < bTime ? 1 : 0;
+  });
+
+  for (const bid of batchIds) {
+    groups.push({ type: 'batch', ...batchMap[bid] });
+  }
+
+  // Sort all groups by createdAt descending (newest first)
+  groups.sort((a, b) => {
+    const aTime = a.createdAt || (a.msg ? a.msg.createdAt : '');
+    const bTime = b.createdAt || (b.msg ? b.msg.createdAt : '');
+    return aTime > bTime ? -1 : aTime < bTime ? 1 : 0;
+  });
+
+  return groups;
+}
+
+// ─── Batch Group Component ───
+
+function BatchGroup({ group, onDeleteBatch, onDeleteFile, onSaveBatchAsNote, onDeleteBatchText, onOpenLightbox }) {
+  const hasContent = !!group.content;
+  const allFiles = group.files;
+  const timeAgo = formatRelativeTime(group.createdAt);
+
+  const imageFiles = allFiles.filter(f => /\.(jpg|jpeg|png|gif)$/i.test(f.filename || ''));
+
+  function handleDownloadAll() {
+    for (const file of allFiles) {
+      if (file.url) window.open(file.url, '_blank');
+    }
+  }
+
+  function handleCopyAllLinks() {
+    const links = allFiles.map(f => {
+      const isImg = /\.(jpg|jpeg|png|gif)$/i.test(f.filename || '');
+      if (isImg) return '![](' + f.url + ')';
+      return '[' + (f.originalName || f.filename) + '](' + f.url + ')';
+    }).join('\n');
+    navigator.clipboard.writeText(links)
+      .then(() => showToast(t('clipboard.toast.copied')))
+      .catch(() => showToast(t('clipboard.toast.copyFailed')));
+  }
+
+  function handleCopyText() {
+    navigator.clipboard.writeText(group.content)
+      .then(() => showToast(t('clipboard.toast.copied')))
+      .catch(() => showToast(t('clipboard.toast.copyFailed')));
+  }
+
+  function getFileIcon(file) {
+    const isImg = /\.(jpg|jpeg|png|gif)$/i.test(file.filename || '');
+    if (isImg) return <span className="clipboard-file-icon-image">🖼</span>;
+    const ext = (file.originalName || file.filename || '').split('.').pop().toLowerCase();
+    if (['pdf'].includes(ext)) return <span className="clipboard-file-icon-pdf">📄</span>;
+    if (['zip','rar','7z','tar','gz'].includes(ext)) return <span className="clipboard-file-icon-archive">📦</span>;
+    if (['doc','docx'].includes(ext)) return <span className="clipboard-file-icon-doc">📝</span>;
+    if (['xls','xlsx','csv'].includes(ext)) return <span className="clipboard-file-icon-sheet">📊</span>;
+    if (['mp4','avi','mov','mkv'].includes(ext)) return <span className="clipboard-file-icon-video">🎥</span>;
+    if (['mp3','wav','flac'].includes(ext)) return <span className="clipboard-file-icon-audio">🎵</span>;
+    return <span className="clipboard-file-icon-generic">📁</span>;
+  }
+
+  return (
+    <div className="clipboard-batch">
+      <div className="clipboard-batch-header">
+        <div className="clipboard-batch-meta">{allFiles.length} files · {timeAgo}</div>
+        <div className="clipboard-batch-actions">
+          <button className="clipboard-item-action" onClick={handleDownloadAll} title={t('clipboard.downloadAll')}>
+            <DownloadIcon />
+          </button>
+          <button className="clipboard-item-action" onClick={handleCopyAllLinks} title={t('clipboard.copyLink')}>
+            <LinkIcon />
+          </button>
+          <button className="clipboard-item-action" onClick={onSaveBatchAsNote} title={t('clipboard.saveAsNote')}>
+            <StickyNoteIcon />
+          </button>
+          <button className="clipboard-item-action clipboard-item-action-delete" onClick={onDeleteBatch} title={t('common.delete')}>
+            <TrashIcon />
+          </button>
+        </div>
+      </div>
+
+      {hasContent && (
+        <div className="clipboard-batch-text">
+          <span className="clipboard-batch-text-content">{group.content}</span>
+          <div className="clipboard-batch-text-actions">
+            <button className="clipboard-item-action" onClick={handleCopyText} title={t('clipboard.copy')}>
+              <CopyIcon />
+            </button>
+            <button className="clipboard-item-action clipboard-item-action-delete" onClick={onDeleteBatchText} title={t('common.delete')}>
+              <TrashIcon />
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="clipboard-batch-files">
+        {allFiles.map((file, i) => {
+          const isImg = /\.(jpg|jpeg|png|gif)$/i.test(file.filename || '');
+          const imgIdx = isImg ? imageFiles.indexOf(file) : -1;
+          return (
+            <div key={file.id} className="clipboard-batch-file">
+              <div className="clipboard-batch-file-icon" onClick={isImg && imgIdx >= 0 ? () => onOpenLightbox(imageFiles, imgIdx) : undefined}>
+                {getFileIcon(file)}
+              </div>
+              <span className="clipboard-batch-file-name">{file.originalName || file.filename}</span>
+              <span className="clipboard-batch-file-size">{formatFileSize(file.fileSize)}</span>
+              <div className="clipboard-item-actions">
+                <button className="clipboard-item-action" onClick={() => window.open(file.url, '_blank')} title={t('clipboard.download')}>
+                  <DownloadIcon />
+                </button>
+                <button className="clipboard-item-action clipboard-item-action-delete" onClick={() => onDeleteFile(file.id)} title={t('common.delete')}>
+                  <TrashIcon />
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Single Clipboard Item ───
+
+function ClipboardItem({ message, onDelete, onSaveAsNote, onOpenLightbox }) {
+  const isFile = message.type === 'file';
+  const isImage = isFile && /\.(jpg|jpeg|png|gif)$/i.test(message.filename || '');
+  const canView = !!(onOpenLightbox || isImage);
+
+  function handleDownload() {
+    if (message.url) window.open(message.url, '_blank');
+  }
+
   function handleViewImage() {
-    if (message.url) {
+    if (onOpenLightbox) {
+      onOpenLightbox();
+    } else if (message.url) {
       window.open(message.url, '_blank');
     }
   }
 
   function handleCopyLink() {
     if (!message.url) return;
-    const isImage = /\.(jpg|jpeg|png|gif)$/i.test(message.filename || '');
-    let markdown;
-    if (isImage) {
-      markdown = '![](' + message.url + ')';
-    } else {
-      markdown = '[' + (message.originalName || message.filename) + '](' + message.url + ')';
-    }
-    navigator.clipboard.writeText(markdown)
+    const i = /\.(jpg|jpeg|png|gif)$/i.test(message.filename || '');
+    const md = i ? '![](' + message.url + ')' : '[' + (message.originalName || message.filename) + '](' + message.url + ')';
+    navigator.clipboard.writeText(md)
       .then(() => showToast(t('clipboard.toast.copied')))
       .catch(() => showToast(t('clipboard.toast.copyFailed')));
   }
@@ -296,27 +547,17 @@ function ClipboardItem({ message, onDelete, onSaveAsNote }) {
   let actions;
 
   if (isFile) {
-    let sizeInfo = formatFileSize(message.fileSize) + ' · ' + timeAgo;
+    const sizeInfo = formatFileSize(message.fileSize) + ' · ' + timeAgo;
     if (message.content) {
       icon = <ClipboardIcon />;
-      primaryInfo = message.content.length > 120
-        ? message.content.substring(0, 120) + '...'
-        : message.content;
+      primaryInfo = message.content.length > 120 ? message.content.substring(0, 120) + '...' : message.content;
       secondaryInfo = (message.originalName || message.filename) + ' · ' + sizeInfo;
       actions = (
         <div className="clipboard-item-actions">
-          <button className="clipboard-item-action" onClick={handleDownload} title={t('clipboard.download')}>
-            <DownloadIcon />
-          </button>
-          <button className="clipboard-item-action" onClick={handleCopyText} title={t('clipboard.copy')}>
-            <CopyIcon />
-          </button>
-          <button className="clipboard-item-action" onClick={onSaveAsNote} title={t('clipboard.saveAsNote')}>
-            <StickyNoteIcon />
-          </button>
-          <button className="clipboard-item-action clipboard-item-action-delete" onClick={onDelete} title={t('common.delete')}>
-            <TrashIcon />
-          </button>
+          <button className="clipboard-item-action" onClick={handleDownload} title={t('clipboard.download')}><DownloadIcon /></button>
+          <button className="clipboard-item-action" onClick={handleCopyText} title={t('clipboard.copy')}><CopyIcon /></button>
+          <button className="clipboard-item-action" onClick={onSaveAsNote} title={t('clipboard.saveAsNote')}><StickyNoteIcon /></button>
+          <button className="clipboard-item-action clipboard-item-action-delete" onClick={onDelete} title={t('common.delete')}><TrashIcon /></button>
         </div>
       );
     } else {
@@ -325,45 +566,29 @@ function ClipboardItem({ message, onDelete, onSaveAsNote }) {
       secondaryInfo = sizeInfo;
       actions = (
         <div className="clipboard-item-actions">
-          <button className="clipboard-item-action" onClick={handleDownload} title={t('clipboard.download')}>
-            <DownloadIcon />
-          </button>
-          <button className="clipboard-item-action" onClick={handleCopyLink} title={t('clipboard.copyLink')}>
-            <LinkIcon />
-          </button>
-          <button className="clipboard-item-action" onClick={onSaveAsNote} title={t('clipboard.saveAsNote')}>
-            <StickyNoteIcon />
-          </button>
-          <button className="clipboard-item-action clipboard-item-action-delete" onClick={onDelete} title={t('common.delete')}>
-            <TrashIcon />
-          </button>
+          <button className="clipboard-item-action" onClick={handleDownload} title={t('clipboard.download')}><DownloadIcon /></button>
+          <button className="clipboard-item-action" onClick={handleCopyLink} title={t('clipboard.copyLink')}><LinkIcon /></button>
+          <button className="clipboard-item-action" onClick={onSaveAsNote} title={t('clipboard.saveAsNote')}><StickyNoteIcon /></button>
+          <button className="clipboard-item-action clipboard-item-action-delete" onClick={onDelete} title={t('common.delete')}><TrashIcon /></button>
         </div>
       );
     }
   } else {
     icon = <ClipboardIcon />;
-    primaryInfo = message.content.length > 120
-      ? message.content.substring(0, 120) + '...'
-      : message.content;
+    primaryInfo = message.content.length > 120 ? message.content.substring(0, 120) + '...' : message.content;
     secondaryInfo = timeAgo;
     actions = (
       <div className="clipboard-item-actions">
-        <button className="clipboard-item-action" onClick={handleCopyText} title={t('clipboard.copy')}>
-          <CopyIcon />
-        </button>
-        <button className="clipboard-item-action" onClick={onSaveAsNote} title={t('clipboard.saveAsNote')}>
-          <StickyNoteIcon />
-        </button>
-        <button className="clipboard-item-action clipboard-item-action-delete" onClick={onDelete} title={t('common.delete')}>
-          <TrashIcon />
-        </button>
+        <button className="clipboard-item-action" onClick={handleCopyText} title={t('clipboard.copy')}><CopyIcon /></button>
+        <button className="clipboard-item-action" onClick={onSaveAsNote} title={t('clipboard.saveAsNote')}><StickyNoteIcon /></button>
+        <button className="clipboard-item-action clipboard-item-action-delete" onClick={onDelete} title={t('common.delete')}><TrashIcon /></button>
       </div>
     );
   }
 
   return (
     <div className={`clipboard-item clipboard-item-${isFile ? 'file' : 'text'}`}>
-      <div className={`clipboard-item-icon${isImage ? ' clickable' : ''}`} onClick={isImage ? handleViewImage : undefined} title={isImage ? t('clipboard.view') : ''}>
+      <div className={`clipboard-item-icon${canView ? ' clickable' : ''}`} onClick={canView ? handleViewImage : undefined} title={canView ? t('clipboard.view') : ''}>
         {icon}
       </div>
       <div className="clipboard-item-body">
@@ -375,6 +600,8 @@ function ClipboardItem({ message, onDelete, onSaveAsNote }) {
   );
 }
 
+// ─── Utilities ───
+
 function formatRelativeTime(dateStr) {
   const now = Date.now();
   const date = new Date(dateStr.replace(' ', 'T') + (dateStr.includes('Z') ? '' : 'Z'));
@@ -383,7 +610,6 @@ function formatRelativeTime(dateStr) {
   const minutes = Math.floor(seconds / 60);
   const hours = Math.floor(minutes / 60);
   const days = Math.floor(hours / 24);
-
   if (days > 30) return Math.floor(days / 30) + 'mo';
   if (days > 7) return Math.floor(days / 7) + 'w';
   if (days > 1) return days + 'd';
@@ -397,6 +623,5 @@ function formatFileSize(bytes) {
   if (bytes === 0) return '0 B';
   const units = ['B', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(1024));
-  const size = (bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0);
-  return size + ' ' + units[i];
+  return (bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0) + ' ' + units[i];
 }

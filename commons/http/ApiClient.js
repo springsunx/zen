@@ -512,10 +512,11 @@ async function pushClipboardText(payload) {
   return await request('POST', '/api/clipboard/text', payload);
 }
 
-async function uploadClipboardFile(file, content) {
+async function uploadClipboardFile(file, content, batchId) {
   const fd = new FormData();
   fd.append('file', file);
   if (content) fd.append('content', content);
+  if (batchId) fd.append('batch_id', batchId);
   return await request('POST', '/api/clipboard/upload', fd);
 }
 
@@ -535,8 +536,20 @@ async function revokeClipboardItem(id) {
   return await request('DELETE', `/api/clipboard/revoke/${id}/`);
 }
 
+async function revokeClipboardBatch(batchId) {
+  return await request('DELETE', `/api/clipboard/batch/${batchId}/`);
+}
+
 async function saveClipboardAsNote(id) {
   return await request('POST', `/api/clipboard/${id}/note/`);
+}
+
+async function saveClipboardBatchAsNote(batchId) {
+  return await request('POST', `/api/clipboard/${batchId}/note/`);
+}
+
+async function deleteClipboardBatchText(batchId) {
+  return await request('DELETE', `/api/clipboard/batch/${batchId}/text/`);
 }
 
 export default {
@@ -615,5 +628,8 @@ export default {
   getClipboardContent,
   getLatestClipboardContent,
   revokeClipboardItem,
+  revokeClipboardBatch,
   saveClipboardAsNote,
+  saveClipboardBatchAsNote,
+  deleteClipboardBatchText,
 };

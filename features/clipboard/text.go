@@ -58,3 +58,25 @@ func getMessageByID(id int64) (ClipboardMessage, error) {
 	}
 	return msg, nil
 }
+
+// getMessagesByBatch fetches all clipboard messages in a batch, ordered by ID.
+func getMessagesByBatch(batchID string) ([]ClipboardMessage, error) {
+	rows, err := sqlite.DB.Query(
+		"SELECT "+messageColumns+" FROM clipboard_messages WHERE batch_id = ? ORDER BY id",
+		batchID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("query batch %s: %w", batchID, err)
+	}
+	defer rows.Close()
+
+	var msgs []ClipboardMessage
+	for rows.Next() {
+		msg, err := scanMessage(rows)
+		if err != nil {
+			continue
+		}
+		msgs = append(msgs, msg)
+	}
+	return msgs, nil
+}

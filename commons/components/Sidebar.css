@@ -199,7 +199,11 @@
 
     .sidebar-container {
         display: flex;
-        min-width: 0;
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        min-width: var(--sidebar-width);
         opacity: 0;
         width: 0;
         z-index: var(--z-popover);

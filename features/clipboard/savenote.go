@@ -9,6 +9,7 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -22,20 +23,36 @@ import (
 	"zen/features/storage"
 )
 
-// HandleSaveAsNote creates a Zen note from a clipboard message.
-// For files, the file is copied to permanent storage (images or attachments)
-// so the note link remains valid even after the clipboard record is deleted.
+// HandleSaveAsNote creates a Zen note from a clipboard message or batch.
+// The {id} parameter can be either a numeric message ID (single) or a UUID
+// batch ID. The handler detects which by checking for hyphens (UUID format).
 func HandleSaveAsNote(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/api/clipboard/")
 	path = strings.TrimSuffix(path, "/")
 	path = strings.TrimSuffix(path, "/note")
-	id, err := strconv.ParseInt(path, 10, 64)
+	id := path
+	if id == "" {
+		utils.SendErrorResponse(w, "INVALID_ID", "Invalid ID.", nil, http.StatusBadRequest)
+		return
+	}
+
+	// UUID batch IDs contain hyphens; numeric message IDs do not
+	if strings.Contains(id, "-") {
+		handleBatchSaveAsNote(w, id)
+	} else {
+		handleSingleSaveAsNote(w, id)
+	}
+}
+
+// handleSingleSaveAsNote saves a single clipboard message as a note.
+func handleSingleSaveAsNote(w http.ResponseWriter, id string) {
+	numericID, err := strconv.ParseInt(id, 10, 64)
 	if err != nil {
 		utils.SendErrorResponse(w, "INVALID_ID", "Invalid message ID.", err, http.StatusBadRequest)
 		return
 	}
 
-	msg, err := getMessageByID(id)
+	msg, err := getMessageByID(numericID)
 	if err != nil {
 		utils.SendErrorResponse(w, "NOT_FOUND", "Clipboard message not found.", err, http.StatusNotFound)
 		return
@@ -46,6 +63,87 @@ func HandleSaveAsNote(w http.ResponseWriter, r *http.Request) {
 		utils.SendErrorResponse(w, "NOTE_BUILD_FAILED", "Error building note content.", err, http.StatusInternalServerError)
 		return
 	}
+
+	createdNote, err := notes.CreateNote(notes.Note{Title: title, Content: content})
+	if err != nil {
+		utils.SendErrorResponse(w, "NOTE_CREATE_FAILED", "Error creating note.", err, http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(createdNote)
+}
+
+// handleBatchSaveAsNote saves all clipboard messages in a batch as a note.
+func handleBatchSaveAsNote(w http.ResponseWriter, batchID string) {
+	msgs, err := getMessagesByBatch(batchID)
+	if err != nil {
+		utils.SendErrorResponse(w, "QUERY_FAILED", "Error fetching batch messages.", err, http.StatusInternalServerError)
+		return
+	}
+	if len(msgs) == 0 {
+		utils.SendErrorResponse(w, "NOT_FOUND", "No messages found in batch.", nil, http.StatusNotFound)
+		return
+	}
+
+	// Extract text content — it may be in a separate text message or embedded
+	// in file messages as the content field
+	var textContent string
+	for _, m := range msgs {
+		if m.Type == "text" && m.Content != "" {
+			textContent = m.Content
+			break
+		}
+	}
+	if textContent == "" {
+		for _, m := range msgs {
+			if m.Type == "file" && m.Content != "" {
+				textContent = m.Content
+				break
+			}
+		}
+	}
+
+	// Build title
+	var title string
+	if textContent != "" {
+		runes := []rune(textContent)
+		if len(runes) > 15 {
+			title = string(runes[:15]) + "..."
+		} else {
+			title = textContent
+		}
+	} else if len(msgs) > 0 {
+		title = msgs[0].OriginalName
+		if title == "" {
+			title = msgs[0].Filename
+		}
+	}
+
+	// Build content: text + all file links
+	var contentParts []string
+	if textContent != "" {
+		contentParts = append(contentParts, textContent)
+	}
+
+	for _, m := range msgs {
+		if m.Type != "file" {
+			continue
+		}
+		permURL, _, copyErr := copyToPermanentStorage(m)
+		if copyErr != nil {
+			slog.Error("error copying file to permanent storage", "id", m.ID, "error", copyErr)
+			continue
+		}
+		if isImageFile(m.OriginalName) {
+			contentParts = append(contentParts, fmt.Sprintf("![](%s)", permURL))
+		} else {
+			contentParts = append(contentParts, fmt.Sprintf("[%s](%s)", m.OriginalName, permURL))
+		}
+	}
+
+	content := strings.Join(contentParts, "\n\n")
 
 	createdNote, err := notes.CreateNote(notes.Note{Title: title, Content: content})
 	if err != nil {
