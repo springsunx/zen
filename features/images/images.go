@@ -90,13 +90,19 @@ type ImagesFilter struct {
 	page        int
 	tagID       int
 	focusModeID int
+	isArchived  bool
 }
 
-func NewImagesFilter(page, tagID, focusModeID int) ImagesFilter {
+func NewImagesFilter(page, tagID, focusModeID int, isArchived ...bool) ImagesFilter {
+	archived := false
+	if len(isArchived) > 0 {
+		archived = isArchived[0]
+	}
 	return ImagesFilter{
 		page:        page,
 		tagID:       tagID,
 		focusModeID: focusModeID,
+		isArchived:  archived,
 	}
 }
 
@@ -108,10 +114,12 @@ func HandleGetImages(w http.ResponseWriter, r *http.Request) {
 	pageStr := r.URL.Query().Get("page")
 	tagIDStr := r.URL.Query().Get("tagId")
 	focusModeIDStr := r.URL.Query().Get("focusId")
+	isArchivedStr := r.URL.Query().Get("isArchived")
 
 	page := 1
 	tagID := 0
 	focusModeID := 0
+	isArchived := isArchivedStr == "true"
 
 	if pageStr != "" {
 		page, err = strconv.Atoi(pageStr)
@@ -141,6 +149,7 @@ func HandleGetImages(w http.ResponseWriter, r *http.Request) {
 		page:        page,
 		tagID:       tagID,
 		focusModeID: focusModeID,
+		isArchived:  isArchived,
 	}
 
 	allImages, total, err = GetAllImages(filter)
@@ -491,4 +500,3 @@ func collectNoteImageRefs() map[string][]int {
 	}
 	return refs
 }
-

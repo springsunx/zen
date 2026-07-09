@@ -338,12 +338,13 @@ async function fetchAIModels(baseUrl, apiKey, skipTlsVerify) {
 
 // ─── Images ───
 
-async function getImages(tagId, focusId, page) {
+async function getImages(tagId, focusId, page, isArchived) {
   let url = "/api/images/";
   const params = new URLSearchParams();
   if (tagId) params.append('tagId', tagId);
   else if (focusId) params.append('focusId', focusId);
   if (page) params.append('page', page);
+  if (isArchived === true) params.append('isArchived', 'true');
   if (params.toString()) url += '?' + params.toString();
 
   const resp = await request('GET', url);

@@ -11,6 +11,7 @@ import Button from "../../commons/components/Button.jsx";
 import { t } from "../../commons/i18n/index.js";
 import navigateTo from "../../commons/utils/navigateTo.js";
 import { LayoutProvider } from '../../commons/contexts/LayoutContext.jsx';
+import GalleryLightbox from '../../commons/components/GalleryLightbox.jsx';
 import "./Clipboard.css";
 
 export default function ClipboardPage() {
@@ -324,22 +325,11 @@ export default function ClipboardPage() {
 
       {/* Lightbox */}
       {lightboxIndex >= 0 && lightboxImages.length > 0 && (
-        <div className="clipboard-lightbox-backdrop" onClick={closeLightbox}>
-          <div className="clipboard-lightbox-content" onClick={e => e.stopPropagation()}>
-            <button className="clipboard-lightbox-close" onClick={closeLightbox}>&times;</button>
-            {lightboxImages.length > 1 && lightboxIndex > 0 && (
-              <button className="clipboard-lightbox-nav clipboard-lightbox-prev" onClick={() => setLightboxIndex(i => i - 1)}>&lsaquo;</button>
-            )}
-            {lightboxImages.length > 1 && lightboxIndex < lightboxImages.length - 1 && (
-              <button className="clipboard-lightbox-nav clipboard-lightbox-next" onClick={() => setLightboxIndex(i => i + 1)}>&rsaquo;</button>
-            )}
-            <img src={lightboxImages[lightboxIndex].url} alt={lightboxImages[lightboxIndex].name} className="clipboard-lightbox-img" />
-            <div className="clipboard-lightbox-info">
-              {lightboxImages[lightboxIndex].name}
-              {lightboxImages.length > 1 && ` (${lightboxIndex + 1}/${lightboxImages.length})`}
-            </div>
-          </div>
-        </div>
+        <GalleryLightbox
+          images={lightboxImages.map(img => img.url)}
+          startIndex={lightboxIndex}
+          onClose={closeLightbox}
+        />
       )}
     </LayoutProvider>
   );
@@ -408,7 +398,7 @@ function BatchGroup({ group, onDeleteBatch, onDeleteFile, onSaveBatchAsNote, onD
 
   function handleDownloadAll() {
     for (const file of allFiles) {
-      if (file.url) window.open(file.url, '_blank');
+      if (file.url) downloadFile(file.url, file.originalName || file.filename);
     }
   }
 
@@ -482,13 +472,13 @@ function BatchGroup({ group, onDeleteBatch, onDeleteFile, onSaveBatchAsNote, onD
           const imgIdx = isImg ? imageFiles.indexOf(file) : -1;
           return (
             <div key={file.id} className="clipboard-batch-file">
-              <div className="clipboard-batch-file-icon" onClick={isImg && imgIdx >= 0 ? () => onOpenLightbox(imageFiles, imgIdx) : undefined}>
+              <div className={`clipboard-batch-file-icon${isImg && imgIdx >= 0 ? ' clickable' : ''}`} onClick={isImg && imgIdx >= 0 ? () => onOpenLightbox(imageFiles, imgIdx) : undefined}>
                 {getFileIcon(file)}
               </div>
               <span className="clipboard-batch-file-name">{file.originalName || file.filename}</span>
               <span className="clipboard-batch-file-size">{formatFileSize(file.fileSize)}</span>
               <div className="clipboard-item-actions">
-                <button className="clipboard-item-action" onClick={() => window.open(file.url, '_blank')} title={t('clipboard.download')}>
+                <button className="clipboard-item-action" onClick={() => downloadFile(file.url, file.originalName || file.filename)} title={t('clipboard.download')}>
                   <DownloadIcon />
                 </button>
                 <button className="clipboard-item-action clipboard-item-action-delete" onClick={() => onDeleteFile(file.id)} title={t('common.delete')}>
@@ -511,7 +501,7 @@ function ClipboardItem({ message, onDelete, onSaveAsNote, onOpenLightbox }) {
   const canView = !!(onOpenLightbox || isImage);
 
   function handleDownload() {
-    if (message.url) window.open(message.url, '_blank');
+    if (message.url) downloadFile(message.url, message.originalName || message.filename);
   }
 
   function handleViewImage() {
@@ -624,4 +614,13 @@ function formatFileSize(bytes) {
   const units = ['B', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(1024));
   return (bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0) + ' ' + units[i];
+}
+
+function downloadFile(url, filename) {
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename || '';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
 }

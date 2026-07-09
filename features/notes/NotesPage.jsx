@@ -93,18 +93,18 @@ function NotesPageContent({ noteId }) {
 
   useEffect(() => {
     refreshNotes(selectedTagId, selectedFocusId, isArchivesPage, isTrashPage, 1, isUntaggedPage);
-    refreshImages(selectedTagId, selectedFocusId);
+    refreshImages(selectedTagId, selectedFocusId, 1, isArchivesPage);
     refreshAttachments(1, selectedTagId, selectedFocusId);
     refreshTags(selectedFocusId, isArchivesPage, isTrashPage);
     refreshFocusModes();
-  }, [refreshNotes, refreshImages, refreshAttachments, refreshTags, refreshFocusModes]);
+  }, [refreshNotes, refreshImages, refreshAttachments, refreshTags, refreshFocusModes, isArchivesPage]);
 
   useEffect(() => {
     // Reset to avoid showing incorrect notes
     resetPagination();
 
     refreshNotes(selectedTagId, selectedFocusId, isArchivesPage, isTrashPage, 1, isUntaggedPage);
-    refreshImages(selectedTagId, selectedFocusId);
+    refreshImages(selectedTagId, selectedFocusId, 1, isArchivesPage);
     refreshAttachments(1, selectedTagId, selectedFocusId);
     refreshTags(selectedFocusId, isArchivesPage, isTrashPage);
 
@@ -118,8 +118,8 @@ function NotesPageContent({ noteId }) {
   }, [notesPageNumber, selectedTagId, selectedFocusId, isArchivesPage, isTrashPage, isUntaggedPage, refreshNotes]);
 
   useEffect(() => {
-    refreshImages(selectedTagId, selectedFocusId, imagesPageNumber);
-  }, [imagesPageNumber, selectedTagId, selectedFocusId, refreshImages]);
+    refreshImages(selectedTagId, selectedFocusId, imagesPageNumber, isArchivesPage);
+  }, [imagesPageNumber, selectedTagId, selectedFocusId, isArchivesPage, refreshImages]);
 
   useEffect(() => {
     refreshAttachments(attachmentsPageNumber, selectedTagId, selectedFocusId);

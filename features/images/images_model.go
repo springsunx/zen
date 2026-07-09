@@ -18,88 +18,95 @@ func GetAllImages(filter ImagesFilter) ([]Image, int, error) {
 	var queryArgs []interface{}
 
 	if filter.tagID != 0 {
-		query = `
-			SELECT
-				i.filename,
-				i.width,
-				i.height,
-				i.format,
-				i.aspect_ratio,
-				i.file_size,
-				i.caption,
-				i.created_at,
-				COUNT(*) OVER() as total_count
-			FROM
-				images i
-			INNER JOIN
-				note_images ni ON i.filename = ni.filename
-			INNER JOIN
-				note_tags nt ON ni.note_id = nt.note_id
-			WHERE
-				nt.tag_id = ?
-			GROUP BY
-				i.filename
-			ORDER BY
-				i.created_at DESC
-			LIMIT
-				?
-			OFFSET
-				?
-		`
+		if filter.isArchived {
+			query = `
+				SELECT
+					i.filename, i.width, i.height, i.format, i.aspect_ratio,
+					i.file_size, i.caption, i.created_at,
+					COUNT(*) OVER() as total_count
+				FROM images i
+				INNER JOIN note_images ni ON i.filename = ni.filename
+				INNER JOIN note_tags nt ON ni.note_id = nt.note_id
+				INNER JOIN notes n ON ni.note_id = n.note_id
+				WHERE nt.tag_id = ? AND n.archived_at IS NOT NULL
+				GROUP BY i.filename
+				ORDER BY i.created_at DESC LIMIT ? OFFSET ?
+			`
+		} else {
+			query = `
+				SELECT
+					i.filename, i.width, i.height, i.format, i.aspect_ratio,
+					i.file_size, i.caption, i.created_at,
+					COUNT(*) OVER() as total_count
+				FROM images i
+				INNER JOIN note_images ni ON i.filename = ni.filename
+				INNER JOIN note_tags nt ON ni.note_id = nt.note_id
+				INNER JOIN notes n ON ni.note_id = n.note_id
+				WHERE nt.tag_id = ? AND n.deleted_at IS NULL AND n.archived_at IS NULL
+				GROUP BY i.filename
+				ORDER BY i.created_at DESC LIMIT ? OFFSET ?
+			`
+		}
 		queryArgs = []interface{}{filter.tagID, IMAGES_LIMIT, offset}
 	} else if filter.focusModeID != 0 {
-		query = `
-			SELECT
-				i.filename,
-				i.width,
-				i.height,
-				i.format,
-				i.aspect_ratio,
-				i.file_size,
-				i.caption,
-				i.created_at,
-				COUNT(*) OVER() as total_count
-			FROM
-				focus_mode_tags fmt
-			JOIN
-				note_tags nt ON fmt.tag_id = nt.tag_id
-			JOIN
-				note_images ni ON nt.note_id = ni.note_id
-			JOIN
-				images i ON ni.filename = i.filename
-			WHERE
-				fmt.focus_mode_id = ?
-			GROUP BY
-				i.filename
-			ORDER BY
-				i.created_at DESC
-			LIMIT
-				?
-			OFFSET
-				?
-		`
+		if filter.isArchived {
+			query = `
+				SELECT
+					i.filename, i.width, i.height, i.format, i.aspect_ratio,
+					i.file_size, i.caption, i.created_at,
+					COUNT(*) OVER() as total_count
+				FROM focus_mode_tags fmt
+				JOIN note_tags nt ON fmt.tag_id = nt.tag_id
+				JOIN note_images ni ON nt.note_id = ni.note_id
+				JOIN images i ON ni.filename = i.filename
+				JOIN notes n ON ni.note_id = n.note_id
+				WHERE fmt.focus_mode_id = ? AND n.archived_at IS NOT NULL
+				GROUP BY i.filename
+				ORDER BY i.created_at DESC LIMIT ? OFFSET ?
+			`
+		} else {
+			query = `
+				SELECT
+					i.filename, i.width, i.height, i.format, i.aspect_ratio,
+					i.file_size, i.caption, i.created_at,
+					COUNT(*) OVER() as total_count
+				FROM focus_mode_tags fmt
+				JOIN note_tags nt ON fmt.tag_id = nt.tag_id
+				JOIN note_images ni ON nt.note_id = ni.note_id
+				JOIN images i ON ni.filename = i.filename
+				JOIN notes n ON ni.note_id = n.note_id
+				WHERE fmt.focus_mode_id = ? AND n.deleted_at IS NULL AND n.archived_at IS NULL
+				GROUP BY i.filename
+				ORDER BY i.created_at DESC LIMIT ? OFFSET ?
+			`
+		}
 		queryArgs = []interface{}{filter.focusModeID, IMAGES_LIMIT, offset}
 	} else {
-		query = `
-			SELECT
-				filename,
-				width,
-				height,
-				format,
-				aspect_ratio,
-				file_size,
-				caption,
-				created_at,
-				COUNT(*) OVER() as total_count
-			FROM
-				images
-			ORDER BY
-				created_at DESC
-			LIMIT
-				?
-			OFFSET
-				?
-		`
+		if filter.isArchived {
+			query = `
+				SELECT DISTINCT
+					i.filename, i.width, i.height, i.format, i.aspect_ratio,
+					i.file_size, i.caption, i.created_at,
+					COUNT(*) OVER() as total_count
+				FROM images i
+				INNER JOIN note_images ni ON i.filename = ni.filename
+				INNER JOIN notes n ON ni.note_id = n.note_id
+				WHERE n.archived_at IS NOT NULL
+				ORDER BY i.created_at DESC LIMIT ? OFFSET ?
+			`
+		} else {
+			query = `
+				SELECT DISTINCT
+					i.filename, i.width, i.height, i.format, i.aspect_ratio,
+					i.file_size, i.caption, i.created_at,
+					COUNT(*) OVER() as total_count
+				FROM images i
+				INNER JOIN note_images ni ON i.filename = ni.filename
+				INNER JOIN notes n ON ni.note_id = n.note_id
+				WHERE n.deleted_at IS NULL AND n.archived_at IS NULL
+				ORDER BY i.created_at DESC LIMIT ? OFFSET ?
+			`
+		}
 		queryArgs = []interface{}{IMAGES_LIMIT, offset}
 	}
 

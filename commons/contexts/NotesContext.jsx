@@ -48,10 +48,10 @@ export function NotesProvider({ children }) {
       });
   }, []);
 
-  const refreshImages = useCallback((tagId, focusId, pageNumber = 1) => {
+  const refreshImages = useCallback((tagId, focusId, pageNumber = 1, isArchived = false) => {
     setIsImagesLoading(true);
 
-    return ApiClient.getImages(tagId, focusId, pageNumber)
+    return ApiClient.getImages(tagId, focusId, pageNumber, isArchived)
       .then(res => {
         if (pageNumber > 1) {
           setImages(prevImages => [...prevImages, ...res.images]);
@@ -76,7 +76,7 @@ export function NotesProvider({ children }) {
     const isUntagged = searchParams.get("isUntagged") === "true";
 
     refreshNotes(selectedTagId, selectedFocusId, isArchivesPage, isTrashPage, 1, isUntagged);
-    refreshImages(selectedTagId, selectedFocusId);
+    refreshImages(selectedTagId, selectedFocusId, 1, isArchivesPage);
   }, [searchParams, refreshNotes, refreshImages]);
 
   const handlePinToggle = useCallback((noteId, isPinned) => {
