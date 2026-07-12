@@ -7,6 +7,7 @@ import NotesEditorImageDropzone from './NotesEditorImageDropzone.jsx';
 import NoteLinkPicker from './NoteLinkPicker.jsx';
 import BacklinksPanel from './BacklinksPanel.jsx';
 import TemplatePicker from '../templates/TemplatePicker.jsx';
+import TemplateSlashMenu from './TemplateSlashMenu.jsx';
 import AIPanel from './AIPanel.jsx';
 import SlashCommandMenu from './SlashCommandMenu.jsx';
 import renderMarkdown from '../../commons/utils/renderMarkdown.js';
@@ -49,7 +50,9 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   const [linkPickerPos, setLinkPickerPos] = useState(null);
   const [backlinks, setBacklinks] = useState([]);
   const [isBacklinksLoading, setIsBacklinksLoading] = useState(false);
-  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+  const [showTemplateSlashMenu, setShowTemplateSlashMenu] = useState(false);
+  const [templateSlashSelectedIndex, setTemplateSlashSelectedIndex] = useState(0);
+  const [templateList, setTemplateList] = useState([]);
   const pendingCursorPos = useRef(null); // { start, end } to restore after re-render
 
   // Extract stable values for useEffect dependencies (avoid optional chaining in dep arrays)
@@ -109,7 +112,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   } = useSlashCommands({
     textareaRef, updateContent, pendingCursorPos,
     onLinkPicker: handleShowLinkPicker,
-    onTemplatePicker: () => setShowTemplatePicker(true),
+    onTemplatePicker: handleOpenTemplateSlashMenu,
   });
   const visibleHeadings = useVisibleHeadings(contentRef, content, isEditable, isEditorExpanded);
 
@@ -413,6 +416,63 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
     if (handlePinToggle && selectedNote) handlePinToggle(selectedNote.noteId, selectedNote.isPinned);
   }
 
+  function handleOpenTemplateSlashMenu() {
+    setShowTemplateSlashMenu(true);
+    setTemplateSlashSelectedIndex(0);
+    ApiClient.getRecommendedTemplates()
+      .then(data => setTemplateList(Array.isArray(data) ? data : []))
+      .catch(() => setTemplateList([]));
+  }
+
+  function handleTemplateSlashKeyDown(e) {
+    if (!showTemplateSlashMenu) return false;
+    if (templateList.length === 0 && e.key !== 'Escape') return false;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setTemplateSlashSelectedIndex(prev => (prev + 1) % templateList.length);
+      return true;
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setTemplateSlashSelectedIndex(prev => (prev - 1 + templateList.length) % templateList.length);
+      return true;
+    }
+    if (e.key === 'Enter' || e.key === 'Tab') {
+      e.preventDefault();
+      const template = templateList[templateSlashSelectedIndex];
+      if (template) handleTemplateSlashApply(template);
+      return true;
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      setShowTemplateSlashMenu(false);
+      setTemplateList([]);
+      return true;
+    }
+    return false;
+  }
+
+  function handleTemplateSlashApply(template) {
+    if (title === "" && template.title && template.title.trim() !== "") setTitle(template.title);
+    const ta = textareaRef.current;
+    const currentVal = ta ? ta.value : content;
+    const cursorPos = ta ? ta.selectionStart : currentVal.length;
+    const inserted = currentVal.slice(0, cursorPos) + template.content + currentVal.slice(cursorPos);
+    updateContent(inserted);
+    if (tags.length === 0 && template.tags && template.tags.length > 0) setTags(template.tags);
+    setShowTemplateSlashMenu(false);
+    setTemplateList([]);
+    ApiClient.incrementTemplateUsage(template.templateId).catch(console.error);
+    setTimeout(() => {
+      if (ta) {
+        ta.focus();
+        const newPos = cursorPos + template.content.length;
+        ta.selectionStart = newPos;
+        ta.selectionEnd = newPos;
+      }
+    }, 0);
+  }
+
   function handleTemplateApply(templateTitle, templateContent, templateTags) {
     if (title === "" && templateTitle && templateTitle.trim() !== "") setTitle(templateTitle);
     const ta = textareaRef.current;
@@ -421,7 +481,6 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
     const inserted = currentVal.slice(0, cursorPos) + templateContent + currentVal.slice(cursorPos);
     updateContent(inserted);
     if (tags.length === 0 && templateTags && templateTags.length > 0) setTags(templateTags);
-    setShowTemplatePicker(false);
     setTimeout(() => {
       if (ta) {
         ta.focus();
@@ -511,6 +570,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
               lastCtrlPress.current = now;
               return;
             }
+            if (handleTemplateSlashKeyDown(e)) return;
             if (handleSlashKeyDown(e)) return;
             if (handleSlashUndo(e)) return;
           }}
@@ -553,14 +613,22 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
                 skipSlashCheck.current = false;
               }
               if (action === 'template') {
-                setShowTemplatePicker(true);
                 skipSlashCheck.current = false;
+                handleOpenTemplateSlashMenu();
               }
             }}
           />
         )}
         {showLinkPicker && (
           <NoteLinkPicker onInsertLink={handleInsertInternalLink} onClose={() => setShowLinkPicker(false)} textareaRef={textareaRef} cursorPos={linkPickerPos} />
+        )}
+        {showTemplateSlashMenu && templateList.length > 0 && (
+          <TemplateSlashMenu
+            templates={templateList}
+            selectedIndex={templateSlashSelectedIndex}
+            onApply={handleTemplateSlashApply}
+            textareaRef={textareaRef}
+          />
         )}
       </div>
     );
@@ -576,7 +644,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   }
 
   const showImageDropzone = isEditable === true;
-  const shouldShowTemplatePicker = (showTemplatePicker && isEditable === true) || (isNewNote === true && isEditable === true && title === "" && content === "");
+  const shouldShowTemplatePicker = (isNewNote === true && isEditable === true && title === "" && content === "");
 
   // ─── Render ───
   return (
