@@ -216,12 +216,94 @@ export function buildHeadingOpen(opts = {}) {
   };
 }
 
+// Check if a URL points to a video attachment
+export function isVideoAttachmentLink(url) {
+  if (!url) return false;
+  try {
+    const pathname = url.split('?')[0].split('#')[0].toLowerCase();
+    return pathname.startsWith('/attachments/') && VIDEO_EXTENSIONS.some(ext => pathname.endsWith(ext));
+  } catch {
+    return false;
+  }
+}
+
+const VIDEO_EXTENSIONS = ['.mp4', '.webm', '.ogg', '.ogv', '.mov', '.avi', '.mkv', '.m4v'];
+
+// Parse video size from link text, e.g. "alt text =500x300" → { label: "alt text", width: "500", height: "300" }
+// Compatible with imgSize plugin new syntax: =WIDTHxHEIGHT, =WIDTHx, =xHEIGHT
+function parseVideoSizeFromText(text) {
+  if (!text) return null;
+  const s = String(text);
+  const eqIdx = s.lastIndexOf('=');
+  if (eqIdx === -1 || eqIdx + 3 > s.length) return null;
+  // '=' must be preceded by whitespace or be at position 0
+  if (eqIdx !== 0 && s.charCodeAt(eqIdx - 1) !== 32 && s.charCodeAt(eqIdx - 1) !== 9) return null;
+
+  let pos = eqIdx + 1;
+  let width = null;
+  let height = null;
+
+  // parse digits for width
+  if (pos < s.length && s.charCodeAt(pos) >= 48 && s.charCodeAt(pos) <= 57) {
+    const start = pos;
+    while (pos < s.length && s.charCodeAt(pos) >= 48 && s.charCodeAt(pos) <= 57) pos++;
+    width = s.slice(start, pos);
+    if (pos >= s.length || s.charCodeAt(pos) !== 120) return null; // must have 'x'
+    pos++;
+  } else if (pos < s.length && s.charCodeAt(pos) === 120) {
+    pos++; // skip 'x' for =xHEIGHT
+  } else {
+    return null;
+  }
+
+  // parse digits for height
+  if (pos < s.length) {
+    const start = pos;
+    while (pos < s.length && s.charCodeAt(pos) >= 48 && s.charCodeAt(pos) <= 57) pos++;
+    if (pos > start) height = s.slice(start, pos);
+  }
+
+  // remaining must be whitespace
+  while (pos < s.length) {
+    if (s.charCodeAt(pos) !== 32 && s.charCodeAt(pos) !== 9) return null;
+    pos++;
+  }
+
+  if (!width && !height) return null;
+
+  const label = s.slice(0, eqIdx).trimEnd();
+  return { label, width, height };
+}
+
 // Build markdown-it link_open rule based on unified helpers
 export function buildLinkOpen(opts = {}) {
   return function(tokens, idx, options, env, self) {
     const token = tokens[idx];
     const hrefAttr = token.attrs?.find(attr => attr[0] === 'href');
     if (hrefAttr) {
+      // Video attachment: replace link with <video> element
+      if (isVideoAttachmentLink(hrefAttr[1])) {
+        env._isVideoLink = true;
+        const src = hrefAttr[1];
+        let attrs = `controls preload="metadata" src="${src}"`;
+
+        // Parse size from text token: [text =500x300](url)
+        const textToken = tokens[idx + 1];
+        if (textToken && textToken.type === 'text') {
+          const sizeInfo = parseVideoSizeFromText(textToken.content);
+          if (sizeInfo) {
+            if (sizeInfo.width) attrs += ` width="${sizeInfo.width}"`;
+            if (sizeInfo.height) attrs += ` height="${sizeInfo.height}"`;
+            // Remove size suffix from text token
+            textToken.content = sizeInfo.label;
+          }
+        }
+
+        return `<video ${attrs}>`;
+      }
+
+      env._isVideoLink = false;
+
       if (hrefAttr[1].startsWith('#')) {
         token.attrPush(['class', 'internal-anchor-link']);
         token.attrPush(['data-anchor-link', 'true']);
@@ -238,6 +320,17 @@ export function buildLinkOpen(opts = {}) {
           token.attrSet('rel', 'noopener noreferrer');
         }
       }
+    }
+    return self.renderToken(tokens, idx, options);
+  };
+}
+
+// Build markdown-it link_close rule that handles video tags
+export function buildLinkClose() {
+  return function(tokens, idx, options, env, self) {
+    if (env._isVideoLink === true) {
+      env._isVideoLink = false;
+      return '</video>';
     }
     return self.renderToken(tokens, idx, options);
   };

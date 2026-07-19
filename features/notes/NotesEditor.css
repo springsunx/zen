@@ -301,6 +301,12 @@
         max-width: 100%;
     }
 
+    video {
+        max-width: 100%;
+        border-radius: 6px;
+        outline: none;
+    }
+
     h1,
     h2,
     h3,

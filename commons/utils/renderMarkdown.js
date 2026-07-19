@@ -1,4 +1,4 @@
-import { generateId, cleanCustomId, extractCustomId, buildHeadingOpen, buildLinkOpen, findAnchor} from "./markdownToc.js";
+import { generateId, cleanCustomId, extractCustomId, buildHeadingOpen, buildLinkOpen, buildLinkClose, findAnchor} from "./markdownToc.js";
 import { t } from "../i18n/index.js";
 
 // 辅助函数：复制代码到剪贴板
@@ -241,6 +241,9 @@ export default function renderMarkdown(text, opts = {}) {
 
   // 3.链接：内部锚链接特殊处理，外部链接在新标签页打开
   const originalLinkOpen = md.renderer.rules.link_open = buildLinkOpen(opts || {});
+
+  // 4.链接关闭：处理视频标签替换
+  md.renderer.rules.link_close = buildLinkClose();
 
   return md.render(text);
 }
