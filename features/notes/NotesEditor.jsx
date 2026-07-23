@@ -297,10 +297,11 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
         if (closeAfter && isNewNote && !onClose) navigateTo(`/notes/${savedNote.noteId}`, true);
         patchNote(savedNote.noteId, { title: savedNote.title, content: savedNote.content, snippet: savedNote.snippet, tags: savedNote.tags });
         refreshTags();
+        handleNoteChange();
         onSaved(savedNote);
       })
       .finally(() => setIsSaveLoading(false));
-  }, [tags, isNewNote, selectedNote, patchNote, resetAttachments]);
+  }, [tags, isNewNote, selectedNote, patchNote, resetAttachments, handleNoteChange]);
 
   const handleSaveAndCloseClick = useCallback(() => handleSaveClick(true), [handleSaveClick]);
 
