@@ -258,6 +258,20 @@ async function unpinNote(noteId) {
   return await request('PUT', `/api/notes/${noteId}/unpin/`);
 }
 
+// ─── Sharing ───
+
+async function createShare(noteId, expiresInHours) {
+  return await request('POST', `/api/notes/${noteId}/share/`, expiresInHours != null ? { expiresInHours } : {});
+}
+
+async function getShares(noteId) {
+  return await request('GET', `/api/notes/${noteId}/shares/`);
+}
+
+async function deleteShare(shareId) {
+  return await request('DELETE', `/api/shares/${shareId}/`);
+}
+
 async function clearTrash() {
   return await request('DELETE', '/api/notes/?isDeleted=true');
 }
@@ -579,6 +593,9 @@ export default {
   getBacklinks,
   pinNote,
   unpinNote,
+  createShare,
+  getShares,
+  deleteShare,
   clearTrash,
   getTags,
   searchTags,

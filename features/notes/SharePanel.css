@@ -1,0 +1,270 @@
+.share-panel-container {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 220px;
+  background: var(--neutral-50);
+  border-left: 1px solid var(--neutral-200);
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.share-panel-header {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--neutral-200);
+  background: var(--neutral-100);
+  flex-shrink: 0;
+}
+
+.share-panel-title {
+  font: var(--sm);
+  font-weight: 600;
+  color: var(--neutral-700);
+  font-size: 14px;
+}
+
+.share-panel-content {
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--neutral-300) transparent;
+}
+
+.share-panel-content::-webkit-scrollbar {
+  width: 4px;
+}
+.share-panel-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+.share-panel-content::-webkit-scrollbar-thumb {
+  background-color: var(--neutral-300);
+  border-radius: 2px;
+}
+
+/* ─── Empty state ─── */
+.share-panel-empty {
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--neutral-400);
+  font: var(--xs);
+  font-size: 13px;
+}
+
+/* ─── Share item card ─── */
+.share-panel-item {
+  margin: 6px 8px;
+  padding: 10px;
+  border: 1px solid var(--neutral-200);
+  border-radius: 8px;
+  background: var(--neutral-0);
+  transition: border-color 0.15s ease;
+}
+.share-panel-item:hover {
+  border-color: var(--neutral-300);
+}
+.share-panel-item.is-expired {
+  opacity: 0.55;
+}
+
+.share-panel-item-url {
+  font: var(--xs);
+  font-size: 12px;
+  color: var(--primary-600);
+  word-break: break-all;
+  line-height: 1.5;
+  margin-bottom: 8px;
+  user-select: all;
+}
+
+.share-panel-item-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.share-panel-item-expiry {
+  font: var(--xs);
+  font-size: 11px;
+  color: var(--neutral-400);
+}
+.share-panel-item.is-expired .share-panel-item-expiry {
+  color: var(--red-500);
+}
+
+/* ─── Action buttons ─── */
+.share-panel-item-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.share-panel-action-btn {
+  font: var(--xs);
+  font-size: 12px;
+  padding: 4px 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  border: 1px solid var(--neutral-300);
+  background: var(--neutral-0);
+  color: var(--neutral-600);
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  flex: 1;
+  text-align: center;
+}
+.share-panel-action-btn:hover {
+  background: var(--neutral-100);
+  border-color: var(--neutral-400);
+}
+
+.share-panel-copy-btn {
+  border-color: var(--primary-300);
+  color: var(--primary-600);
+}
+.share-panel-copy-btn:hover {
+  background: var(--primary-50, rgba(59, 130, 246, 0.06));
+  border-color: var(--primary-400);
+}
+
+.share-panel-delete-btn {
+  border-color: var(--neutral-300);
+  color: var(--neutral-500);
+}
+.share-panel-delete-btn:hover {
+  color: var(--red-500);
+  border-color: var(--red-300, #fca5a5);
+  background: rgba(239, 68, 68, 0.06);
+}
+
+/* ─── Create section ─── */
+.share-panel-create {
+  padding: 10px 16px 12px;
+  border-bottom: 1px solid var(--neutral-200);
+  flex-shrink: 0;
+}
+
+.share-panel-create-label {
+  font: var(--xs);
+  font-size: 11px;
+  color: var(--neutral-400);
+  display: block;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.share-panel-create-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.share-panel-create-select {
+  flex: 1;
+  font: var(--xs);
+  font-size: 13px;
+  padding: 6px 8px;
+  border: 1px solid var(--neutral-300);
+  border-radius: 6px;
+  background: var(--neutral-0);
+  color: var(--neutral-700);
+  outline: none;
+  cursor: pointer;
+}
+.share-panel-create-select:focus {
+  border-color: var(--primary-400);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+.share-panel-create-btn {
+  font: var(--xs);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border: none;
+  border-radius: 6px;
+  background: var(--primary-500);
+  color: #fff;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease;
+}
+.share-panel-create-btn:hover {
+  background: var(--primary-600);
+}
+.share-panel-create-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ─── Responsive ─── */
+@media screen and (max-width: 1200px) {
+  .share-panel-container { width: 200px; }
+}
+@media screen and (max-width: 1024px) {
+  .share-panel-container { display: none; }
+}
+
+/* ─── Dark theme ─── */
+@media (prefers-color-scheme: dark) {
+  .share-panel-container,
+  [data-theme="dark"] .share-panel-container {
+    background: var(--neutral-100);
+    border-left-color: var(--neutral-200);
+  }
+  .share-panel-header,
+  [data-theme="dark"] .share-panel-header {
+    background: var(--neutral-150);
+    border-bottom-color: var(--neutral-200);
+  }
+  .share-panel-title,
+  [data-theme="dark"] .share-panel-title { color: var(--neutral-700); }
+  .share-panel-content::-webkit-scrollbar-thumb,
+  [data-theme="dark"] .share-panel-content::-webkit-scrollbar-thumb { background-color: var(--neutral-400); }
+
+  .share-panel-item,
+  [data-theme="dark"] .share-panel-item {
+    background: var(--neutral-50);
+    border-color: var(--neutral-200);
+  }
+  .share-panel-item:hover,
+  [data-theme="dark"] .share-panel-item:hover { border-color: var(--neutral-300); }
+  .share-panel-item-url,
+  [data-theme="dark"] .share-panel-item-url { color: var(--primary-400); }
+
+  .share-panel-create-select,
+  [data-theme="dark"] .share-panel-create-select {
+    background: var(--neutral-50);
+    border-color: var(--neutral-300);
+    color: var(--neutral-700);
+  }
+
+  .share-panel-action-btn,
+  [data-theme="dark"] .share-panel-action-btn {
+    background: var(--neutral-50);
+    border-color: var(--neutral-300);
+    color: var(--neutral-500);
+  }
+  .share-panel-action-btn:hover,
+  [data-theme="dark"] .share-panel-action-btn:hover {
+    background: var(--neutral-100);
+    border-color: var(--neutral-400);
+  }
+  .share-panel-copy-btn,
+  [data-theme="dark"] .share-panel-copy-btn {
+    border-color: var(--primary-400);
+    color: var(--primary-400);
+  }
+  .share-panel-copy-btn:hover,
+  [data-theme="dark"] .share-panel-copy-btn:hover {
+    background: rgba(96, 165, 250, 0.1);
+    border-color: var(--primary-300);
+  }
+  .share-panel-delete-btn:hover,
+  [data-theme="dark"] .share-panel-delete-btn:hover {
+    color: var(--red-500);
+    background: rgba(239, 68, 68, 0.1);
+  }
+}

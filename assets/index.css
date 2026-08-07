@@ -319,36 +319,41 @@ svg.lucide {
     }
 }
 /* Layout adjustments for right side table of contents */
-body.has-right-toc .page-container {
+body.has-right-toc .page-container,
+body.has-right-share .page-container {
   padding-right: 220px;
 }
 
-body.has-right-toc .page-container.is-editor-expanded {
+body.has-right-toc .page-container.is-editor-expanded,
+body.has-right-share .page-container.is-editor-expanded {
   padding-right: 0;
 }
 
-body.has-right-toc .page-container.is-editor-expanded .notes-editor-container.is-fit-to-window {
+body.has-right-toc .page-container.is-editor-expanded .notes-editor-container.is-fit-to-window,
+body.has-right-share .page-container.is-editor-expanded .notes-editor-container.is-fit-to-window {
   padding-right: 220px;
 }
 
-body.has-right-toc .page-container.is-editor-expanded .notes-editor-container.is-fit-to-window .notes-editor {
+body.has-right-toc .page-container.is-editor-expanded .notes-editor-container.is-fit-to-window .notes-editor,
+body.has-right-share .page-container.is-editor-expanded .notes-editor-container.is-fit-to-window .notes-editor {
   max-width: calc(100vw - 220px);
 }
 
-body.has-right-toc .notes-editor-container {
+body.has-right-toc .notes-editor-container,
+body.has-right-share .notes-editor-container {
   flex: 1;
-  min-width: 0; /* 允许flex项收缩 */
+  min-width: 0;
 }
 
 /* Responsive adjustments */
 @media screen and (max-width: 1200px) {
-  body.has-right-toc .page-container {
-    padding-right: 200px;
-  }
+  body.has-right-toc .page-container,
+  body.has-right-share .page-container { padding-right: 200px; }
 }
 
 @media screen and (max-width: 1024px) {
-  body.has-right-toc .page-container {
+  body.has-right-toc .page-container,
+  body.has-right-share .page-container {
     padding-right: 0;
   }
 }

@@ -28,6 +28,7 @@ import (
 	"zen/features/notes"
 	"zen/features/search"
 	"zen/features/settings"
+	"zen/features/sharing"
 	"zen/features/storage"
 	"zen/features/tags"
 	"zen/features/templates"
@@ -35,7 +36,7 @@ import (
 )
 
 //go:embed assets/*
-var assets embed.FS
+var Assets embed.FS
 
 //go:embed migrations/*.sql
 var migrations embed.FS
@@ -114,6 +115,7 @@ func main() {
 }
 
 func newRouter() *http.ServeMux {
+	sharing.AssetsFS = Assets
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /api/users/me", users.HandleCheckUser)
@@ -139,6 +141,12 @@ func newRouter() *http.ServeMux {
 	addPrivateRoute(mux, "PUT /api/notes/{noteId}/pin/", notes.HandlePinNote)
 	addPrivateRoute(mux, "PUT /api/notes/{noteId}/unpin/", notes.HandleUnpinNote)
 	addPrivateRoute(mux, "GET /api/notes/{noteId}/backlinks/", notes.HandleGetBacklinks)
+
+	addPrivateRoute(mux, "POST /api/notes/{noteId}/share/", sharing.HandleCreateShare)
+	addPrivateRoute(mux, "GET /api/notes/{noteId}/shares/", sharing.HandleGetShares)
+	addPrivateRoute(mux, "DELETE /api/shares/{shareId}/", sharing.HandleDeleteShare)
+	mux.HandleFunc("GET /api/shares/{token}", sharing.HandleGetSharedNote)
+	mux.HandleFunc("GET /s/{token}", sharing.HandleSharedNotePage)
 
 	addPrivateRoute(mux, "GET /api/tags/", tags.HandleGetTags)
 	addPrivateRoute(mux, "PUT /api/tags/", tags.HandleUpdateTag)
@@ -232,7 +240,7 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 	if os.Getenv("DEV_MODE") == "true" {
 		indexPage, err = os.ReadFile("./assets/index.html")
 	} else {
-		indexPage, err = assets.ReadFile("assets/index.html")
+		indexPage, err = Assets.ReadFile("assets/index.html")
 	}
 
 	if err != nil {
@@ -253,7 +261,7 @@ func handleStaticAssets(w http.ResponseWriter, r *http.Request) {
 	if os.Getenv("DEV_MODE") == "true" {
 		fsys = http.Dir("./assets")
 	} else {
-		subtree, err := fs.Sub(assets, "assets")
+		subtree, err := fs.Sub(Assets, "assets")
 		if err != nil {
 			err = fmt.Errorf("error reading assets subtree: %w", err)
 			slog.Error(err.Error())

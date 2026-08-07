@@ -31,7 +31,7 @@ import useSlashCommands from "./useSlashCommands.js";
 import "./NotesEditor.css";
 import { t } from "../../commons/i18n/index.js";
 
-export default function NotesEditor({ isNewNote, isModal, isExpandable = false, onClose, onEditModeChange = () => {}, onContentChange = () => {}, onSaved = () => {}, onToggleToc, isFitToWindow = false, onFitToWindowToggle }) {
+export default function NotesEditor({ isNewNote, isModal, isExpandable = false, onClose, onEditModeChange = () => {}, onContentChange = () => {}, onSaved = () => {}, onToggleToc, onToggleShare, isFitToWindow = false, onFitToWindowToggle }) {
   const { selectedNote, handleNoteChange, patchNote, handlePinToggle } = useNotes();
   const { refreshTags } = useAppContext();
   const { isEditorExpanded, toggleEditorExpanded } = useLayout();
@@ -671,6 +671,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
         onPinClick={handlePinToggleClick}
         onUnpinClick={handlePinToggleClick}
         onToggleToc={onToggleToc}
+        onToggleShare={onToggleShare}
         isFitToWindow={isFitToWindow}
         onFitToWindowToggle={onFitToWindowToggle}
       />
