@@ -32,6 +32,17 @@
     <link rel="stylesheet" href="/assets/plugin-tab.css">
     <style>
         :root {
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            --font-family-code: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, "Courier New", monospace;
+            --h2: 600 1.802rem/1.2 var(--font-family);
+            --h3: 600 1.602rem/1.2 var(--font-family);
+            --h4: 600 1.424rem/1.2 var(--font-family);
+            --h5: 600 1.266rem/1.2 var(--font-family);
+            --h6: 600 1.125rem/1.2 var(--font-family);
+            --p1: normal 1rem/1.65 var(--font-family);
+            --sm: 400 14px/1.5 var(--font-family);
+            --xs: 400 12px/1.4 var(--font-family);
+            --code: normal 0.889rem/1.4 var(--font-family-code);
             --neutral-0: #FFFFFF;
             --neutral-50: #FAFAFA;
             --neutral-100: #F5F5F5;
@@ -44,21 +55,15 @@
             --neutral-700: #404040;
             --neutral-800: #262626;
             --neutral-900: #171717;
-            --text-primary: #171717;
-            --primary-400: #60A5FA;
-            --primary-500: #3B82F6;
+            --text-primary: var(--neutral-700);
+            --text-secondary: var(--neutral-500);
+            --bg-primary: #FFF;
             --primary-600: #2563EB;
-            --primary-700: #1D4ED8;
             --red-500: #EF4444;
-            --h2: 700 24px/1.3 system-ui,-apple-system,sans-serif;
-            --h3: 700 20px/1.3 system-ui,-apple-system,sans-serif;
-            --h5: 600 16px/1.4 system-ui,-apple-system,sans-serif;
-            --h6: 600 14px/1.4 system-ui,-apple-system,sans-serif;
-            --sm: 400 14px/1.5 system-ui,-apple-system,sans-serif;
-            --xs: 400 12px/1.4 system-ui,-apple-system,sans-serif;
+            --red-600: #DC2626;
         }
         @media (prefers-color-scheme: dark) {
-            :root {
+            :root, [data-theme="dark"] {
                 --neutral-0: #171717;
                 --neutral-50: #1F1F1F;
                 --neutral-100: #262626;
@@ -71,160 +76,218 @@
                 --neutral-700: #D4D4D4;
                 --neutral-800: #E5E5E5;
                 --neutral-900: #F5F5F5;
-                --text-primary: #F5F5F5;
-                --primary-400: #60A5FA;
-                --primary-500: #3B82F6;
-                --primary-600: #2563EB;
-                --primary-700: #BFDBFE;
+                --text-primary: var(--neutral-700);
+                --text-secondary: var(--neutral-500);
+                --bg-primary: #121212;
             }
         }
+        /* Manual dark override (when system is light but user wants dark) */
+        [data-theme="dark"] {
+            --neutral-0: #171717;
+            --neutral-50: #1F1F1F;
+            --neutral-100: #262626;
+            --neutral-150: #2E2E2E;
+            --neutral-200: #333333;
+            --neutral-300: #404040;
+            --neutral-400: #525252;
+            --neutral-500: #737373;
+            --neutral-600: #A3A3A3;
+            --neutral-700: #D4D4D4;
+            --neutral-800: #E5E5E5;
+            --neutral-900: #F5F5F5;
+            --text-primary: var(--neutral-700);
+            --text-secondary: var(--neutral-500);
+            --bg-primary: #121212;
+        }
         *, *::before, *::after { box-sizing: border-box; }
-        html, body {
-            margin: 0;
-            padding: 0;
-            min-height: 100vh;
-            font-family: system-ui, -apple-system, sans-serif;
+        html {
+            margin: 0; padding: 0;
+            font-family: var(--font-family);
             color: var(--text-primary);
-            background: var(--neutral-0);
+            background: var(--bg-primary);
         }
         body {
+            margin: 0; padding: 0;
+            min-height: 100vh;
             overflow-x: hidden;
             overflow-y: auto;
+            background: var(--bg-primary);
         }
-        .shared-note-wrapper {
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-        }
-        .shared-note-container {
-            flex: 1;
-            max-width: 780px;
-            width: 100%;
-            margin: 0 auto;
-            padding: 40px 32px;
-        }
-        .shared-note-header {
-            margin-bottom: 32px;
-            padding-bottom: 16px;
-            border-bottom: 1px solid var(--neutral-200);
-        }
-        .shared-note-title {
-            font: var(--h2);
-            color: var(--text-primary);
-            margin: 0 0 8px;
-            word-wrap: break-word;
-        }
-        .shared-note-meta {
-            font: var(--xs);
-            color: var(--neutral-500);
-        }
-        .shared-note-tags {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-            margin-top: 12px;
-        }
-        .shared-note-tag {
-            font: var(--xs);
-            padding: 2px 8px;
-            border-radius: 4px;
-            color: #fff;
-            font-size: 12px;
-        }
-        .shared-note-rendered {
-            line-height: 1.7;
-            color: var(--text-primary);
-            word-wrap: break-word;
-        }
-        .shared-note-rendered strong { font-weight: 600; }
-        .shared-note-rendered em { font-style: italic; }
-        .shared-note-rendered h1 { font: var(--h2); margin: 24px 0 12px; }
-        .shared-note-rendered h2 { font: var(--h3); margin: 20px 0 10px; }
-        .shared-note-rendered h3 { font: var(--h5); margin: 16px 0 8px; }
-        .shared-note-rendered h4, .shared-note-rendered h5, .shared-note-rendered h6 { font: var(--h6); margin: 14px 0 6px; }
-        .shared-note-rendered p { margin: 0 0 12px; }
-        .shared-note-rendered ul, .shared-note-rendered ol { margin: 0 0 12px; padding-left: 24px; }
-        .shared-note-rendered li { margin-bottom: 4px; }
-        .shared-note-rendered blockquote { margin: 0 0 12px; padding: 8px 16px; border-left: 3px solid var(--neutral-300); color: var(--neutral-600); }
-        .shared-note-rendered img { max-width: 100%; border-radius: 8px; height: auto; }
-        .shared-note-rendered table { border-collapse: collapse; width: 100%; margin: 0 0 12px; }
-        .shared-note-rendered th, .shared-note-rendered td { border: 1px solid var(--neutral-200); padding: 8px 12px; text-align: left; }
-        .shared-note-rendered th { background: var(--neutral-100); font-weight: 600; }
-        .shared-note-rendered a { color: var(--primary-600); }
-        .shared-note-rendered pre { margin: 0 0 12px; border-radius: 8px; overflow-x: auto; }
-        .shared-note-rendered code { font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace; font-size: 0.9em; }
-        .shared-note-rendered pre code { font-size: 13px; }
+        a { color: #2563EB; text-decoration: none; }
+        a:hover { text-decoration: underline; }
 
-        /* Code block styles */
+        /* ─── Top bar ─── */
+        .shared-topbar {
+            position: sticky; top: 0; z-index: 10;
+            display: flex; align-items: center; justify-content: space-between;
+            height: 44px; padding: 0 16px;
+            border-bottom: 1px solid var(--neutral-150);
+            background: var(--bg-primary);
+            backdrop-filter: blur(8px);
+        }
+        .shared-topbar-left {
+            display: flex; align-items: center; gap: 12px;
+            font: var(--sm); color: var(--neutral-500);
+        }
+        .shared-topbar-brand {
+            font-weight: 600; color: var(--neutral-700);
+            text-decoration: none;
+        }
+        .shared-topbar-brand:hover { text-decoration: none; color: var(--neutral-800); }
+        .shared-topbar-btn {
+            display: flex; align-items: center; justify-content: center;
+            width: 32px; height: 32px; border-radius: 6px;
+            border: 1px solid var(--neutral-200); background: var(--neutral-0);
+            color: var(--neutral-500); cursor: pointer; transition: all 0.15s;
+        }
+        .shared-topbar-btn:hover { background: var(--neutral-100); border-color: var(--neutral-300); }
+        .shared-topbar-btn svg { width: 16px; height: 16px; }
+        .shared-topbar-btn.is-active { background: var(--neutral-100); border-color: var(--neutral-300); color: var(--neutral-700); }
+
+        /* ─── Layout ─── */
+        .shared-wrapper {
+            display: flex; flex-direction: column; min-height: calc(100vh - 44px);
+        }
+        .shared-container {
+            flex: 1;
+            width: 100%; max-width: 780px;
+            margin: 0 auto; padding: 40px 32px;
+        }
+        .shared-container.is-wide { max-width: 960px; }
+
+        @media (max-width: 780px) {
+            .shared-container { padding: 28px 20px; }
+            .shared-container.is-wide { max-width: 100%; }
+            .shared-topbar-actions { display: none; }
+        }
+
+        /* ─── Header ─── */
+        .shared-header {
+            margin-bottom: 36px; padding-bottom: 20px;
+            border-bottom: 1px solid var(--neutral-150);
+        }
+        .shared-title {
+            font: var(--h2); color: var(--text-primary);
+            margin: 0 0 8px; word-wrap: break-word;
+        }
+        .shared-meta {
+            font: var(--xs); color: var(--text-secondary);
+            display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+        }
+        .shared-tags {
+            display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px;
+        }
+        .shared-tag {
+            font: var(--xs); font-size: 12px;
+            padding: 2px 10px; border-radius: 4px; color: #fff;
+        }
+
+        /* ─── Rendered content ─── */
+        .shared-rendered {
+            display: block; overflow-x: auto;
+            color: var(--text-primary); line-height: 1.7;
+            word-wrap: break-word;
+        }
+        .shared-rendered strong { font-weight: 600; }
+        .shared-rendered em { font-style: italic; }
+        .shared-rendered h1 { font: var(--h2); margin: 28px 0 12px; }
+        .shared-rendered h2 { font: var(--h3); margin: 24px 0 10px; }
+        .shared-rendered h3 { font: var(--h5); margin: 20px 0 8px; }
+        .shared-rendered h4,.shared-rendered h5,.shared-rendered h6 { font: var(--h6); margin: 16px 0 6px; }
+        .shared-rendered p,
+        .shared-rendered blockquote,
+        .shared-rendered ul,
+        .shared-rendered ol,
+        .shared-rendered table { font: var(--p1); margin: 8px 0; }
+        .shared-rendered li { font: var(--p1); margin-bottom: 4px; }
+        .shared-rendered ul,.shared-rendered ol { padding-left: 24px; }
+        .shared-rendered blockquote {
+            padding: 8px 18px; border-left: 3px solid var(--neutral-300);
+            color: var(--text-secondary);
+        }
+        .shared-rendered img { max-width: 100%; height: auto; }
+        .shared-rendered video { max-width: 100%; border-radius: 6px; }
+        .shared-rendered table { border-collapse: collapse; width: 100%; }
+        .shared-rendered th,.shared-rendered td {
+            border: 1px solid var(--neutral-200); padding: 8px 12px; text-align: left;
+        }
+        .shared-rendered th { background: var(--neutral-100); font-weight: 600; }
+        .shared-rendered hr { border: none; border-top: 1px solid var(--neutral-200); margin: 24px 0; }
+        .shared-rendered code { font: var(--code); }
+        .shared-rendered pre code { font: var(--code); }
+
+        /* Code block */
         .code-block-wrapper {
-            margin: 0 0 12px;
-            border-radius: 8px;
-            overflow: hidden;
+            margin: 8px 0; border-radius: 8px; overflow: hidden;
             border: 1px solid var(--neutral-200);
         }
         .code-block-header {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 12px;
-            background: var(--neutral-100);
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 6px 12px; background: var(--neutral-100);
             border-bottom: 1px solid var(--neutral-200);
-            font-size: 12px;
-            color: var(--neutral-500);
+            font-size: 12px; color: var(--text-secondary);
         }
         .code-block-lang {
-            font: var(--xs);
-            text-transform: uppercase;
-            font-size: 11px;
-            letter-spacing: 0.5px;
+            font-weight: 600; color: var(--text-primary); margin-left: 8px;
         }
+        .copy-code-button {
+            background: var(--neutral-200); border: 1px solid var(--neutral-300);
+            border-radius: 4px; padding: 4px 8px; font-size: 12px; font-weight: 500;
+            color: var(--text-primary); cursor: pointer; transition: background 0.2s;
+        }
+        .copy-code-button:hover { background: var(--neutral-300); }
+        .wrap-toggle {
+            display: inline-flex; margin-left: auto; align-items: center; gap: 4px;
+            font-size: 11px; color: var(--text-secondary); cursor: pointer; user-select: none;
+        }
+        .wrap-toggle-track {
+            width: 28px; height: 14px; border-radius: 7px;
+            background: var(--neutral-300); position: relative; transition: background 0.2s;
+        }
+        .wrap-toggle-track::after {
+            content: ""; position: absolute; top: 2px; left: 2px;
+            width: 10px; height: 10px; border-radius: 50%;
+            background: #fff; transition: transform 0.2s;
+        }
+        .wrap-toggle.is-on > .wrap-toggle-track { background: #3b82f6; }
+        .wrap-toggle.is-on > .wrap-toggle-track::after { transform: translateX(14px); }
         .code-block-content {
-            padding: 16px;
-            overflow-x: auto;
-            background: var(--neutral-50);
+            padding: 12px; overflow-x: auto; background: var(--neutral-100);
         }
-        .code-block-content pre {
-            margin: 0;
-            border-radius: 0;
-            background: transparent;
-        }
+        .code-block-content pre { margin: 0; padding: 0; background: transparent; white-space: pre; overflow-x: auto; }
         .code-block-content code { background: transparent; }
+        .code-block-wrapper.is-wrap .code-block-content { overflow-x: hidden; }
+        .code-block-wrapper.is-wrap .code-block-content pre { white-space: pre-wrap; word-break: break-all; overflow-x: visible; max-width: 100%; }
+        .code-block-wrapper.is-wrap .code-block-content pre code,
+        .code-block-wrapper.is-wrap .code-block-content code { white-space: pre-wrap; }
 
         /* Task list */
-        .shared-note-rendered .task-list-item { list-style: none; margin-left: -24px; }
-        .shared-note-rendered .task-list-item input[type="checkbox"] { margin-right: 8px; }
+        .shared-rendered .task-list-item { list-style: none; margin-left: -24px; }
+        .shared-rendered .task-list-item input[type="checkbox"] { margin-right: 8px; }
 
         /* Tabs */
-        .tabs-tabs-wrapper { margin: 0 0 12px; }
+        .tabs-tabs-wrapper { margin: 8px 0; }
         .tabs-tab-buttons { display: flex; gap: 2px; border-bottom: 1px solid var(--neutral-200); }
-        .tabs-tab-button { padding: 8px 16px; cursor: pointer; font-size: 14px; border: none; background: none; color: var(--neutral-500); border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.15s; }
+        .tabs-tab-button {
+            padding: 8px 16px; cursor: pointer; font-size: 14px; border: none;
+            background: none; color: var(--neutral-500);
+            border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.15s;
+        }
         .tabs-tab-button:hover { color: var(--neutral-700); }
-        .tabs-tab-button[data-active] { color: var(--primary-600); border-bottom-color: var(--primary-600); }
+        .tabs-tab-button[data-active] { color: #2563EB; border-bottom-color: #2563EB; }
         .tabs-tab-content { display: none; padding: 16px 0; }
         .tabs-tab-content[data-active] { display: block; }
 
-        .shared-note-error {
-            text-align: center;
-            padding: 80px 32px;
-            color: var(--neutral-500);
+        /* States */
+        .shared-error { text-align: center; padding: 80px 32px; color: var(--neutral-500); }
+        .shared-expired { text-align: center; padding: 80px 32px; }
+        .shared-expired h2 { font: var(--h3); color: var(--neutral-700); margin-bottom: 8px; }
+        .shared-expired p { color: var(--neutral-500); }
+        .shared-footer {
+            text-align: center; padding: 24px;
+            color: var(--neutral-400); font: var(--xs);
         }
-        .shared-note-expired {
-            text-align: center;
-            padding: 80px 32px;
-        }
-        .shared-note-expired h2 { font: var(--h3); color: var(--neutral-700); margin-bottom: 8px; }
-        .shared-note-expired p { color: var(--neutral-500); }
-        .powered-by {
-            text-align: center;
-            padding: 24px;
-            color: var(--neutral-400);
-            font: var(--xs);
-        }
-        .powered-by a { color: var(--neutral-500); text-decoration: none; }
-
-        @media (max-width: 640px) {
-            .shared-note-container { padding: 24px 16px; }
-        }
+        .shared-footer a { color: var(--neutral-500); }
     </style>
 </head>
 <body>
@@ -233,20 +296,21 @@
     (function() {
         var token = window.location.pathname.replace(/^\/s\//, '').replace(/\/$/, '');
         var app = document.getElementById('app');
+        var widthMode = 'wide';
 
         function showError(msg) {
-            app.innerHTML = '<div class="shared-note-error"><p>' + msg + '</p></div>';
+            app.innerHTML = '<div class="shared-error"><p>' + msg + '</p></div>';
         }
 
         function showExpired() {
-            app.innerHTML = '<div class="shared-note-expired"><h2>Share Expired</h2><p>This shared note has expired or is no longer available.</p></div><div class="powered-by">Shared via <a href="/">Zen</a></div>';
+            app.innerHTML = '<div class="shared-expired"><h2>Share Expired</h2><p>This shared note has expired or is no longer available.</p></div><div class="shared-footer">Shared via <a href="/">Zen</a></div>';
         }
 
-        function renderNote(note) {
+        function renderPage(note) {
+            document.title = (note.title || 'Untitled') + ' - Zen';
+
             var md = window.markdownit({
-                html: true,
-                linkify: true,
-                breaks: true,
+                html: true, linkify: true, breaks: true,
                 highlight: function(str, lang) {
                     if (lang && window.hljs && window.hljs.getLanguage(lang)) {
                         try { return window.hljs.highlight(str, { language: lang }).value; }
@@ -257,27 +321,22 @@
             });
 
             var plugins = [
-                { name: 'alert', fn: window.mdItPluginAlert && window.mdItPluginAlert.alert },
-                { name: 'align', fn: window.mdItPluginAlign && window.mdItPluginAlign.align },
-                { name: 'attrs', fn: window.mdItPluginAttrs && window.mdItPluginAttrs.attrs },
-                { name: 'dl', fn: window.mdItPluginDl && window.mdItPluginDl.dl },
-                { name: 'footnote', fn: window.mdItPluginFootnote && window.mdItPluginFootnote.footnote },
-                { name: 'fullEmoji', fn: window.mdItPluginEmoji && window.mdItPluginEmoji.fullEmoji },
-                { name: 'imgSize', fn: window.mdItPluginImgSize && window.mdItPluginImgSize.imgSize },
-                { name: 'imgLazyload', fn: window.mdItPluginImgLazyload && window.mdItPluginImgLazyload.imgLazyload },
-                { name: 'ins', fn: window.mdItPluginIns && window.mdItPluginIns.ins },
-                { name: 'mark', fn: window.mdItPluginMark && window.mdItPluginMark.mark },
-                { name: 'sub', fn: window.mdItPluginSub && window.mdItPluginSub.sub },
-                { name: 'sup', fn: window.mdItPluginSup && window.mdItPluginSup.sup },
-                { name: 'tasklist', fn: window.mdItPluginTasklist && window.mdItPluginTasklist.tasklist },
-                { name: 'layout', fn: window.mdItPluginLayout && window.mdItPluginLayout.layout }
+                { fn: window.mdItPluginAlert && window.mdItPluginAlert.alert },
+                { fn: window.mdItPluginAlign && window.mdItPluginAlign.align },
+                { fn: window.mdItPluginAttrs && window.mdItPluginAttrs.attrs },
+                { fn: window.mdItPluginDl && window.mdItPluginDl.dl },
+                { fn: window.mdItPluginFootnote && window.mdItPluginFootnote.footnote },
+                { fn: window.mdItPluginEmoji && window.mdItPluginEmoji.fullEmoji },
+                { fn: window.mdItPluginImgSize && window.mdItPluginImgSize.imgSize },
+                { fn: window.mdItPluginImgLazyload && window.mdItPluginImgLazyload.imgLazyload },
+                { fn: window.mdItPluginIns && window.mdItPluginIns.ins },
+                { fn: window.mdItPluginMark && window.mdItPluginMark.mark },
+                { fn: window.mdItPluginSub && window.mdItPluginSub.sub },
+                { fn: window.mdItPluginSup && window.mdItPluginSup.sup },
+                { fn: window.mdItPluginTasklist && window.mdItPluginTasklist.tasklist },
+                { fn: window.mdItPluginLayout && window.mdItPluginLayout.layout }
             ];
-
-            plugins.forEach(function(p) {
-                if (p.fn) {
-                    try { md.use(p.fn); } catch(e) {}
-                }
-            });
+            plugins.forEach(function(p) { if (p.fn) { try { md.use(p.fn); } catch(e) {} } });
 
             if (window.mdItPluginTab && window.mdItPluginTab.tab) {
                 try { md.use(window.mdItPluginTab.tab, { name: 'tabs' }); } catch(e) {}
@@ -288,16 +347,14 @@
                 var types = ['note', 'tip', 'important', 'warning', 'caution'];
                 var legacyMap = { info: 'note', success: 'important', danger: 'caution' };
                 Object.keys(legacyMap).forEach(function(legacy) {
-                    var target = legacyMap[legacy];
                     try {
                         md.use(container, legacy, {
-                            validate: function(params) { return params.trim().toLowerCase().startsWith(legacy); },
+                            validate: function(p) { return p.trim().toLowerCase().startsWith(legacy); },
                             render: function(tokens, idx) {
-                                var token = tokens[idx];
-                                var info = token.info.trim();
-                                if (token.nesting === 1) {
+                                var t = tokens[idx], info = t.info.trim();
+                                if (t.nesting === 1) {
                                     var title = info ? md.utils.escapeHtml(info) : legacy.toUpperCase();
-                                    return '<div class="md-container md-container-' + target + '"><div class="md-container-title">' + title + '</div><div class="md-container-body">';
+                                    return '<div class="md-container md-container-' + legacyMap[legacy] + '"><div class="md-container-title">' + title + '</div><div class="md-container-body">';
                                 }
                                 return '</div></div>';
                             }
@@ -307,11 +364,10 @@
                 types.forEach(function(type) {
                     try {
                         md.use(container, type, {
-                            validate: function(params) { return params.trim().toLowerCase().startsWith(type); },
+                            validate: function(p) { return p.trim().toLowerCase().startsWith(type); },
                             render: function(tokens, idx) {
-                                var token = tokens[idx];
-                                var info = token.info.trim();
-                                if (token.nesting === 1) {
+                                var t = tokens[idx], info = t.info.trim();
+                                if (t.nesting === 1) {
                                     var title = info ? md.utils.escapeHtml(info) : type.toUpperCase();
                                     return '<div class="md-container md-container-' + type + '"><div class="md-container-title">' + title + '</div><div class="md-container-body">';
                                 }
@@ -323,9 +379,8 @@
                 try {
                     md.use(container, 'details', {
                         render: function(tokens, idx) {
-                            var token = tokens[idx];
-                            var info = token.info.trim();
-                            if (token.nesting === 1) {
+                            var t = tokens[idx], info = t.info.trim();
+                            if (t.nesting === 1) {
                                 var summary = info ? md.utils.escapeHtml(info) : 'Details';
                                 return '<details class="md-container md-container-details"><summary>' + summary + '</summary><div class="md-container-body">';
                             }
@@ -342,39 +397,109 @@
                 var token = tokens[idx];
                 var lang = token.info ? token.info.trim() : '';
                 var content = fence(tokens, idx, options, env, self);
-                return '<div class="code-block-wrapper"><div class="code-block-header"><span class="code-block-lang">' + lang + '</span></div><div class="code-block-content">' + content + '</div></div>';
+                var langLabel = lang ? '<span class="code-block-lang">' + lang + '</span>' : '';
+                return '<div class="code-block-wrapper">' +
+                    '<div class="code-block-header">' +
+                    '<button class="copy-code-button" onclick="window.copyCodeToClipboard(this)">复制</button>' +
+                    langLabel +
+                    '<span class="wrap-toggle" onclick="this.classList.toggle(\'is-on\');this.closest(\'.code-block-wrapper\').classList.toggle(\'is-wrap\')">换行<span class="wrap-toggle-track"></span></span>' +
+                    '</div>' +
+                    '<div class="code-block-content">' + content + '</div>' +
+                    '</div>';
             };
 
             var rendered = md.render(note.content || '');
 
             var tagsHtml = '';
             if (note.tags && note.tags.length > 0) {
-                tagsHtml = '<div class="shared-note-tags">' + note.tags.map(function(t) {
-                    return '<span class="shared-note-tag" style="background-color:' + (t.color || '#888') + '">' + escapeHtml(t.name) + '</span>';
+                tagsHtml = '<div class="shared-tags">' + note.tags.map(function(t) {
+                    return '<span class="shared-tag" style="background-color:' + (t.color || '#888') + '">' + esc(t.name) + '</span>';
                 }).join('') + '</div>';
             }
 
             var updatedStr = note.updatedAt ? new Date(note.updatedAt).toLocaleDateString() : '';
 
             app.innerHTML =
-                '<div class="shared-note-wrapper">' +
-                '<div class="shared-note-container">' +
-                '<div class="shared-note-header">' +
-                '<h1 class="shared-note-title">' + escapeHtml(note.title || 'Untitled') + '</h1>' +
-                (updatedStr ? '<div class="shared-note-meta">Updated ' + updatedStr + '</div>' : '') +
+                '<div class="shared-topbar">' +
+                '<div class="shared-topbar-left">' +
+                '<a class="shared-topbar-brand" href="/">Zen</a>' +
+                '<span>Shared Note</span>' +
+                '</div>' +
+                '<div class="shared-topbar-actions" style="display:flex;gap:4px">' +
+                '<button class="shared-topbar-btn" id="btn-normal" title="标准宽度" onclick="window._zenSetWidth(\'normal\')">' +
+                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/></svg>' +
+                '</button>' +
+                '<button class="shared-topbar-btn" id="btn-wide" title="宽屏" onclick="window._zenSetWidth(\'wide\')">' +
+                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>' +
+                '</button>' +
+                '<button class="shared-topbar-btn" id="btn-theme" title="切换主题" onclick="window._zenToggleTheme()">' +
+                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>' +
+                '</button>' +
+                '</div>' +
+                '</div>' +
+                '<div class="shared-wrapper">' +
+                '<div class="shared-container" id="shared-container">' +
+                '<div class="shared-header">' +
+                '<h1 class="shared-title">' + esc(note.title || 'Untitled') + '</h1>' +
+                (updatedStr ? '<div class="shared-meta"><span>Updated ' + updatedStr + '</span></div>' : '') +
                 tagsHtml +
                 '</div>' +
-                '<div class="shared-note-rendered">' + rendered + '</div>' +
+                '<div class="shared-rendered">' + rendered + '</div>' +
                 '</div>' +
-                '<div class="powered-by">Shared via <a href="/">Zen</a></div>' +
+                '<div class="shared-footer">Shared via <a href="/">Zen</a></div>' +
                 '</div>';
         }
 
-        function escapeHtml(text) {
+        function esc(text) {
             var d = document.createElement('div');
             d.textContent = text;
             return d.innerHTML;
         }
+
+        window.copyCodeToClipboard = function(btn) {
+            var wrapper = btn.closest('.code-block-wrapper');
+            var code = wrapper ? wrapper.querySelector('.code-block-content').innerText : '';
+            var ta = document.createElement('textarea');
+            ta.value = code; ta.style.position = 'fixed'; ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            try { document.execCommand('copy'); btn.textContent = '已复制'; }
+            catch(e) { btn.textContent = '失败'; }
+            finally { document.body.removeChild(ta); }
+            setTimeout(function() { btn.textContent = '复制'; }, 2000);
+        };
+
+        window._zenSetWidth = function(mode) {
+            widthMode = mode;
+            var el = document.getElementById('shared-container');
+            var btnN = document.getElementById('btn-normal');
+            var btnW = document.getElementById('btn-wide');
+            if (el) {
+                el.classList.toggle('is-wide', mode === 'wide');
+            }
+            if (btnN) btnN.classList.toggle('is-active', mode === 'normal');
+            if (btnW) btnW.classList.toggle('is-active', mode === 'wide');
+            try { localStorage.setItem('zen.shareWidth', mode); } catch(e) {}
+        };
+
+        window._zenToggleTheme = function() {
+            var html = document.documentElement;
+            var isDark = html.getAttribute('data-theme') === 'dark';
+            if (isDark) {
+                html.removeAttribute('data-theme');
+            } else {
+                html.setAttribute('data-theme', 'dark');
+            }
+            try { localStorage.setItem('zen.shareTheme', isDark ? 'light' : 'dark'); } catch(e) {}
+        };
+
+        // Restore saved preferences
+        try { widthMode = localStorage.getItem('zen.shareWidth') || 'wide'; } catch(e) {}
+        try {
+            if (localStorage.getItem('zen.shareTheme') === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        } catch(e) {}
 
         fetch('/api/shares/' + token)
             .then(function(res) {
@@ -383,12 +508,12 @@
                 return res.json();
             })
             .then(function(note) {
-                if (note) { renderNote(note); }
-                else { showExpired(); }
+                if (note) {
+                    renderPage(note);
+                    setTimeout(function() { window._zenSetWidth(widthMode); }, 50);
+                } else { showExpired(); }
             })
-            .catch(function() {
-                showError('Failed to load note. Please try again later.');
-            });
+            .catch(function() { showError('Failed to load note.'); });
     })();
     </script>
 </body>
