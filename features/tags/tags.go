@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"zen/commons/auth"
 	"zen/commons/utils"
 )
 
@@ -34,9 +35,11 @@ func HandleGetTags(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if section == "templates" {
-		tags, err = GetFilteredTags(focusModeID, isArchived, isDeleted, section, query)
+		tags, err = GetFilteredTags(focusModeID, isArchived, isDeleted, section, "")
 	} else if query != "" {
-		tags, err = GetFilteredTags(focusModeID, isArchived, isDeleted, "notes", query)
+		// Name match plus pinyin matching live in SearchTags; GetFilteredTags only
+		// narrows by focus mode and note status, so it cannot serve a text query.
+		tags, err = SearchTags(auth.GetAccess(r.Context()), query)
 	} else {
 		tags, err = GetFilteredTags(focusModeID, isArchived, isDeleted, "notes", "")
 	}
@@ -164,16 +167,23 @@ func HandleReorderTags(w http.ResponseWriter, r *http.Request) {
 }
 
 func isValid(tag Tag) (string, string, error) {
+	// The set spans the upstream picker and the wider fork palette so renaming or
+	// re-colouring an existing tag never fails validation.
 	validTagColors := map[string]bool{
 		"gray":   true,
 		"red":    true,
 		"orange": true,
+		"amber":  true,
 		"yellow": true,
+		"lime":   true,
 		"green":  true,
 		"teal":   true,
+		"cyan":   true,
 		"blue":   true,
+		"indigo": true,
 		"purple": true,
 		"pink":   true,
+		"rose":   true,
 	}
 
 	if strings.TrimSpace(tag.Name) == "" {
