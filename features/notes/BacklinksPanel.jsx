@@ -1,5 +1,5 @@
 import { h, useState } from "../../assets/preact.esm.js";
-import { LinkIcon, ChevronRightIcon } from "../../commons/components/Icon.jsx";
+import { HyperlinkIcon, ChevronRightIcon } from "../../commons/components/Icon.jsx";
 import navigateTo from "../../commons/utils/navigateTo.js";
 import formatDate from "../../commons/utils/formatDate.js";
 import { t } from "../../commons/i18n/index.js";
@@ -12,7 +12,7 @@ export default function BacklinksPanel({ backlinks = [], isLoading = false }) {
     return (
       <div className="backlinks-panel is-loading">
         <div className="backlinks-header">
-          <LinkIcon />
+          <HyperlinkIcon />
           <span className="backlinks-title">{t('backlinks.title')}</span>
           <span className="backlinks-loading">{t('backlinks.loading')}</span>
         </div>
@@ -54,7 +54,7 @@ export default function BacklinksPanel({ backlinks = [], isLoading = false }) {
         <span className="backlinks-toggle">
           <ChevronRightIcon />
         </span>
-        <LinkIcon />
+        <HyperlinkIcon />
         <span className="backlinks-title">{t('backlinks.title')}</span>
         <span className="backlinks-count">{backlinks.length}</span>
       </div>

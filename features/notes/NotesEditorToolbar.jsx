@@ -1,7 +1,7 @@
 import { h, Fragment } from "../../assets/preact.esm.js";
 import Button from '../../commons/components/Button.jsx';
 import DropdownMenu from '../../commons/components/DropdownMenu.jsx';
-import { CloseIcon, SidebarCloseIcon, SidebarOpenIcon, BackIcon, ListOrderedIcon, CopyIcon, ShareIcon } from "../../commons/components/Icon.jsx";
+import { CloseIcon, SidebarCloseIcon, SidebarOpenIcon, BackIcon, TocIcon, CopyIcon, ShareIcon } from "../../commons/components/Icon.jsx";
 import isMobile from '../../commons/utils/isMobile.js';
 import { t } from "../../commons/i18n/index.js";
 import { showToast } from "../../commons/components/Toast.jsx";
@@ -24,7 +24,7 @@ export default function NotesEditorToolbar({ note, isNewNote, isEditable, isModa
         key: 'toc',
         condition: onToggleToc != null,
         component: <Button variant="ghost" onClick={onToggleToc} data-tooltip={t('notes.toc.toggleTitle')}>
-          <ListOrderedIcon />
+          <TocIcon />
         </Button>
       },
       {

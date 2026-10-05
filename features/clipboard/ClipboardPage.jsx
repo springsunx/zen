@@ -3,7 +3,7 @@ import Sidebar from '../../commons/components/Sidebar.jsx';
 import MobileNavbar from '../../commons/components/MobileNavbar.jsx';
 import Spinner from '../../commons/components/Spinner.jsx';
 import EmptyState from '../../commons/components/EmptyState.jsx';
-import { ClipboardIcon, CopyIcon, DownloadIcon, LinkIcon, StickyNoteIcon, TrashIcon, UploadIcon, CloseIcon } from '../../commons/components/Icon.jsx';
+import { ClipboardIcon, CopyIcon, DownloadIcon, HyperlinkIcon, StickyNoteIcon, TrashIcon, UploadIcon, CloseIcon } from '../../commons/components/Icon.jsx';
 import ApiClient from "../../commons/http/ApiClient.js";
 import { showToast } from "../../commons/components/Toast.jsx";
 import { ModalBackdrop, ModalContainer, ModalHeader, ModalContent, ModalFooter } from "../../commons/components/Modal.jsx";
@@ -441,7 +441,7 @@ function BatchGroup({ group, onDeleteBatch, onDeleteFile, onSaveBatchAsNote, onD
             <DownloadIcon />
           </button>
           <button className="clipboard-item-action" onClick={handleCopyAllLinks} title={t('clipboard.copyLink')}>
-            <LinkIcon />
+            <HyperlinkIcon />
           </button>
           <button className="clipboard-item-action" onClick={onSaveBatchAsNote} title={t('clipboard.saveAsNote')}>
             <StickyNoteIcon />
@@ -557,7 +557,7 @@ function ClipboardItem({ message, onDelete, onSaveAsNote, onOpenLightbox }) {
       actions = (
         <div className="clipboard-item-actions">
           <button className="clipboard-item-action" onClick={handleDownload} title={t('clipboard.download')}><DownloadIcon /></button>
-          <button className="clipboard-item-action" onClick={handleCopyLink} title={t('clipboard.copyLink')}><LinkIcon /></button>
+          <button className="clipboard-item-action" onClick={handleCopyLink} title={t('clipboard.copyLink')}><HyperlinkIcon /></button>
           <button className="clipboard-item-action" onClick={onSaveAsNote} title={t('clipboard.saveAsNote')}><StickyNoteIcon /></button>
           <button className="clipboard-item-action clipboard-item-action-delete" onClick={onDelete} title={t('common.delete')}><TrashIcon /></button>
         </div>

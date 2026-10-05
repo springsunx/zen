@@ -1,5 +1,5 @@
 import { h } from "../../assets/preact.esm.js"
-import { TableIcon, TablePropertiesIcon, BoldIcon, ItalicIcon, StrikethroughIcon, HighlightIcon, CodeIcon, CodeBlockIcon, Heading1Icon, Heading2Icon, Heading3Icon, ListIcon, ListOrderedIcon, ListTodoIcon, QuoteIcon, LinkIcon, NoteIcon, SeparatorIcon, BrainCircuitIcon } from '../../commons/components/Icon.jsx';
+import { TableIcon, TablePropertiesIcon, BoldIcon, ItalicIcon, StrikethroughIcon, HighlightIcon, CodeIcon, CodeBlocksIcon, Heading1Icon, Heading2Icon, Heading3Icon, ListIcon, ListOrderedIcon, ListTodoIcon, QuoteIcon, LinkIcon, DescriptionIcon, SeparatorIcon, NeurologyIcon } from '../../commons/components/Icon.jsx';
 import { t } from "../../commons/i18n/index.js";
 
 export default function NotesEditorFormattingToolbar({ isEditable, onFormat, onInsertInternalLink, onOpenAI }) {
@@ -26,7 +26,7 @@ export default function NotesEditorFormattingToolbar({ isEditable, onFormat, onI
           <CodeIcon />
         </button>
         <button type="button" className="formatting-button" onClick={() => onFormat("codeblock")} title={t('notes.toolbar.codeblock')}>
-          <CodeBlockIcon />
+          <CodeBlocksIcon />
         </button>
       </div>
 
@@ -62,13 +62,13 @@ export default function NotesEditorFormattingToolbar({ isEditable, onFormat, onI
           <LinkIcon />
         </button>
         <button type="button" className="formatting-button" onClick={() => onInsertInternalLink()} title={t('notes.toolbar.internalLink')}>
-          <NoteIcon />
+          <DescriptionIcon />
         </button>
         <button type="button" className="formatting-button" onClick={() => onFormat("hr")} title={t('notes.toolbar.hr')}>
           <SeparatorIcon />
         </button>
         <button type="button" className="formatting-button" onClick={() => onOpenAI()} title={t('notes.toolbar.ai')}>
-          <BrainCircuitIcon />
+          <NeurologyIcon />
         </button>
       </div>
       <div className="formatting-toolbar-group">

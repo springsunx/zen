@@ -1,6 +1,6 @@
 import { h, useState, useRef, useEffect } from "../../assets/preact.esm.js"
 import ApiClient from "../../commons/http/ApiClient.js";
-import { LinkIcon } from "../../commons/components/Icon.jsx";
+import { HyperlinkIcon } from "../../commons/components/Icon.jsx";
 import { t } from "../../commons/i18n/index.js";
 
 export default function NoteLinkPicker({ onInsertLink, onClose, textareaRef, cursorPos }) {
@@ -125,7 +125,7 @@ export default function NoteLinkPicker({ onInsertLink, onClose, textareaRef, cur
   return (
     <div className="note-link-picker" ref={pickerRef} style={{ position: 'absolute', top: position.top + 'px', left: position.left + 'px' }}>
       <div className="note-link-picker-input-row">
-        <LinkIcon />
+        <HyperlinkIcon />
         <input
           ref={inputRef}
           type="text"
