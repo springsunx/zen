@@ -31,7 +31,7 @@ export function extractCustomId(text) {
   return { cleanedText, customId: id };
 }
 
-export function cleanMarkdownLinks(text) {
+function cleanMarkdownLinks(text) {
   if (!text) return text;
   const linkRegex = /\[([^\]]+?)\]\([^)]+\)/g;
   return String(text).replace(linkRegex, '$1').trim();
@@ -76,101 +76,6 @@ export function findAnchor(root, idRaw) {
   }
   return element;
 }
-
-export function extractHeadingsFromMarkdown(markdown) {
-  if (!markdown) return [];
-  const lines = String(markdown).split("\n");
-  let inCode = false, fence = '', fenceLen = 0;
-  let inToc = false;
-  const out = [];
-  for (const line of lines) {
-    const t = line.trim();
-    if (t.includes('<!-- toc:start -->')) { inToc = true; continue; }
-    if (t.includes('<!-- toc:end -->')) { inToc = false; continue; }
-    if (inToc) continue;
-
-    // Fenced code block: ``` or ~~~
-    if (!inCode) {
-      const m = t.match(/^(`{3,}|~{3,})/);
-      if (m) {
-        inCode = true;
-        fence = m[1][0]; // ` or ~
-        fenceLen = m[1].length;
-        continue;
-      }
-    } else {
-      // Closing fence: same char, same or greater length, only whitespace after
-      const m = t.match(/^(`{3,}|~{3,})\s*$/);
-      if (m && m[1][0] === fence && m[1].length >= fenceLen) {
-        inCode = false;
-        fence = '';
-        fenceLen = 0;
-      }
-      continue;
-    }
-
-    // Indented code block: 4 spaces or 1 tab at line start, preceded by blank line
-    if (/^(\t| {4})/.test(line)) continue;
-
-    // Markdown heading: ### Title or ### Title {#custom-id}
-    const m = line.match(/^(#{1,3})\s+(.+)$/);
-    if (m) {
-      const level = m[1].length;
-      let text = m[2].trim();
-      const { cleanedText, customId } = extractCustomId(text);
-      text = cleanMarkdownLinks(cleanedText);
-      out.push({ level, text, customId });
-      continue;
-    }
-
-    // Raw HTML heading: <h1 id="xxx">text</h1>, <h2>text</h2>, etc.
-    const hm = line.match(/^<h([1-3])\b([^>]*)>(.*?)<\/h[1-3]>\s*$/i);
-    if (hm) {
-      const level = parseInt(hm[1], 10);
-      const attrs = hm[2] || '';
-      let text = hm[3].replace(/<[^>]+>/g, '').trim(); // strip inner HTML tags
-      const idMatch = attrs.match(/\bid\s*=\s*["']([^"']+)["']/);
-      const customId = idMatch ? cleanCustomId(idMatch[1]) : null;
-      text = cleanMarkdownLinks(text);
-      if (text) {
-        out.push({ level, text, customId });
-      }
-    }
-  }
-  return out;
-}
-
-export function buildTocMarkdown(headings, titleText) {
-  if (!headings || headings.length === 0) return '';
-  const minLevel = Math.min(...headings.map(h => h.level));
-  const lines = [];
-  lines.push('<!-- toc:start -->');
-  lines.push(titleText);
-  lines.push('===');
-  for (const h of headings) {
-    const indent = '  '.repeat(Math.max(0, h.level - minLevel));
-    const id = h.customId || generateId(h.text);
-    lines.push(`${indent}- [${h.text}](#${id})`);
-  }
-  lines.push('<!-- toc:end -->');
-  return lines.join("\n");
-}
-
-export function injectOrReplaceToc(content, tocBlock) {
-  const startIdx = content.indexOf('<!-- toc:start -->');
-  const endMarker = '<!-- toc:end -->';
-  const endIdx = content.indexOf(endMarker);
-  const block = String(tocBlock || '').replace(/\s+$/, '') + "\n\n";
-  if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
-    let after = endIdx + endMarker.length;
-    while (after < content.length && (content[after] === "\n" || content[after] === "\r")) after++;
-    return content.substring(0, startIdx) + block + content.substring(after);
-  }
-  const rest = content.replace(/^(?:\r?\n)+/, '');
-  return block + rest;
-}
-
-
 // Build markdown-it heading_open rule based on unified helpers
 export function buildHeadingOpen(opts = {}) {
   return function(tokens, idx, options, env, self) {

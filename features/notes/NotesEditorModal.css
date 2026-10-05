@@ -16,13 +16,21 @@
         height: 100%;
         border: none;
         border-radius: 0;
-        padding: var(--spacing-8);
-        padding-top: 0;
-        overflow-y: auto;
-    }
 
-    .notes-editor-container.toc-visible .notes-editor {
-        padding-right: calc(220px + var(--spacing-6)); /* 预留 TOC 空间 */
+        /* The pane no longer scrolls itself: padding moves to the header and the
+           reading-area scroller, which is what carries the scrollbar. */
+        .notes-editor-sticky {
+            padding: 0 var(--spacing-8);
+        }
+
+        .notes-editor-scroll {
+            padding: 0 var(--spacing-8) var(--spacing-8);
+        }
+
+        .notes-editor-toolbar {
+            padding-top: var(--spacing-8);
+            padding-bottom: 0;
+        }
     }
 
     @media (max-width: 768px) {
@@ -32,8 +40,28 @@
         max-height: none;
 
         .notes-editor {
-            padding-top: var(--spacing-8);
-            padding-right: var(--spacing-8); 
+            .notes-editor-sticky {
+                padding: 0 var(--spacing-6);
+            }
+
+            .notes-editor-scroll {
+                padding: 0 var(--spacing-6) var(--spacing-6);
+            }
+
+            .notes-editor-toolbar {
+                padding-top: var(--spacing-6);
+                padding-bottom: 0;
+            }
         }
     }
+}
+
+/* .modal-content-container carries will-change: transform, which makes it the
+   containing block for position:fixed descendants. The width grips and the dot rail
+   are measured in viewport coordinates, so inside the modal they landed against the
+   modal box instead (rail overlapping the column, grips shifted right). Clearing it
+   also means the open animation's transform cannot misplace them mid-flight. */
+.modal-content-container.notes-editor-modal {
+    will-change: auto;
+    animation: none;
 }

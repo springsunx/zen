@@ -5,7 +5,6 @@ import NotesEditor from './NotesEditor.jsx';
 import BulkActionsPanel from './BulkActionsPanel.jsx';
 import BulkActionsToolbar from './BulkActionsToolbar.jsx';
 import MobileNavbar from '../../commons/components/MobileNavbar.jsx';
-import RightSideToc from "./RightSideToc.jsx";
 import SharePanel from "./SharePanel.jsx";
 import ApiClient from "../../commons/http/ApiClient.js";
 import isMobile from "../../commons/utils/isMobile.js";
@@ -33,14 +32,8 @@ function NotesPageContent({ noteId }) {
   const { isSidebarOpen, toggleSidebar, isEditorExpanded } = useLayout();
   const [isMultiSelect, setIsMultiSelect] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
-  const [showToc, setShowToc] = useState(() => {
-    try { return localStorage.getItem('zen.showToc') === 'true'; } catch { return false; }
-  });
   const [showShare, setShowShare] = useState(() => {
     try { return localStorage.getItem('zen.showShare') === 'true'; } catch { return false; }
-  });
-  const [isFitToWindow, setIsFitToWindow] = useState(() => {
-    try { return localStorage.getItem('zen.fitToWindow') === 'true'; } catch { return false; }
   });
 
   const { refreshTags, refreshFocusModes } = useAppContext();
@@ -241,7 +234,7 @@ function NotesPageContent({ noteId }) {
   const isEditorExpandable = selectedView === "list";
   const isPageExpanded = isEditorExpanded === true && isEditorExpandable === true;
 
-  let editorContent = <NotesEditor isNewNote={noteId === "new"} isExpandable={isEditorExpandable} onToggleToc={() => setShowToc(prev => { const next = !prev; try { localStorage.setItem('zen.showToc', String(next)); } catch {} if (next) setShowShare(false); return next; })} onToggleShare={() => setShowShare(prev => { const next = !prev; try { localStorage.setItem('zen.showShare', String(next)); } catch {} if (next) setShowToc(false); return next; })} isFitToWindow={isFitToWindow} onFitToWindowToggle={() => { setIsFitToWindow(prev => { const next = !prev; try { localStorage.setItem('zen.fitToWindow', String(next)); } catch {} return next; }); }} key={selectedNote?.noteId} />;
+  let editorContent = <NotesEditor isNewNote={noteId === "new"} isExpandable={isEditorExpandable} onToggleShare={() => setShowShare(prev => { const next = !prev; try { localStorage.setItem('zen.showShare', String(next)); } catch {} return next; })} key={selectedNote?.noteId} />;
   if (isMultiSelect === true) {
     editorContent = <BulkActionsPanel selectedIds={selectedIds} allIds={notes.map(n => n.noteId)} selectedNotes={notes.filter(n => selectedIds.includes(n.noteId))} onClose={handleClearSelection} onSelectAll={() => setSelectedIds(notes.map(n => n.noteId))} />;
   }
@@ -304,28 +297,15 @@ function NotesPageContent({ noteId }) {
           />
         </div>
 
-        <div className={`${editorClassName}${isPageExpanded ? " is-expanded" : ""}${isFitToWindow ? " is-fit-to-window" : ""}`}>
+        <div className={`${editorClassName}${isPageExpanded ? " is-expanded" : ""}`}>
           {editorContent}
         </div>
 
-      {selectedView === "list" && (
-        <RightSideToc
-          content={selectedNote?.content || ""}
-          showToc={showToc}
-          isEditable={isEditorEditable}
-          isNewNote={noteId === "new"}
-          noteId={selectedNote?.noteId}
-          onContentPatched={(patchedContent) => {
-            setSelectedNote(prev => prev ? { ...prev, content: patchedContent } : prev);
-          }}
-        />
-      )}
       <SharePanel noteId={selectedNote?.noteId} showShare={showShare} />
         <MobileNavbar />
         <div className="note-modal-root"></div>
         <div className="modal-root"></div>
         <div className="toast-root"></div>
-        <div className="toc-root"></div>
       </div>
 
       {bulkToolbar}

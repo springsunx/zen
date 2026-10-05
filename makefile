@@ -1,3 +1,5 @@
+.PHONY: build dev watch test
+
 build:
 	esbuild index.js --bundle --minify --format=esm --outfile=assets/bundle.js --loader:.js=jsx --jsx-factory=h --jsx-fragment=Fragment
 	go build --tags "fts5"

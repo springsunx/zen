@@ -1,4 +1,4 @@
-import { h, useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from "../../assets/preact.esm.js"
+import { h, Fragment, useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from "../../assets/preact.esm.js"
 import ApiClient from '../../commons/http/ApiClient.js';
 import NotesEditorTags from "../tags/NotesEditorTags.jsx";
 import NotesEditorFormattingToolbar from './NotesEditorFormattingToolbar.jsx';
@@ -21,9 +21,15 @@ import { useAppContext, AppProvider } from '../../commons/contexts/AppContext.js
 import { NotesProvider } from "../../commons/contexts/NotesContext.jsx";
 import NotesEditorModal from './NotesEditorModal.jsx';
 import { BrainCircuitIcon } from '../../commons/components/Icon.jsx';
+
+// How far the invisible page-edge grips reach outward from the reading column.
+const HANDLE_REACH = 40;
 import { useLayout } from '../../commons/contexts/LayoutContext.jsx';
-import { useVisibleHeadings } from "./useVisibleHeadings.js";
 import { useCollapsibleHeadings } from "./useCollapsibleHeadings.js";
+import NoteOutline from "./NoteOutline.jsx";
+import handleCodeWrapClick from "../../commons/utils/handleCodeWrapClick.js";
+import handleCodeCopyClick from "../../commons/utils/handleCodeCopyClick.js";
+import EditorWidthPreferences from "../../commons/preferences/EditorWidthPreferences.js";
 import useRefreshOnTabFocus from "./useRefreshOnTabFocus.js";
 import useNewNoteTag from "./useNewNoteTag.js";
 import Lightbox from "../../commons/components/Lightbox.jsx";
@@ -39,7 +45,7 @@ import SpellcheckPreferences from "../../commons/preferences/SpellcheckPreferenc
 import "./NotesEditor.css";
 import { t } from "../../commons/i18n/index.js";
 
-export default function NotesEditor({ isNewNote, isModal, isExpandable = false, onClose, onEditModeChange = () => {}, onContentChange = () => {}, onSaved = () => {}, onToggleToc, onToggleShare, isFitToWindow = false, onFitToWindowToggle }) {
+export default function NotesEditor({ isNewNote, isModal, isExpandable = false, onClose, onEditModeChange = () => {}, onContentChange = () => {}, onSaved = () => {}, onToggleShare }) {
   const { selectedNote, handleNoteChange, patchNote, handlePinToggle } = useNotes();
   const { refreshTags } = useAppContext();
   const { isEditorExpanded, toggleEditorExpanded } = useLayout();
@@ -91,6 +97,11 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
 
   // ─── Refs ───
   const contentRef = useRef(null);
+  const editorRef = useRef(null);
+  // Read mode scrolls the reading area, edit mode scrolls the content box; both are kept
+  // so switching modes can put the reader back where they were.
+  const readScrollRef = useRef(0);
+  const editScrollRef = useRef(0);
   const savedNoteRef = useRef(null);
 
   // ─── Derived state ───
@@ -141,7 +152,165 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
     onLinkPicker: handleShowLinkPicker,
     onTemplatePicker: handleOpenTemplateSlashMenu,
   });
-  const visibleHeadings = useVisibleHeadings(contentRef, content, isEditable, isEditorExpanded);
+  // Browse and expanded keep separate widths, so flipping the mode reloads the
+  // stored value instead of carrying the other mode's width across.
+  const [editorWidth, setEditorWidth] = useState(() => EditorWidthPreferences.getWidth(isEditorExpanded));
+  const [editorLayout, setEditorLayout] = useState(null);
+
+  useEffect(() => {
+    setEditorWidth(EditorWidthPreferences.getWidth(isEditorExpanded));
+  }, [isEditorExpanded]);
+
+  useEffect(() => {
+    document.documentElement.style.setProperty(
+      isEditorExpanded === true ? "--notes-editor-max-width-expanded" : "--notes-editor-max-width",
+      `${editorWidth}px`
+    );
+  }, [editorWidth, isEditorExpanded]);
+
+  // The reading column is centred inside the editor pane, which is narrower than the
+  // viewport and moves when the sidebar, note list or side panel changes, so the page
+  // edge handles and the outline are measured from the pane rather than the window.
+  useEffect(() => {
+    const container = editorRef.current?.querySelector(".notes-editor-scroll");
+    if (container === null || container === undefined) {
+      return;
+    }
+
+    function measure() {
+      const rect = container.getBoundingClientRect();
+      // A pane parked off-screen (card view keeps the editor mounted but hidden) must
+      // not publish grips or a rail: they are position:fixed, so they would otherwise
+      // be placed from a box nobody can see.
+      const pane = container.closest(".notes-editor-container");
+      if (rect.width === 0 || (pane !== null && pane.classList.contains("is-hidden"))) {
+        setEditorLayout(null);
+        return;
+      }
+
+      const style = getComputedStyle(container);
+      // clientLeft/clientWidth exclude the border and the vertical scrollbar, both of
+      // which now sit between the pane's outer box and the reading column.
+      const paddingBoxLeft = rect.left + container.clientLeft;
+      const paddingBoxRight = paddingBoxLeft + container.clientWidth;
+      const contentLeft = paddingBoxLeft + (parseFloat(style.paddingLeft) || 0);
+      const contentRight = paddingBoxRight - (parseFloat(style.paddingRight) || 0);
+      const availableWidth = Math.max(0, contentRight - contentLeft);
+      const columnWidth = Math.max(0, Math.min(editorWidth, availableWidth));
+      const columnLeft = contentLeft + (availableWidth - columnWidth) / 2;
+      const columnRight = columnLeft + columnWidth;
+      // The grips live in the pane's padding, so they stay reachable even when the
+      // column already fills the content box.
+      const leftHandleX = Math.max(paddingBoxLeft, columnLeft - HANDLE_REACH);
+      const rightHandleX = Math.min(paddingBoxRight, columnRight + HANDLE_REACH);
+      setEditorLayout({
+        // Measured from the padding box, not the border box, so the rail clears the
+        // vertical scrollbar instead of sitting on top of it.
+        outlineRight: Math.round(window.innerWidth - paddingBoxRight),
+        // The grips start where the reading area starts: the pinned header owns
+        // everything above it, and the mark must not be drawn over the header.
+        panelTop: Math.round(rect.top),
+        panelBottom: Math.round(rect.bottom),
+        leftHandle: { left: Math.round(leftHandleX), width: Math.round(columnLeft - leftHandleX) },
+        rightHandle: { left: Math.round(columnRight), width: Math.round(rightHandleX - columnRight) }
+      });
+    }
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(container);
+    window.addEventListener("resize", measure);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [editorWidth, isEditorExpanded]);
+
+  // Leaving edit mode swaps the text area back for the rendered note, which resets the
+  // reading area; put it back where the writer was.
+  useEffect(() => {
+    if (isEditable === true) {
+      return;
+    }
+    const scroller = document.querySelector('.notes-editor-scroll');
+    if (scroller !== null && editScrollRef.current > 0) {
+      scroller.scrollTop = editScrollRef.current;
+    }
+  }, [isEditable]);
+
+  // A grip released by an unmount (navigating away mid-drag) must not leave the page
+  // stuck with the resize cursor.
+  useEffect(() => () => document.documentElement.classList.remove("is-resizing-editor"), []);
+
+  // The indicator only materialises around the pointer, so the page edges stay clean
+  // until the reader reaches for them.
+  function handleResizeHandlePointerMove(e) {
+    // The mark is positioned inside the grip, so the pointer has to be expressed
+    // relative to the grip rather than to the viewport.
+    const { top } = e.currentTarget.getBoundingClientRect();
+    e.currentTarget.style.setProperty("--notes-editor-handle-y", `${e.clientY - top}px`);
+  }
+
+  function handleResizePointerDown(e) {
+    const container = editorRef.current?.querySelector(".notes-editor-scroll");
+    if (e.button !== 0 || container === null || container === undefined) {
+      return;
+    }
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const handle = e.currentTarget;
+    // Left and right grips pull in opposite directions but both widen symmetrically,
+    // so each side moves half of the change and the width delta is doubled.
+    const direction = handle.dataset.side === "left" ? -1 : 1;
+    const style = getComputedStyle(container);
+    // The pane is the only ceiling: the column may be dragged to fill the whole
+    // reading area, so there is no upper bound beyond the space that exists.
+    const availableWidth = Math.max(0, container.clientWidth
+      - (parseFloat(style.paddingLeft) || 0)
+      - (parseFloat(style.paddingRight) || 0));
+    const startX = e.clientX;
+    const startWidth = Math.min(editorWidth, availableWidth);
+    let latestWidth = editorWidth;
+
+    // Pointer capture keeps the drag alive outside the grip, but it throws when the
+    // pointer is already gone (a synthetic event, or a release racing the handler).
+    try {
+      handle.setPointerCapture(e.pointerId);
+    } catch {
+    }
+    handle.dataset.dragging = "";
+    document.documentElement.classList.add("is-resizing-editor");
+
+    function handlePointerMove(moveEvent) {
+      latestWidth = Math.min(
+        EditorWidthPreferences.clamp(startWidth + (moveEvent.clientX - startX) * direction * 2),
+        availableWidth
+      );
+      setEditorWidth(latestWidth);
+      const { top } = handle.getBoundingClientRect();
+      handle.style.setProperty("--notes-editor-handle-y", `${moveEvent.clientY - top}px`);
+    }
+
+    function handlePointerUp(upEvent) {
+      handle.removeEventListener("pointermove", handlePointerMove);
+      handle.removeEventListener("pointerup", handlePointerUp);
+      handle.removeEventListener("pointercancel", handlePointerUp);
+      delete handle.dataset.dragging;
+      document.documentElement.classList.remove("is-resizing-editor");
+      try {
+        handle.releasePointerCapture(upEvent.pointerId);
+      } catch {
+      }
+      EditorWidthPreferences.setWidth(latestWidth, isEditorExpanded);
+    }
+
+    handle.addEventListener("pointermove", handlePointerMove);
+    handle.addEventListener("pointerup", handlePointerUp);
+    handle.addEventListener("pointercancel", handlePointerUp);
+  }
+
   const { handleHeadingClick } = useCollapsibleHeadings(contentRef, selectedNote?.noteId);
 
   // A new note inherits the tag or single-tag focus mode currently being browsed
@@ -199,12 +368,22 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
     }
   }, []);
 
+  // Edit mode scrolls the content box, the read view scrolls the whole reading area,
+  // so scroll bookkeeping has to ask for the right one.
+  function getScrollContainer() {
+    const content = document.querySelector('.notes-editor-content');
+    if (isEditable === true && content !== null) {
+      return content;
+    }
+    return document.querySelector('.notes-editor-scroll');
+  }
+
   // Auto focus editor textarea whenever entering edit mode
   useEffect(() => {
     if (isEditable) {
       setTimeout(() => {
-        const container = document.querySelector('.notes-editor-container');
-        const savedTop = container ? container.scrollTop : null;
+        const container = getScrollContainer();
+        const savedTop = readScrollRef.current;
         try { handleTextAreaHeight(); } catch {}
         const ta = textareaRef.current;
         if (ta && typeof ta.focus === 'function') {
@@ -309,7 +488,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   function handleInsertInternalLink(link) {
     if (textareaRef.current) {
       const textarea = textareaRef.current;
-      const editorContainer = document.querySelector('.notes-editor-container');
+      const editorContainer = getScrollContainer();
       const savedScrollTop = editorContainer ? editorContainer.scrollTop : null;
       const startPos = textarea.selectionStart;
       const endPos = textarea.selectionEnd;
@@ -523,6 +702,14 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   }
 
   function handleInternalNoteLinkClick(e) {
+    if (handleCodeWrapClick(e) === true) {
+      return;
+    }
+
+    if (handleCodeCopyClick(e) === true) {
+      return;
+    }
+
     // A plain heading click folds or unfolds its section; links and text selections win.
     if (handleHeadingClick(e) === true) {
       return;
@@ -633,7 +820,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   // ─── Memoized rendered content ───
   const renderedContent = useMemo(() => {
     if (isEditable || (title === "" && content === "")) return null;
-    return renderMarkdown(content, { anchorPrefix: selectedNote ? `n${selectedNote.noteId}-` : '' });
+    return renderMarkdown(content, { anchorPrefix: selectedNote ? `n${selectedNote.noteId}-` : '', hasCodeCopyButton: true });
   }, [content, isEditable, title, selectedNote?.noteId]);
 
   // ─── Selection Highlight (gray overlay when AI panel is open) ───
@@ -790,73 +977,107 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
 
   // ─── Render ───
   return (
-    <div className="notes-editor" tabIndex="0" onPaste={handlePaste}>
-      <NotesEditorToolbar
-        note={selectedNote}
-        isNewNote={isNewNote}
-        isEditable={isEditable}
-        isModal={isModal}
-        isSaveLoading={isSaveLoading}
-        isExpanded={isEditorExpanded}
-        isExpandable={isExpandable}
-        onSaveClick={handleSaveClick}
-        onSaveAndCloseClick={handleSaveAndCloseClick}
-        onEditClick={handleEditClick}
-        onEditCancelClick={handleEditCancelClick}
-        onCloseClick={handleCloseClick}
-        onDeleteClick={handleDeleteClick}
-        onArchiveClick={handleArchiveClick}
-        onUnarchiveClick={handleUnarchiveClick}
-        onRestoreClick={handleRestoreClick}
-        onExpandToggleClick={handleExpandToggleClick}
-        onPinClick={handlePinToggleClick}
-        onUnpinClick={handlePinToggleClick}
-        onVersionsClick={handleVersionsClick}
-        onToggleToc={onToggleToc}
-        onToggleShare={onToggleShare}
-        isFitToWindow={isFitToWindow}
-        onFitToWindowToggle={onFitToWindowToggle}
-      />
-      <div className="notes-editor-header">
-        <div className="notes-editor-title" spellCheck={spellcheckValue} contentEditable={isEditable} ref={titleRef} onBlur={handleTitleChange} dangerouslySetInnerHTML={{ __html: title }} />
+    <div className={`notes-editor${isEditable ? ' is-editable' : ''}`} tabIndex="0" onPaste={handlePaste} ref={editorRef}>
+      {/* Pinned above the scroller, not inside it: the scrollbar belongs to the
+          reading area below, so it never runs alongside this header. */}
+      <div className="notes-editor-sticky">
+        <NotesEditorToolbar
+          note={selectedNote}
+          isNewNote={isNewNote}
+          isEditable={isEditable}
+          isModal={isModal}
+          isSaveLoading={isSaveLoading}
+          isExpanded={isEditorExpanded}
+          isExpandable={isExpandable}
+          onSaveClick={handleSaveClick}
+          onSaveAndCloseClick={handleSaveAndCloseClick}
+          onEditClick={handleEditClick}
+          onEditCancelClick={handleEditCancelClick}
+          onCloseClick={handleCloseClick}
+          onDeleteClick={handleDeleteClick}
+          onArchiveClick={handleArchiveClick}
+          onUnarchiveClick={handleUnarchiveClick}
+          onRestoreClick={handleRestoreClick}
+          onExpandToggleClick={handleExpandToggleClick}
+          onPinClick={handlePinToggleClick}
+          onUnpinClick={handlePinToggleClick}
+          onVersionsClick={handleVersionsClick}
+          onToggleShare={onToggleShare}
+        />
+        <div className="notes-editor-header">
+          <div className="notes-editor-title" spellCheck={spellcheckValue} contentEditable={isEditable} ref={titleRef} onBlur={handleTitleChange} dangerouslySetInnerHTML={{ __html: title }} />
+        </div>
+        <NotesEditorTags tags={tags} isEditable={isEditable} canCreateTag onAddTag={handleAddTag} onRemoveTag={handleRemoveTag} />
       </div>
-      <NotesEditorTags tags={tags} isEditable={isEditable} canCreateTag onAddTag={handleAddTag} onRemoveTag={handleRemoveTag} />
-      {showImageDropzone && (
-        <NotesEditorImageDropzone
-          isDraggingOver={isDraggingOver}
-          attachments={attachments}
-          fileInputRef={fileInputRef}
-          handleImageDrop={handleImageDrop}
-          handleDragOver={handleDragOver}
-          handleDragLeave={handleDragLeave}
-          handleDropzoneClick={handleDropzoneClick}
-          handleFileInputChange={handleFileInputChange}
-        />
-      )}
-      <NotesEditorFormattingToolbar isEditable={isEditable} onFormat={handleEditorActions} onInsertInternalLink={handleShowLinkPicker} onOpenAI={handleOpenAI} />
-      {showAIModal && (
-        <AIPanel
-          fullContent={content}
-          selectedText={textareaRef.current ? textareaRef.current.value.substring(textareaRef.current.selectionStart, textareaRef.current.selectionEnd) : ""}
-          noteTitle={title}
-          messages={aiMessages}
-          setMessages={setAiMessages}
-          onInsert={handleAIInsert}
-          onReplace={handleAIReplace}
-          onClose={handleCloseAI}
-        />
-      )}
+      <div className="notes-editor-scroll" onScroll={(e) => { readScrollRef.current = e.currentTarget.scrollTop; }}>
+        <div className="notes-editor-column">
+          {showImageDropzone && (
+            <NotesEditorImageDropzone
+              isDraggingOver={isDraggingOver}
+              attachments={attachments}
+              fileInputRef={fileInputRef}
+              handleImageDrop={handleImageDrop}
+              handleDragOver={handleDragOver}
+              handleDragLeave={handleDragLeave}
+              handleDropzoneClick={handleDropzoneClick}
+              handleFileInputChange={handleFileInputChange}
+            />
+          )}
+          <NotesEditorFormattingToolbar isEditable={isEditable} onFormat={handleEditorActions} onInsertInternalLink={handleShowLinkPicker} onOpenAI={handleOpenAI} />
+          {showAIModal && (
+            <AIPanel
+              fullContent={content}
+              selectedText={textareaRef.current ? textareaRef.current.value.substring(textareaRef.current.selectionStart, textareaRef.current.selectionEnd) : ""}
+              noteTitle={title}
+              messages={aiMessages}
+              setMessages={setAiMessages}
+              onInsert={handleAIInsert}
+              onReplace={handleAIReplace}
+              onClose={handleCloseAI}
+            />
+          )}
+          <div className="notes-editor-content" onScroll={(e) => { editScrollRef.current = e.currentTarget.scrollTop; }}>
+            {contentArea}
+          </div>
+          {shouldShowTemplatePicker && <TemplatePicker onTemplateApply={handleTemplateApply} />}
+          {!isNewNote && !isEditable && (backlinks.length > 0 || isBacklinksLoading) && (
+            <BacklinksPanel backlinks={backlinks} isLoading={isBacklinksLoading} />
+          )}
+        </div>
+      </div>
       {isEditable && !showAIModal && (
         <button type="button" className="ai-fab" onClick={handleOpenAI} title={t('notes.toolbar.ai')}>
           <BrainCircuitIcon />
         </button>
       )}
-      <div className="notes-editor-content">
-        {contentArea}
-      </div>
-      {shouldShowTemplatePicker && <TemplatePicker onTemplateApply={handleTemplateApply} />}
-      {!isNewNote && !isEditable && (backlinks.length > 0 || isBacklinksLoading) && (
-        <BacklinksPanel backlinks={backlinks} isLoading={isBacklinksLoading} />
+      {editorLayout === null ? null : (
+        <>
+          <div
+            className="notes-editor-resize-handle"
+            data-side="left"
+            aria-hidden="true"
+            style={{ top: `${editorLayout.panelTop}px`, bottom: `${Math.max(0, window.innerHeight - editorLayout.panelBottom)}px`, left: `${editorLayout.leftHandle.left}px`, width: `${editorLayout.leftHandle.width}px` }}
+            onPointerMove={handleResizeHandlePointerMove}
+            onPointerDown={handleResizePointerDown}
+          />
+          <div
+            className="notes-editor-resize-handle"
+            data-side="right"
+            aria-hidden="true"
+            style={{ top: `${editorLayout.panelTop}px`, bottom: `${Math.max(0, window.innerHeight - editorLayout.panelBottom)}px`, left: `${editorLayout.rightHandle.left}px`, width: `${editorLayout.rightHandle.width}px` }}
+            onPointerMove={handleResizeHandlePointerMove}
+            onPointerDown={handleResizePointerDown}
+          />
+        </>
+      )}
+      {editorLayout === null ? null : (
+        <NoteOutline
+          contentRef={contentRef}
+          noteId={selectedNote?.noteId}
+          content={content}
+          isEditable={isEditable}
+          rightOffset={editorLayout.outlineRight}
+        />
       )}
     </div>
   );

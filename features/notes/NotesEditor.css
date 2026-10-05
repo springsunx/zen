@@ -1,21 +1,21 @@
 .notes-editor-container {
     flex: 1;
-    padding: var(--spacing-6);
-    padding-top: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
     border-left: 1px solid var(--neutral-100);
     transition-property: opacity, transform;
-    transition-duration: 300ms;
+    transition-duration: var(--transition-normal);
     transition-timing-function: ease-in-out;
     opacity: 1;
-    transform: translateY(0);
-    overflow-y: auto;
+    /* No transform while visible: an identity transform still makes this element the
+       containing block for the outline's position:fixed, which would anchor it to the
+       pane instead of the viewport. The slide-out on hide is kept below. */
+    /* The pane itself never scrolls: the scrollbar belongs to the reading area, which
+       starts below the pinned header, so it is not drawn alongside that header. */
+    overflow: hidden;
     word-wrap: break-word;
     max-height: 100%;
-    -webkit-overflow-scrolling: touch;
-
-    &::-webkit-scrollbar {
-        display: none;
-    }
 
     &.is-hidden {
         opacity: 0;
@@ -23,13 +23,99 @@
         transform: translateY(10px);
     }
 
-    &.is-expanded .notes-editor {
-        width: var(--notes-editor-max-width);
+    /* Pinned by layout rather than position: sticky, because the header now lives
+       outside the scroller. It spans the pane so it does not shrink with the column. */
+    .notes-editor-sticky {
+        flex-shrink: 0;
+        z-index: var(--z-base);
+        /* Must match the scroller's side padding: the title and the reading column
+           only share a left edge while both insets agree. */
+        padding: 0 var(--spacing-6);
+        background-color: var(--bg-primary);
+    }
+
+    .notes-editor {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-height: 0;
+    }
+
+    .notes-editor-scroll {
+        flex: 1;
+        min-height: 0;
+        /* The reading pane scrolls one way only: content is made to fit the width
+           instead of growing a horizontal scrollbar. */
+        overflow-y: auto;
+        overflow-x: hidden;
+        /* Wider side padding keeps the page-edge grips, and the mark that appears on
+           them, clear of the text. */
+        padding: 0 var(--spacing-6) var(--spacing-6);
+        /* The scroller carries the scrollbar, so only its own edge can move it: the
+           right margin pulls the bar in to line up with the toolbar's right edge
+           instead of sitting flush against the pane. It has to match the toolbar's
+           inset or the two edges drift apart. */
+        margin-right: var(--spacing-6);
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Both modes cap the reading column, but each remembers its own width so
+       expanding never inherits a width dragged with the list still visible. */
+    .notes-editor-column {
+        width: 100%;
+        max-width: var(--notes-editor-max-width);
         margin: 0 auto;
     }
 
-    &.is-expanded.is-fit-to-window .notes-editor {
-        width: 100%;
+    &.is-expanded .notes-editor-column {
+        max-width: var(--notes-editor-max-width-expanded);
+    }
+
+    /* Invisible page-edge grips: the reader only sees a mark once the pointer is
+       near, so the reading column keeps clean margins. */
+    .notes-editor-resize-handle {
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        z-index: var(--z-base);
+        cursor: col-resize;
+        touch-action: none;
+
+        &::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            border-radius: 3px;
+            background: linear-gradient(
+                to bottom,
+                transparent calc(var(--notes-editor-handle-y, 50%) - 52px),
+                color-mix(in srgb, var(--neutral-500) 38%, transparent) calc(var(--notes-editor-handle-y, 50%) - 12px),
+                color-mix(in srgb, var(--neutral-500) 38%, transparent) calc(var(--notes-editor-handle-y, 50%) + 12px),
+                transparent calc(var(--notes-editor-handle-y, 50%) + 52px)
+            );
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity var(--transition-fast) ease;
+        }
+
+        /* The mark sits inside the grip, and the grip is only as wide as the
+           scroller's side padding — so the inset has to leave room for the 3px
+           line or it would spill onto the scrollbar. */
+        &[data-side="left"]::after {
+            right: var(--spacing-5);
+        }
+
+        &[data-side="right"]::after {
+            left: var(--spacing-5);
+        }
+
+        &:hover::after,
+        &[data-dragging]::after {
+            opacity: 1;
+        }
     }
 
     .notes-editor-toolbar {
@@ -37,12 +123,8 @@
         justify-content: space-between;
         align-items: center;
         padding-top: 10px;
-        padding-bottom: 10px;
-        position: sticky;
+        padding-bottom: 0;
         width: 100%;
-        top: 0;
-        background: var(--bg-primary);
-        z-index: var(--z-base);
 
         .right-toolbar,
         .left-toolbar {
@@ -86,18 +168,27 @@
 @media screen and (max-width: 948px) {
 
     .notes-editor-container {
+        .notes-editor-sticky {
+            padding: 0 var(--spacing-4);
+        }
+
+        .notes-editor-scroll {
+            padding: 0 var(--spacing-4) var(--spacing-4);
+            /* Matches the side padding above so the scrollbar keeps lining up with the
+               toolbar's right edge on small screens too. */
+            margin-right: var(--spacing-4);
+        }
+
+        /* Padding lives on .notes-editor-sticky / .notes-editor-scroll now, and the
+           scroller owns scrolling, so the pane itself adds neither. */
         &.is-visible {
             width: 100%;
-            padding: var(--spacing-4);
-            padding-top: 0;
             height: calc(100% - (var(--mobile-navbar-height) + var(--safe-area-bottom)));
             position: absolute;
             top: 0;
             left: 0;
             right: 0;
             bottom: calc(var(--mobile-navbar-height) + var(--safe-area-bottom));
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
         }
 
         &.is-hidden {
@@ -131,8 +222,17 @@
 
 .notes-editor-title {
     font: var(--h1);
+    /* One line only: a title wider than the reading column is clipped with an ellipsis.
+       Wrapping used to grow the pinned header and shove the reading area downwards. */
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
 
     &[contenteditable="true"] {
+        /* Editing keeps the same single line; the box scrolls to follow the caret. */
+        overflow-x: hidden;
         outline: none;
         border-bottom: 1px solid var(--neutral-200);
         padding-bottom: 4px;
@@ -478,6 +578,167 @@
         border-radius: 4px;
         padding: 2px;
     }
+    /* Mirrors the DSH code block: a rounded surface with a banner carrying the
+       declared language and the wrap/copy controls, over a wrapping <pre>.
+       Colours are DSH's own values, paired for the two themes. */
+    .code-block {
+        /* DSH ships 11px, which reads smaller than Zen's inline code (--code, 0.889rem
+           ≈ 14px). Sized up so a block sits just under the inline size; these values
+           retune the whole block from one place. */
+        --code-block-font-size: 15px;
+        --code-block-line-height: 24px;
+        --code-block-banner-size: 12px;
+        --code-block-banner-line-height: 20px;
+        --code-block-glyph-size: 15px;
+        position: relative;
+        margin: 16px 0;
+        color: light-dark(#0f1115, #f9fafb);
+        background: light-dark(#f9fafb, #1b1b1c);
+        border-radius: 16px;
+
+        pre {
+            padding: 16px;
+            margin: 0 !important;
+            overflow-x: auto;
+            font: var(--code-block-font-size)/var(--code-block-line-height) var(--font-family-code);
+            /* Unwrapped by default: long lines scroll sideways until the reader
+               turns wrapping on for this block. */
+            white-space: pre;
+            overflow-wrap: normal;
+            word-break: normal;
+            background: light-dark(#f9fafb, #1b1b1c);
+            /* The radii live on <pre>: an opaque fill would otherwise square off
+               the wrapper, and clipping the wrapper would break the sticky banner. */
+            border-bottom-left-radius: 16px;
+            border-bottom-right-radius: 16px;
+        }
+
+        /* The renderer's <pre> carries the wrap state, but the note's inline-code rule
+           (.notes-editor-rendered code { white-space: pre }) also matches the fence's
+           inner <code> and would keep every line unwrapped. Let it follow the <pre>. */
+        pre code {
+            white-space: inherit;
+            word-break: inherit;
+            /* The note's inline-code rule sets the code font on every <pre> descendant;
+               without this the size variables above never reach the actual code. */
+            font: inherit;
+        }
+
+        /* The wrap toggle sets this attribute; see handleCodeWrapClick. */
+        &[data-code-wrap="true"] pre {
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .code-tools {
+            position: sticky;
+            top: 0;
+            /* Sticky so the banner stays with the block, but on Zen's z-index scale
+               (base 1 / modal 2 / popover 3 / critical 4) it must stay under every
+               floating surface: DSH's 6 let a code block cover the toolbar's overflow
+               menu. Zero is enough to sit above the block's own <pre>. */
+            z-index: 0;
+            display: flex;
+            align-items: center;
+            /* Left-packed: copy then the language label. The wrap toggle is pushed to
+               the far end by .code-action's auto margin. */
+            justify-content: flex-start;
+            gap: var(--spacing-2);
+            padding: 9px 14px;
+            font: var(--code-block-banner-size)/var(--code-block-banner-line-height) var(--font-family);
+            background: light-dark(#f9fafb, #2c2c2e);
+            border-radius: 16px 16px 0 0;
+            /* Only the controls are interactive, so the banner never swallows clicks. */
+            pointer-events: none;
+        }
+
+        .code-language {
+            min-width: 0;
+            overflow: hidden;
+            color: light-dark(#0f1115, #f9fafb);
+            font-family: var(--font-family-code);
+            font-size: var(--code-block-banner-size);
+            line-height: var(--code-block-banner-line-height);
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .code-action {
+            display: flex;
+            align-items: center;
+            flex-shrink: 0;
+            gap: var(--spacing-1);
+            /* Keeps the wrap toggle at the right-hand end now that the banner is
+               left-packed. */
+            margin-left: auto;
+            pointer-events: auto;
+        }
+
+        .code-copy-button,
+        .code-wrap-button {
+            display: inline-flex;
+            /* The banner ignores pointer events so it never swallows clicks; the copy
+               button now sits directly under it rather than inside .code-action. */
+            pointer-events: auto;
+            align-items: center;
+            justify-content: center;
+            /* 24px hit box with a 14px glyph, matching DSH's CodeCard action; the
+               room inside the box is what keeps the two controls from crowding. */
+            width: 24px;
+            height: 24px;
+            padding: 0;
+            margin: 0;
+            border: 0;
+            border-radius: var(--radius-2);
+            background: transparent;
+            color: light-dark(#61666b, #cfd3d6);
+            cursor: pointer;
+            font: inherit;
+            transition: background-color var(--transition-fast) ease;
+
+            &:hover {
+                background: light-dark(#2631480f, #ffffff14);
+            }
+
+            svg {
+                width: var(--code-block-glyph-size);
+                height: var(--code-block-glyph-size);
+            }
+        }
+
+        /* The glyphs follow DSH's convention: the icon shows what clicking does, so
+           wrapping off shows the wrap arrow and wrapping on shows the stop one. */
+        .code-wrap-icon {
+            display: block;
+        }
+
+        .code-copied-icon,
+        .code-nowrap-icon {
+            display: none;
+        }
+
+        .code-copy-button.is-copied {
+            color: var(--green-600);
+
+            .code-copy-icon {
+                display: none;
+            }
+
+            .code-copied-icon {
+                display: block;
+            }
+        }
+
+        .code-wrap-button[aria-pressed="true"] {
+            .code-wrap-icon {
+                display: none;
+            }
+
+            .code-nowrap-icon {
+                display: block;
+            }
+        }
+    }
 }
 
 .formatting-toolbar {
@@ -602,138 +863,13 @@
         display: flex;
     }
 }
-/* Code block copy button styles */
-.code-block-wrapper {
-  margin: 16px 0;
-  border-radius: 6px;
-  width: 800px;
-  max-width: 100%;
-  overflow: hidden;
-  border: 1px solid var(--neutral-200);
-}
-.code-block-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 6px 12px;
-  background-color: var(--neutral-100);
-  border-bottom: 1px solid var(--neutral-200);
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-.code-block-lang {
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-left: 8px;
-}
-.copy-code-button {
-  background-color: var(--neutral-200);
-  border: 1px solid var(--neutral-300);
-  border-radius: 4px;
-  padding: 4px 8px;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-primary);
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-.copy-code-button:hover {
-  background-color: var(--neutral-300);
-}
-.code-block-content {
-  padding: 12px;
-  overflow-x: auto;
-  background-color: var(--neutral-100);
-}
-.code-block-content pre {
-  margin: 0;
-  padding: 0;
-  background-color: transparent;
-  white-space: pre;
-  overflow-x: auto;
-}
-.code-block-wrapper.is-wrap .code-block-content {
-  overflow-x: hidden;
-}
-.code-block-wrapper.is-wrap .code-block-content pre {
-  white-space: pre-wrap;
-  word-break: break-all;
-  overflow-x: visible;
-  max-width: 100%;
-}
-.code-block-wrapper.is-wrap .code-block-content pre code,
-.code-block-wrapper.is-wrap .code-block-content code {
-  white-space: pre-wrap;
-}
-/* Wrap toggle switch */
-.wrap-toggle {
-  display: inline-flex;
-  margin-left: auto;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  user-select: none;
-}
-.wrap-toggle-track {
-  width: 28px;
-  height: 14px;
-  border-radius: 7px;
-  background-color: var(--neutral-300);
-  position: relative;
-  transition: background-color 0.2s;
-}
-.wrap-toggle-track::after {
-  content: "";
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background-color: white;
-  transition: transform 0.2s;
-}
-.wrap-toggle.is-on > .wrap-toggle-track {
-  background-color: #3b82f6;
-}
-.wrap-toggle.is-on > .wrap-toggle-track::after {
-  transform: translateX(14px);
-}
-/* 确保工具栏在滚动时固定 */
-.notes-editor-container .notes-editor-toolbar {
-    position: sticky;
-    top: 0;
-    z-index: var(--z-base);
-    background-color: var(--bg-primary);
-    box-shadow: 0 1px 0 var(--neutral-100);
-}
-
-/* 内容区域滚动 */
-.notes-editor-content {
-    overflow-y: auto;
-    /* max-height: calc(100vh - 200px); 动态高度，减去工具栏、标题等高度 */
-    min-height: 200px;
-}
-
-/* 在可编辑模式下，文本区域高度自适应 */
-.notes-editor.is-editable .notes-editor-content {
-    max-height: calc(100vh - 250px);
-}
-
-/* 移动端适配 */
-@media screen and (max-width: 948px) {
-    .notes-editor-content {
-        max-height: calc(100vh - 180px);
-    }
-}
-
-/* 改进的滚动布局 */
+/* 改进的滚动布局：滚动交给 .notes-editor-scroll，正文列不再自己滚 */
 .notes-editor {
+    position: relative;
     display: flex;
     flex-direction: column;
-    height: 100%;
+    flex: 1;
+    min-height: 0;
 }
 
 .notes-editor-toolbar {
@@ -750,8 +886,27 @@
 
 .notes-editor-content {
     flex: 1;
+    min-height: 0;
+}
+
+/* Edit mode scrolls the text area, not the reading column: the upload dropzone and the
+   formatting toolbar sit above it and must stay put while typing through a long note.
+   (The read view keeps the outer scroller, so its content scrolls under the pinned
+   header instead.) */
+.notes-editor.is-editable .notes-editor-scroll {
+    overflow: hidden;
+}
+
+.notes-editor.is-editable .notes-editor-column {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.notes-editor.is-editable .notes-editor-content {
+    flex: 1;
+    min-height: 0;
     overflow-y: auto;
-    min-height: 0; /* 重要：允许内容区域收缩并滚动 */
 }
 
 /* 确保在可编辑模式下文本区域填满内容区域 */
@@ -1048,5 +1203,19 @@
         font: var(--sm);
         font-weight: 600;
         vertical-align: middle;
+    }
+}
+
+/* Keeps the resize cursor and stops text selection while a page-edge grip is held. */
+html.is-resizing-editor,
+html.is-resizing-editor * {
+    cursor: col-resize !important;
+    user-select: none !important;
+}
+
+/* Dragging a reading width needs a pointer and room either side of the column. */
+@media screen and (max-width: 948px) {
+    .notes-editor-resize-handle {
+        display: none;
     }
 }

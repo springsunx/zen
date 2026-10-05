@@ -7,6 +7,14 @@
  */
 
 :root {
+    /* light-dark() 依据 color-scheme 解析；显式主题走 data-theme，系统跟随 media query */
+    color-scheme: light dark;
+
+    /* border radius（上游令牌；fork 的 index.css 缺失，导致 19 处圆角引用退化为 0） */
+    --radius-1: 4px;
+    --radius-2: 8px;
+    --radius-full: 9999px;
+
     /* https://tailwindcss.com/docs/colors */
     /* https://gist.github.com/guvener/d8952570d5a8be430580b93800519439 */
     --neutral-50: #FAFAFA;
@@ -86,7 +94,8 @@
     /* layout dimensions */
     --sidebar-width: 220px;
     --notes-list-width: 280px;
-    --notes-editor-max-width: 1200px;
+    --notes-editor-max-width: 850px;            /* 参照值；fork 原为 1200px */
+    --notes-editor-max-width-expanded: 850px;
 
     /* transitions */
     --transition-fast: 150ms;
@@ -318,28 +327,13 @@ svg.lucide {
         transition: transform var(--transition-fast) ease-out;
     }
 }
-/* Layout adjustments for right side table of contents */
-body.has-right-toc .page-container,
+/* Layout adjustments for the right side share panel */
 body.has-right-share .page-container {
   padding-right: 220px;
 }
-
-body.has-right-toc .page-container.is-editor-expanded,
 body.has-right-share .page-container.is-editor-expanded {
   padding-right: 0;
 }
-
-body.has-right-toc .page-container.is-editor-expanded .notes-editor-container.is-fit-to-window,
-body.has-right-share .page-container.is-editor-expanded .notes-editor-container.is-fit-to-window {
-  padding-right: 220px;
-}
-
-body.has-right-toc .page-container.is-editor-expanded .notes-editor-container.is-fit-to-window .notes-editor,
-body.has-right-share .page-container.is-editor-expanded .notes-editor-container.is-fit-to-window .notes-editor {
-  max-width: calc(100vw - 220px);
-}
-
-body.has-right-toc .notes-editor-container,
 body.has-right-share .notes-editor-container {
   flex: 1;
   min-width: 0;
@@ -347,13 +341,26 @@ body.has-right-share .notes-editor-container {
 
 /* Responsive adjustments */
 @media screen and (max-width: 1200px) {
-  body.has-right-toc .page-container,
   body.has-right-share .page-container { padding-right: 200px; }
 }
 
 @media screen and (max-width: 1024px) {
-  body.has-right-toc .page-container,
   body.has-right-share .page-container {
     padding-right: 0;
   }
+}
+
+/* Explicit theme overrides — light-dark() resolves off color-scheme */
+[data-theme="light"] {
+    color-scheme: light;
+}
+
+[data-theme="dark"] {
+    color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        color-scheme: dark;
+    }
 }

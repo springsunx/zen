@@ -1,54 +1,5 @@
-import { generateId, cleanCustomId, extractCustomId, buildHeadingOpen, buildLinkOpen, buildLinkClose, findAnchor} from "./markdownToc.js";
 import { t } from "../i18n/index.js";
-
-// 辅助函数：复制代码到剪贴板
-function createCopyHandler() {
-  if (typeof window.copyCodeToClipboard === 'function') return;
-
-  function showCopyFeedback(button) {
-    const originalText = button.innerText;
-    button.innerText = t('code.copied') || 'Copied!';
-    setTimeout(() => { button.innerText = originalText; }, 2000);
-  }
-
-  function copyToClipboard(text, button) {
-    // Normalize line breaks and trim trailing whitespace/newlines to avoid extra blank line on paste
-    const normalized = String(text || '').replace(/\r\n/g, '\n');
-    const trimmed = normalized.replace(/\s+$/, '');
-    const textArea = document.createElement('textarea');
-    textArea.value = trimmed;
-    Object.assign(textArea.style, {
-      position: 'fixed', top: '0', left: '0',
-      width: '2em', height: '2em', padding: '0',
-      border: 'none', outline: 'none', boxShadow: 'none',
-      background: 'transparent'
-    });
-    document.body.appendChild(textArea);
-    textArea.select();
-    try {
-      if (document.execCommand('copy')) {
-        showCopyFeedback(button);
-      } else {
-        button.innerText = 'Copy failed';
-        setTimeout(() => { button.innerText = 'Copy'; }, 2000);
-      }
-    } catch (err) {
-      console.error('Copy error:', err);
-      button.innerText = 'Copy failed';
-      setTimeout(() => { button.innerText = 'Copy'; }, 2000);
-    } finally {
-      document.body.removeChild(textArea);
-    }
-  }
-
-  window.copyCodeToClipboard = function (button) {
-    if (typeof document === 'undefined') return;
-    const codeBlock = button.closest('.code-block-wrapper');
-    const codeElement = codeBlock?.querySelector('.code-block-content');
-    const code = codeElement?.innerText || codeElement?.textContent || '';
-    copyToClipboard(code, button);
-  };
-}
+import { generateId, cleanCustomId, extractCustomId, buildHeadingOpen, buildLinkOpen, buildLinkClose, findAnchor} from "./markdownToc.js";
 
 // 辅助函数：Tab 切换
 function createTabHandler() {
@@ -89,9 +40,38 @@ function createTabHandler() {
 }
 
 // 主函数：渲染Markdown
+const COPY_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy code-copy-icon"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>';
+
+const CHECK_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check code-copied-icon"><path d="M20 6 9 17l-5-5"/></svg>';
+
+// DSH's own wrap glyphs, copied path for path from its icon set: filled 16x16 art
+// rather than a stroked Lucide stand-in, so the toggle matches the reference.
+const WRAP_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" class="code-wrap-icon"><path d="M2 15H1V1H2V15Z" fill="currentColor"/><path d="M12.3535 7.64645C12.5487 7.84171 12.5487 8.15829 12.3535 8.35355L9.85352 10.8535L9.14648 10.1465L10.793 8.5H3.5V7.5H10.793L9.14648 5.85352L9.85352 5.14648L12.3535 7.64645Z" fill="currentColor"/><path d="M15 15H14V1H15V15Z" fill="currentColor"/></svg>';
+
+const NOWRAP_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" class="code-nowrap-icon"><path d="M10.9999 8C10.9999 6.89543 10.1046 6 9 6H4.5V5H9C10.6568 5 11.9999 6.34315 11.9999 8C11.9999 9.65685 10.6568 11 9 11H6.20703L6.85351 11.6465L6.14648 12.3535L4.64652 10.8536C4.45126 10.6583 4.45126 10.3417 4.64652 10.1464L6.14648 8.64648L6.85351 9.35352L6.20703 10H9C10.1046 10 10.9999 9.10457 10.9999 8Z" fill="currentColor"/><path d="M2 15H1V1H2V15Z" fill="currentColor"/><path d="M15 15H14V1H15V15Z" fill="currentColor"/></svg>';
+
+// The info string is author-supplied markdown, so it is escaped before it reaches
+// the innerHTML sink the rendered note is injected into.
+// The info string is author-supplied markdown, so it is escaped before it reaches
+// the innerHTML sink the rendered note is injected into.
+function escapeHtml(value) {
+  return value.replace(/[&<>"']/g, character => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  }[character]));
+}
+
+function getFenceLanguage(token) {
+  const info = (token.info || "").trim();
+  return info === "" ? "" : info.split(/\s+/)[0];
+}
+
+
 export default function renderMarkdown(text, opts = {}) {
   if (typeof window !== 'undefined') {
-    createCopyHandler();
     createTabHandler();
   }
 
@@ -217,23 +197,20 @@ export default function renderMarkdown(text, opts = {}) {
 
   // ========== 自定义渲染规则 ==========
 
-  // 1. 代码块：添加复制按钮
+  // 1. 代码块：DSH 样式外框（语言标签 + 换行开关 + 复制）—— 参照实现
   const originalFenceRender = md.renderer.rules.fence ||
     ((tokens, idx, options, env, self) => self.renderToken(tokens, idx, options));
 
   md.renderer.rules.fence = function (tokens, idx, options, env, self) {
-    const token = tokens[idx];
-    const lang = token.info?.trim() || '';
-    const highlighted = originalFenceRender(tokens, idx, options, env, self);
+    const fenceHtml = originalFenceRender(tokens, idx, options, env, self);
+    const language = getFenceLanguage(tokens[idx]);
+    const tools = opts.hasCodeCopyButton === true ? buildCodeTools(language) : "";
 
-    return `<div class="code-block-wrapper">
-      <div class="code-block-header">
-        <button class="copy-code-button" onclick="window.copyCodeToClipboard(this)">${t('code.copy') || 'Copy'}</button>
-        ${lang ? `<span class="code-block-lang">${lang}</span>` : ''}
-        <span class="wrap-toggle" onclick="this.classList.toggle('is-on');this.closest('.code-block-wrapper').classList.toggle('is-wrap')">${t('code.wrap') || 'Wrap'}<span class="wrap-toggle-track"></span></span>
-      </div>
-      <div class="code-block-content">${highlighted}</div>
-    </div>`;
+    if (tools === "") {
+      return fenceHtml;
+    }
+
+    return `<div class="code-block" data-code-wrap="false">${tools}${fenceHtml}</div>`;
   };
 
   // 2. 标题：生成ID（支持自定义ID语法）
@@ -359,4 +336,17 @@ if (typeof window !== 'undefined' && !window._zenAnchorInitialized) {
   window.addEventListener('navigate', () => {
     setTimeout(() => window.setupAnchorLinks(), 50);
   });
+}
+
+// Mirrors the banner DSH renders: the declared language on the left, the wrap and
+// copy controls on the right. The language element is kept even when empty so the
+// two ends stay pinned by space-between.
+function buildCodeTools(language) {
+  const label = `<span class="code-language">${language === "" ? "" : escapeHtml(language)}</span>`;
+  const wrapButton = `<button type="button" class="code-wrap-button" data-tooltip="${t("code.wrap.off")}" aria-label="${t("code.wrap")}" aria-pressed="false">${WRAP_ICON_SVG}${NOWRAP_ICON_SVG}</button>`;
+  const copyButton = `<button type="button" class="code-copy-button" data-tooltip="${t("code.copy")}" aria-label="${t("code.copy")}">${COPY_ICON_SVG}${CHECK_ICON_SVG}</button>`;
+
+  // Copy sits ahead of the language label (both on the left); the wrap toggle keeps the
+  // right-hand end to itself.
+  return `<div class="code-tools" data-code-block-banner>${copyButton}${label}<div class="code-action">${wrapButton}</div></div>`;
 }

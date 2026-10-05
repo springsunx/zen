@@ -13,7 +13,7 @@ export default function handleCodeCopyClick(e) {
     return false;
   }
 
-  navigator.clipboard.writeText(code.textContent)
+  copyText(code.textContent)
     .then(() => {
       showCopiedState(button);
     })
@@ -22,6 +22,33 @@ export default function handleCodeCopyClick(e) {
     });
 
   return true;
+}
+
+// The clipboard API only exists in a secure context, so an app served over plain HTTP
+// on a non-loopback host would otherwise leave the button throwing on every click.
+function copyText(text) {
+  if (typeof navigator.clipboard !== "undefined") {
+    return navigator.clipboard.writeText(text);
+  }
+
+  return new Promise((resolve, reject) => {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.setAttribute("readonly", "");
+    textarea.style.position = "fixed";
+    textarea.style.top = "-1000px";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+
+    try {
+      textarea.select();
+      document.execCommand("copy") ? resolve() : reject(new Error("copy was rejected"));
+    } catch (error) {
+      reject(error);
+    } finally {
+      document.body.removeChild(textarea);
+    }
+  });
 }
 
 function showCopiedState(button) {

@@ -3,6 +3,7 @@ import ApiClient from '../../commons/http/ApiClient.js';
 import renderMarkdown from '../../commons/utils/renderMarkdown.js';
 import { toggleTaskAtLine } from '../../commons/utils/toggleTaskLine.js';
 import handleCodeCopyClick from '../../commons/utils/handleCodeCopyClick.js';
+import handleCodeWrapClick from '../../commons/utils/handleCodeWrapClick.js';
 import { closeModal, openModal } from '../../commons/components/Modal.jsx';
 import Lightbox from '../../commons/components/Lightbox.jsx';
 import { useCollapsibleHeadings } from './useCollapsibleHeadings.js';
@@ -55,6 +56,10 @@ export default function NotePreview({ noteId, onOpenLink, onNavigateLink, onNote
   }
 
   function handleContentClick(e) {
+    if (handleCodeWrapClick(e) === true) {
+      return;
+    }
+
     if (handleCodeCopyClick(e) === true) {
       return;
     }
