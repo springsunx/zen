@@ -4,7 +4,7 @@ import { UploadIcon, DownloadIcon, ThemeIcon, BrainCircuitIcon, SecurityIcon, Im
 import ImportPane from "./ImportPane.jsx";
 import ExportPane from "./ExportPane.jsx";
 import AppearancePane from "./AppearancePane.jsx";
-import McpPane from "./McpPane.jsx";
+import ApiTokensPane from "./ApiTokensPane.jsx";
 import SecurityPane from "./SecurityPane.jsx";
 import AiPane from "./AiPane.jsx";
 import StoragePane from "./StoragePane.jsx";
@@ -25,7 +25,7 @@ export default function SettingsModal() {
     { id: "account", label: t("settings.tabs.security"), icon: <SecurityIcon className="settings-tab-icon" />, content: <SecurityPane /> },
     { id: "import", label: t("settings.tabs.import"), icon: <UploadIcon className="settings-tab-icon" />, content: <ImportPane /> },
     { id: "export", label: t("settings.tabs.export"), icon: <DownloadIcon className="settings-tab-icon" />, content: <ExportPane /> },
-    { id: "mcp", label: t("settings.tabs.mcp"), icon: <BrainCircuitIcon className="settings-tab-icon" />, content: <McpPane /> },
+    { id: "mcp", label: t("settings.tabs.mcp"), icon: <BrainCircuitIcon className="settings-tab-icon" />, content: <ApiTokensPane /> },
     { id: "ai", label: t("settings.tabs.ai"), icon: <BrainCircuitIcon className="settings-tab-icon" />, content: <AiPane /> },
     { id: "storage", label: t("settings.tabs.storage"), icon: <ImagesIcon className="settings-tab-icon" />, content: <StoragePane /> }
   ];

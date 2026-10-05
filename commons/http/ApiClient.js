@@ -488,15 +488,15 @@ async function incrementTemplateUsage(templateId) {
 // ─── MCP Tokens ───
 
 async function getTokens() {
-  return await request('GET', '/api/mcp/tokens/');
+  return await request('GET', '/api/v1/tokens/');
 }
 
 async function createToken(payload) {
-  return await request('POST', '/api/mcp/tokens/', payload);
+  return await request('POST', '/api/v1/tokens/', payload);
 }
 
 async function deleteToken(tokenId) {
-  return await request('DELETE', `/api/mcp/tokens/${tokenId}/`);
+  return await request('DELETE', `/api/v1/tokens/${tokenId}/`);
 }
 
 // ─── Canvases ───

@@ -457,3 +457,134 @@
         }
     }
 }
+
+
+/* API tokens pane, ported from upstream */
+.api-token-creator {
+    margin-top: var(--spacing-4);
+    margin-bottom: 48px;
+
+    .input-container {
+        margin-bottom: var(--spacing-1);
+    }
+
+    .api-token-field-label {
+        display: block;
+        font-weight: 600;
+        margin-top: var(--spacing-6);
+        margin-bottom: var(--spacing-1);
+    }
+
+    .api-token-scopes {
+        margin-bottom: var(--spacing-4);
+
+        .api-token-scope-row {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-3);
+            margin-bottom: var(--spacing-2);
+
+            .button {
+                margin-top: 0;
+            }
+
+            .api-token-scope-tag .dropdown-button {
+                width: 180px;
+            }
+
+            .ghost-button svg.lucide {
+                width: var(--icon-md);
+                height: var(--icon-md);
+            }
+        }
+
+        .api-token-scope-warning {
+            font: var(--xs);
+            color: var(--red-500);
+            margin-bottom: var(--spacing-2);
+        }
+    }
+}
+
+.api-token-display {
+    margin-top: var(--spacing-4);
+    margin-bottom: 48px;
+
+    .api-token-display-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: var(--spacing-3);
+    }
+
+    .api-token-value {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-3);
+        margin-bottom: var(--spacing-3);
+
+        code {
+            flex: 1;
+            padding: var(--spacing-3);
+            background-color: var(--neutral-100);
+            border: 1px solid var(--neutral-200);
+            border-radius: var(--radius-1);
+            font: var(--code);
+            word-break: break-all;
+            border-style: dashed;
+        }
+
+    }
+}
+
+.api-tokens-section {
+    h4 {
+        margin-bottom: var(--spacing-3);
+        color: var(--text-primary);
+    }
+
+    .api-no-tokens {
+        font: var(--sm);
+        color: var(--neutral-400);
+        text-align: center;
+        padding: var(--spacing-8);
+        background-color: var(--bg-secondary);
+        border-radius: var(--radius-2);
+    }
+
+    .api-tokens-list {
+        .api-token-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            margin-bottom: var(--spacing-2);
+            border-bottom: 1px solid var(--bg-tertiary);
+
+            &:last-of-type {
+                border-bottom: 0;
+            }
+
+            .api-token-info {
+                flex: 1;
+
+                .api-token-name {
+                    font-weight: 500;
+                    margin-bottom: var(--spacing-1);
+                }
+
+                .api-token-grants {
+                    font: var(--xs);
+                    color: var(--text-secondary);
+                    margin-bottom: var(--spacing-1);
+                }
+
+                .api-token-date {
+                    font: var(--xs);
+                    color: var(--neutral-400);
+                }
+            }
+
+        }
+    }
+}
