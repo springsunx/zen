@@ -23,6 +23,7 @@ import NotesEditorModal from './NotesEditorModal.jsx';
 import { BrainCircuitIcon } from '../../commons/components/Icon.jsx';
 import { useLayout } from '../../commons/contexts/LayoutContext.jsx';
 import { useVisibleHeadings } from "./useVisibleHeadings.js";
+import { useCollapsibleHeadings } from "./useCollapsibleHeadings.js";
 import useEditorKeyboardShortcuts from "./useEditorKeyboardShortcuts.js";
 import useImageUpload from "./useImageUpload.js";
 import useMarkdownFormatter from "./useMarkdownFormatter.js";
@@ -138,6 +139,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
     onTemplatePicker: handleOpenTemplateSlashMenu,
   });
   const visibleHeadings = useVisibleHeadings(contentRef, content, isEditable, isEditorExpanded);
+  const { handleHeadingClick } = useCollapsibleHeadings(contentRef, selectedNote?.noteId);
 
   const { insertAtCursor, applyMarkdownFormat } = useMarkdownFormatter({
     textareaRef,
@@ -494,6 +496,11 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   }
 
   function handleInternalNoteLinkClick(e) {
+    // A plain heading click folds or unfolds its section; links and text selections win.
+    if (handleHeadingClick(e) === true) {
+      return;
+    }
+
     const link = e.target.closest('a[data-note-id]');
     if (link === null) return;
     e.preventDefault();
@@ -733,7 +740,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
     contentArea = <div className="notes-editor-empty-text">{t('notes.editor.empty')}</div>;
   } else {
     contentArea = (
-      <div className="notes-editor-rendered" ref={contentRef}
+      <div className="notes-editor-rendered has-foldable-headings" ref={contentRef}
         dangerouslySetInnerHTML={{ __html: renderedContent }}
         onClick={handleInternalNoteLinkClick}
       />

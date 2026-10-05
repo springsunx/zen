@@ -5,6 +5,7 @@ import { extractHeadingsFromMarkdown, buildTocMarkdown, injectOrReplaceToc, extr
 import ApiClient from "../../commons/http/ApiClient.js";
 import Button from "../../commons/components/Button.jsx";
 import { useNotes } from "../../commons/contexts/NotesContext.jsx";
+import { unfoldToHeading } from "./useCollapsibleHeadings.js";
 
 export default function RightSideToc({ content, isEditable, isNewNote, inModal = false, noteId, onContentPatched, showToc = false }) {
 
@@ -45,6 +46,9 @@ export default function RightSideToc({ content, isEditable, isNewNote, inModal =
     }
 
     if (targetElement !== null) {
+      // Scrolling to a folded heading would land on a hidden target
+      unfoldToHeading(targetElement.parentElement, targetElement, noteId);
+
       if ('scrollBehavior' in document.documentElement.style) {
         targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
       } else {
