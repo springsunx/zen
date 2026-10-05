@@ -16,7 +16,9 @@
         min-width: 100%;
         box-shadow: rgba(0, 0, 0, 0.1) 0px 10px 15px -3px, rgba(0, 0, 0, 0.05) 0px 4px 6px -2px;
         background-color: var(--bg-secondary);
-        z-index: 1;
+        /* Must clear editor content and side panels, which sit at --z-base; equal
+           z-index loses to whichever element comes later in the DOM. */
+        z-index: var(--z-popover);
         max-height: 198px;
         overflow: auto;
         border: 1px solid var(--neutral-100);
