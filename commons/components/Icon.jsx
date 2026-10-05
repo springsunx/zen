@@ -786,8 +786,12 @@ export function ClipboardIcon() {
 
 export function ShareIcon() {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 1024 1024" fill="currentColor" stroke="none" className="lucide lucide-share">
-      <path d="M812.333229 702.996063c-46.845072 0-89.466408 18.430848-119.288544 51.132804L319.564027 536.79845a103.801512 103.801512 0 0 0 0-51.132804l373.480658-215.858509c29.822136 32.63796 72.443472 52.540716 119.288544 52.540716 90.87432-1.407912 159.094057-69.563652 160.501969-160.437972C971.491282 71.03556 903.271546 1.407912 812.333229 0c-90.87432 1.407912-160.437973 71.03556-161.90988 161.909881 0 9.91938 1.471908 19.83876 2.87982 29.822136L282.638335 404.774702A160.629961 160.629961 0 0 0 161.941879 350.698081C71.067558 352.169989 1.43991 420.453722 0.031998 511.328042c1.407912 90.87432 71.03556 159.030061 161.909881 160.501969 46.845072 0 90.87432-21.310668 120.696456-54.012625l370.664834 214.450597c-1.407912 9.983376-2.815824 19.83876-2.815824 31.230048 1.407912 90.87432 71.03556 159.094057 161.90988 160.501969 90.87432-1.407912 159.030061-69.563652 160.437973-160.501969-1.407912-90.87432-69.563652-159.030061-160.501969-160.437972z" />
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-share-2">
+      <circle cx="18" cy="5" r="3" />
+      <circle cx="6" cy="12" r="3" />
+      <circle cx="18" cy="19" r="3" />
+      <line x1="8.59" x2="15.42" y1="13.51" y2="17.49" />
+      <line x1="15.41" x2="8.59" y1="6.51" y2="10.49" />
     </svg>
   );
 }
@@ -822,8 +826,11 @@ export function ExternalLinkIcon() {
 
 export function TablePropertiesIcon() {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 -960 960 960" fill="currentColor" stroke="none" className="material-icon">
-      <path d="M200-440h240v-160H200v160Zm0-240h560v-80H200v80Zm0 560q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v252q-19-8-39.5-10.5t-40.5.5q-21 4-40.5 13.5T684-479l-39 39-205 204v116H200Zm0-80h240v-160H200v160Zm320-240h125l39-39q16-16 35.5-25.5T760-518v-82H520v160Zm0 360v-123l221-220q9-9 20-13t22-4q12 0 23 4.5t20 13.5l37 37q8 9 12.5 20t4.5 22q0 11-4 22.5T863-300L643-80H520Zm300-263-37-37 37 37ZM580-140h38l121-122-37-37-122 121v38Zm141-141-19-18 37 37-18-19Z" />
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-table-properties">
+      <path d="M15 3v18" />
+      <rect width="18" height="18" x="3" y="3" rx="2" />
+      <path d="M21 9H3" />
+      <path d="M21 15H3" />
     </svg>
   );
 }
