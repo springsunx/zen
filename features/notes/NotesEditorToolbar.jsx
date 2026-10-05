@@ -6,7 +6,7 @@ import isMobile from '../../commons/utils/isMobile.js';
 import { t } from "../../commons/i18n/index.js";
 import { showToast } from "../../commons/components/Toast.jsx";
 
-export default function NotesEditorToolbar({ note, isNewNote, isEditable, isModal, isSaveLoading, isExpanded, isExpandable, onSaveClick, onSaveAndCloseClick, onEditClick, onEditCancelClick, onCloseClick, onDeleteClick, onArchiveClick, onUnarchiveClick, onRestoreClick, onExpandToggleClick, onPinClick, onUnpinClick, onToggleToc, onToggleShare, isFitToWindow, onFitToWindowToggle }) {
+export default function NotesEditorToolbar({ note, isNewNote, isEditable, isModal, isSaveLoading, isExpanded, isExpandable, onSaveClick, onSaveAndCloseClick, onEditClick, onEditCancelClick, onCloseClick, onDeleteClick, onArchiveClick, onUnarchiveClick, onRestoreClick, onExpandToggleClick, onPinClick, onUnpinClick, onVersionsClick, onToggleToc, onToggleShare, isFitToWindow, onFitToWindowToggle }) {
   const saveButtonText = isSaveLoading ? t('common.saving') : t('common.save');
   const saveAndCloseText = t('editor.saveAndClose');
 
@@ -120,6 +120,11 @@ export default function NotesEditorToolbar({ note, isNewNote, isEditable, isModa
         key: 'restore',
         condition: !isNewNote && note?.isDeleted,
         component: <div onClick={onRestoreClick}>{t('notes.restore')}</div>
+      },
+      {
+        key: 'versions',
+        condition: !isNewNote && !note?.isDeleted && onVersionsClick != null,
+        component: <div onClick={onVersionsClick}>{t('notes.versions')}</div>
       },
       {
         key: 'delete',

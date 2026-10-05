@@ -28,6 +28,7 @@ import useMarkdownFormatter from "./useMarkdownFormatter.js";
 import useAIPanel from "./useAIPanel.js";
 import { consumeEditMode } from "../../commons/utils/editMode.js";
 import useSlashCommands from "./useSlashCommands.js";
+import useNoteVersions from "./useNoteVersions.js";
 import "./NotesEditor.css";
 import { t } from "../../commons/i18n/index.js";
 
@@ -35,6 +36,10 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   const { selectedNote, handleNoteChange, patchNote, handlePinToggle } = useNotes();
   const { refreshTags } = useAppContext();
   const { isEditorExpanded, toggleEditorExpanded } = useLayout();
+  const { handleVersionsClick } = useNoteVersions({
+    note: selectedNote,
+    onRestored: () => handleNoteChange(),
+  });
 
   if (!isNewNote && selectedNote === null) {
     return null;
@@ -670,6 +675,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
         onExpandToggleClick={handleExpandToggleClick}
         onPinClick={handlePinToggleClick}
         onUnpinClick={handlePinToggleClick}
+        onVersionsClick={handleVersionsClick}
         onToggleToc={onToggleToc}
         onToggleShare={onToggleShare}
         isFitToWindow={isFitToWindow}

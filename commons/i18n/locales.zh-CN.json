@@ -1,4 +1,4 @@
-﻿{
+{
   "nav.new": "新建",
   "nav.search": "搜索",
   "nav.settings": "设置",
@@ -185,6 +185,7 @@
   "notes.editor.placeholder": "在此书写...",
   "notes.editor.images.hint": "点击上传或拖拽图片到此",
   "notes.restore": "恢复",
+  "notes.versions": "版本历史",
   "notes.archive.unarchive": "取消归档",
   "notes.archive.archive": "归档",
   "notes.archive.archived": "笔记已归档",

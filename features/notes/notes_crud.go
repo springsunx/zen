@@ -418,6 +418,36 @@ func UpdateNote(access auth.Access, note Note) (Note, error) {
 
 	defer tx.Rollback()
 
+	// Snapshot the text about to be replaced, but only if it actually differs and
+	// no version was taken in the last VERSION_MIN_INTERVAL, so rapid saves from
+	// autosave do not flood the history.
+	snapshotQuery := `
+		INSERT INTO
+			note_versions (note_id, title, content)
+		SELECT
+			note_id,
+			title,
+			content
+		FROM
+			notes
+		WHERE
+			note_id = ? AND (title != ? OR content != ?)
+			AND NOT EXISTS (
+				SELECT
+					1
+				FROM
+					note_versions
+				WHERE
+					note_id = ? AND created_at > datetime('now', ?)
+			)
+	`
+
+	if _, err = tx.Exec(snapshotQuery, note.NoteID, note.Title, note.Content, note.NoteID, VERSION_MIN_INTERVAL); err != nil {
+		err = fmt.Errorf("error snapshotting note version: %w", err)
+		slog.Error(err.Error())
+		return note, err
+	}
+
 	query := `
 		UPDATE
 			notes

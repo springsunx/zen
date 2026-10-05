@@ -218,6 +218,20 @@ async function deleteNote(noteId) {
   return await request('DELETE', `/api/notes/${noteId}`);
 }
 
+async function getNoteVersions(noteId, page) {
+  let url = `/api/v1/notes/${noteId}/versions/`;
+
+  if (page) {
+    url += '?page=' + page;
+  }
+
+  return await request('GET', url);
+}
+
+async function restoreNoteVersion(noteId, versionId) {
+  return await request('PUT', `/api/v1/notes/${noteId}/versions/${versionId}/restore/`);
+}
+
 async function bulkDeleteNotes(ids) {
   return await request('DELETE', '/api/notes/bulk/', { ids });
 }
@@ -583,6 +597,8 @@ export default {
   createNote,
   updateNote,
   deleteNote,
+  getNoteVersions,
+  restoreNoteVersion,
   bulkDeleteNotes,
   restoreNote,
   archiveNote,

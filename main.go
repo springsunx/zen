@@ -128,11 +128,18 @@ func newRouter() *http.ServeMux {
 	// ─── Notes ───
 	addAuthenticatedRoute(mux, "GET /api/v1/notes/", notes.HandleGetNotes)
 	addAuthenticatedRoute(mux, "GET /api/v1/notes/{noteId}/", notes.HandleGetNote)
+	addAuthenticatedRoute(mux, "GET /api/v1/notes/{noteId}", notes.HandleGetNote)
 	addSessionRoute(mux, "GET /api/v1/notes/{noteId}/related/", notes.HandleGetRelatedNotes)
 	addAuthenticatedRoute(mux, "POST /api/v1/notes/", notes.HandleCreateNote)
 	addAuthenticatedRoute(mux, "PUT /api/v1/notes/{noteId}/", notes.HandleUpdateNote)
+	addAuthenticatedRoute(mux, "PUT /api/v1/notes/{noteId}", notes.HandleUpdateNote)
 	addSessionRoute(mux, "DELETE /api/v1/notes/bulk/", notes.HandleBulkSoftDeleteNotes)
 	addSessionRoute(mux, "DELETE /api/v1/notes/{noteId}/", notes.HandleSoftDeleteNote)
+	// The client calls the unversioned path without a trailing slash; before this
+	// explicit route existed the mux answered with a 301 to the slash form, which is
+	// the note-delete modal's "move to trash". Keep that meaning: never bind a hard
+	// delete here, or the modal's promise becomes a lie.
+	addSessionRoute(mux, "DELETE /api/v1/notes/{noteId}", notes.HandleSoftDeleteNote)
 	addSessionRoute(mux, "DELETE /api/v1/notes/", notes.HandleDeleteNotes)
 	addSessionRoute(mux, "PUT /api/v1/notes/bulk/archive/", notes.HandleBulkArchiveNotes)
 	addSessionRoute(mux, "PUT /api/v1/notes/bulk/tag/", notes.HandleBulkAddTag)
@@ -157,8 +164,10 @@ func newRouter() *http.ServeMux {
 	addAuthenticatedRoute(mux, "GET /api/v1/tags/", tags.HandleGetTags)
 	addSessionRoute(mux, "PUT /api/v1/tags/", tags.HandleUpdateTag)
 	addSessionRoute(mux, "PUT /api/v1/tags/{tagId}/", tags.HandleUpdateTag)
+	addSessionRoute(mux, "PUT /api/v1/tags/{tagId}", tags.HandleUpdateTag)
 	addSessionRoute(mux, "PUT /api/v1/tags/reorder/", tags.HandleReorderTags)
 	addSessionRoute(mux, "DELETE /api/v1/tags/{tagId}/", tags.HandleDeleteTag)
+	addSessionRoute(mux, "DELETE /api/v1/tags/{tagId}", tags.HandleDeleteTag)
 	addSessionRoute(mux, "PATCH /api/v1/tags/{tagId}/parent/", tags.HandleMoveTag)
 
 	addSessionRoute(mux, "GET /api/v1/focus/", focus.HandleGetAllFocusModes)
@@ -187,6 +196,7 @@ func newRouter() *http.ServeMux {
 	addSessionRoute(mux, "DELETE /api/v1/tokens/{tokenId}/", tokens.HandleRevokeAPIToken)
 
 	addAuthenticatedRoute(mux, "GET /api/v1/search/", search.HandleSearch)
+	addAuthenticatedRoute(mux, "GET /api/v1/search", search.HandleSearch)
 
 	addSessionRoute(mux, "GET /api/v1/intelligence/availability/", intelligence.HandleAvailability)
 	addSessionRoute(mux, "POST /api/v1/intelligence/index/", intelligence.HandleIndexAllContent)
@@ -210,9 +220,12 @@ func newRouter() *http.ServeMux {
 	// ─── Templates ───
 	addAuthenticatedRoute(mux, "GET /api/v1/templates/", templates.HandleGetTemplates)
 	addAuthenticatedRoute(mux, "GET /api/v1/templates/{templateId}/", templates.HandleGetTemplate)
+	addAuthenticatedRoute(mux, "GET /api/v1/templates/{templateId}", templates.HandleGetTemplate)
 	addAuthenticatedRoute(mux, "POST /api/v1/templates/", templates.HandleCreateTemplate)
 	addAuthenticatedRoute(mux, "PUT /api/v1/templates/{templateId}/", templates.HandleUpdateTemplate)
+	addAuthenticatedRoute(mux, "PUT /api/v1/templates/{templateId}", templates.HandleUpdateTemplate)
 	addAuthenticatedRoute(mux, "DELETE /api/v1/templates/{templateId}/", templates.HandleDeleteTemplate)
+	addAuthenticatedRoute(mux, "DELETE /api/v1/templates/{templateId}", templates.HandleDeleteTemplate)
 	addAuthenticatedRoute(mux, "GET /api/v1/templates/recommended/", templates.HandleGetRecommendedTemplates)
 	addAuthenticatedRoute(mux, "PUT /api/v1/templates/{templateId}/usage/", templates.HandleIncrementTemplateUsage)
 
@@ -221,7 +234,9 @@ func newRouter() *http.ServeMux {
 	addAuthenticatedRoute(mux, "GET /api/v1/canvases/{canvasId}/", canvas.HandleGetCanvas)
 	addAuthenticatedRoute(mux, "POST /api/v1/canvases/", canvas.HandleCreateCanvas)
 	addAuthenticatedRoute(mux, "PUT /api/v1/canvases/{canvasId}/", canvas.HandleUpdateCanvas)
+	addAuthenticatedRoute(mux, "PUT /api/v1/canvases/{canvasId}", canvas.HandleUpdateCanvas)
 	addAuthenticatedRoute(mux, "DELETE /api/v1/canvases/{canvasId}/", canvas.HandleDeleteCanvas)
+	addAuthenticatedRoute(mux, "DELETE /api/v1/canvases/{canvasId}", canvas.HandleDeleteCanvas)
 
 	// Clipboard — phone↔computer file/text transfer
 	addSessionRoute(mux, "POST /api/v1/clipboard/text", clipboard.HandlePushText)

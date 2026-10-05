@@ -15,13 +15,18 @@ export default function useNoteVersions({ note, onRestored, cancelAutoSave }) {
   function handleVersionRestoreClick(versionId) {
     // A pending autosave still holds the pre-restore text, so drop it before
     // the request rather than after, or it overwrites what we just restored.
-    cancelAutoSave();
+    // Autosave may not be wired up yet, so the canceller is optional.
+    if (cancelAutoSave != null) {
+      cancelAutoSave();
+    }
 
     return ApiClient.restoreNoteVersion(note.noteId, versionId)
       .then(restoredNote => {
         handleVersionsCloseClick();
         showToast("Note restored.");
-        onRestored(restoredNote);
+        if (onRestored != null) {
+          onRestored(restoredNote);
+        }
         handleNoteChange();
       })
       .catch(() => {

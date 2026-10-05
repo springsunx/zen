@@ -1,4 +1,4 @@
-﻿{
+{
   "nav.new": "New",
   "nav.search": "Search",
   "nav.settings": "Settings",
@@ -186,6 +186,7 @@
   "notes.editor.placeholder": "Write here...",
   "notes.editor.images.hint": "Click to upload or drag and drop images",
   "notes.restore": "Restore",
+  "notes.versions": "Versions",
   "notes.archive.unarchive": "Unarchive",
   "notes.archive.archive": "Archive",
   "notes.archive.archived": "Note archived",

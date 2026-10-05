@@ -38,6 +38,13 @@ func ForceDeleteNote(noteID int) error {
 		return fmt.Errorf("error deleting note attachments: %w", err)
 	}
 
+	// note_versions has a plain foreign key with no cascade, so these rows have to go
+	// before the note or the delete fails once the note has history.
+	if _, err = tx.Exec("DELETE FROM note_versions WHERE note_id = ?", noteID); err != nil {
+		slog.Error("error deleting note versions", "error", err)
+		return fmt.Errorf("error deleting note versions: %w", err)
+	}
+
 	if _, err = tx.Exec("DELETE FROM notes WHERE note_id = ?", noteID); err != nil {
 		slog.Error("error deleting note", "error", err)
 		return fmt.Errorf("error deleting note: %w", err)
