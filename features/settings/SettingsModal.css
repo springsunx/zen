@@ -55,6 +55,9 @@
         flex: 1;
         padding: var(--spacing-3) 24px;
         overflow-y: auto;
+        /* A taller pane used to shrink this box by the scrollbar width, which reflowed the
+           theme grid to two columns and made the pane taller still - the state locked in. */
+        scrollbar-gutter: stable;
 
         .settings-tab-content {
             h3 {
@@ -246,7 +249,9 @@
 
             .theme-selector {
                 display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+                /* 170px needed 542px, which the pane width (535px) missed by 7px once a
+                   scrollbar was present; 150px keeps all three previews on one row. */
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
                 gap: 16px;
                 margin-top: 16px;
 
