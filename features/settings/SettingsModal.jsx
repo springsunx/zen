@@ -27,7 +27,7 @@ export default function SettingsModal() {
     { id: "account", label: t("settings.tabs.security"), icon: <SecurityIcon className="settings-tab-icon" />, content: <SecurityPane /> },
     { id: "import", label: t("settings.tabs.import"), icon: <UploadIcon className="settings-tab-icon" />, content: <ImportPane /> },
     { id: "export", label: t("settings.tabs.export"), icon: <DownloadIcon className="settings-tab-icon" />, content: <ExportPane /> },
-    { id: "mcp", label: t("settings.tabs.mcp"), icon: <BrainCircuitIcon className="settings-tab-icon" />, content: <ApiTokensPane /> },
+    { id: "apiTokens", label: t("settings.tabs.apiTokens"), icon: <BrainCircuitIcon className="settings-tab-icon" />, content: <ApiTokensPane /> },
     { id: "ai", label: t("settings.tabs.ai"), icon: <BrainCircuitIcon className="settings-tab-icon" />, content: <AiPane /> },
     { id: "storage", label: t("settings.tabs.storage"), icon: <ImagesIcon className="settings-tab-icon" />, content: <StoragePane /> }
   ];

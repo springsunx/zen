@@ -21,6 +21,7 @@
   "settings.tabs.import": "导入",
   "settings.tabs.export": "导出",
   "settings.tabs.mcp": "MCP",
+  "settings.tabs.apiTokens": "API 令牌",
   "settings.tabs.language": "语言",
   "settings.appearance.title": "外观",
   "settings.appearance.desc": "根据你的偏好选择浅色、深色或系统主题。",

@@ -127,6 +127,9 @@ export default function ApiTokensPane() {
   const hasDuplicateTags = new Set(scopes.map(scope => scope.tagId)).size !== scopes.length;
   const isFormValid = newTokenName.trim() !== "" && scopes.length > 0 && !hasDuplicateTags;
 
+  // SegmentedControl renders option.label, so resolve the locale keys into labels here
+  const accessOptions = ACCESS_OPTIONS.map(option => ({ value: option.value, label: t(option.labelKey) }));
+
   const tagOptions = [
     { value: ALL_TAGS, label: t('settings.apiTokens.allTags') },
     ...tags.map(tag => ({ value: tag.tagId, label: tag.name }))
@@ -141,7 +144,7 @@ export default function ApiTokensPane() {
           onChange={tagId => handleScopeTagChange(index, tagId)}
         />
         <SegmentedControl
-          options={ACCESS_OPTIONS}
+          options={accessOptions}
           value={scope.canWrite ? "write" : "read"}
           isDisabled={isCreating}
           onChange={value => handleScopeAccessChange(index, value)}
