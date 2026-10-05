@@ -13,6 +13,7 @@ import SlashCommandMenu from './SlashCommandMenu.jsx';
 import renderMarkdown from '../../commons/utils/renderMarkdown.js';
 import navigateTo from '../../commons/utils/navigateTo.js';
 import NoteDeleteModal from './NoteDeleteModal.jsx';
+import TableEditorModal from './TableEditorModal.jsx';
 import { showToast } from '../../commons/components/Toast.jsx';
 import { closeModal, openModal } from '../../commons/components/Modal.jsx';
 import { useNotes } from "../../commons/contexts/NotesContext.jsx";
@@ -395,6 +396,45 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
     }
   }
 
+  // Table actions open a grid editor instead of splicing markdown blindly; the rest of
+  // the formatting actions go straight to the formatter.
+  function handleEditorActions(action, placeholder) {
+    if (action !== "insertTable" && action !== "editTable") {
+      applyMarkdownFormat(action, placeholder);
+      return;
+    }
+
+    const textarea = textareaRef.current;
+    if (textarea === null) {
+      return;
+    }
+
+    const startPos = textarea.selectionStart;
+    const endPos = textarea.selectionEnd;
+    const isEditing = action === "editTable";
+    const selectedText = textarea.value.substring(startPos, endPos);
+    const beforeText = textarea.value.substring(0, startPos);
+    const afterText = textarea.value.substring(endPos);
+
+    function handleConfirm(tableMarkdown) {
+      closeModal('.note-modal-root');
+      updateContent(beforeText + tableMarkdown + afterText);
+      scheduleAutoSave();
+    }
+
+    openModal(
+      <TableEditorModal
+        isEditing={isEditing}
+        selectedText={selectedText}
+        beforeText={beforeText}
+        afterText={afterText}
+        onConfirm={handleConfirm}
+        onCloseClick={() => closeModal('.note-modal-root')}
+      />,
+      '.note-modal-root'
+    );
+  }
+
   function handleTitleChange(e) {
     setTitle(e.target.textContent);
     scheduleAutoSave();
@@ -748,7 +788,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
           handleFileInputChange={handleFileInputChange}
         />
       )}
-      <NotesEditorFormattingToolbar isEditable={isEditable} onFormat={applyMarkdownFormat} onInsertInternalLink={handleShowLinkPicker} onOpenAI={handleOpenAI} />
+      <NotesEditorFormattingToolbar isEditable={isEditable} onFormat={handleEditorActions} onInsertInternalLink={handleShowLinkPicker} onOpenAI={handleOpenAI} />
       {showAIModal && (
         <AIPanel
           fullContent={content}

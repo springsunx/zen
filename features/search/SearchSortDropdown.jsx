@@ -1,11 +1,12 @@
 import { h, useState, useEffect, useRef } from "../../assets/preact.esm.js";
 import { ArrowDownIcon } from "../../commons/components/Icon.jsx";
+import { t } from "../../commons/i18n/index.js";
 import "./SearchSortDropdown.css";
 
 export const SORT_OPTIONS = [
-  { value: "relevance", label: "Best matches" },
-  { value: "updated", label: "Last edited" },
-  { value: "created", label: "Created" },
+  { value: "relevance", labelKey: "search.sort.relevance" },
+  { value: "updated", labelKey: "search.sort.updated" },
+  { value: "created", labelKey: "search.sort.created" },
 ];
 
 export default function SearchSortDropdown({ activeSort, onSortChange }) {
@@ -36,9 +37,9 @@ export default function SearchSortDropdown({ activeSort, onSortChange }) {
 
   const activeOption = SORT_OPTIONS.find(option => option.value === activeSort);
 
-  let activeLabel = SORT_OPTIONS[0].label;
+  let activeLabel = t(SORT_OPTIONS[0].labelKey);
   if (activeOption !== undefined) {
-    activeLabel = activeOption.label;
+    activeLabel = t(activeOption.labelKey);
   }
 
   const options = SORT_OPTIONS.map(option => {
@@ -49,7 +50,7 @@ export default function SearchSortDropdown({ activeSort, onSortChange }) {
         className={`search-sort-dropdown-option ${isActive === true ? "is-active" : ""}`}
         onClick={() => handleOptionClick(option.value)}
       >
-        {option.label}
+        {t(option.labelKey)}
       </li>
     );
   });

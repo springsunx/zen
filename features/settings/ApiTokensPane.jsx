@@ -5,12 +5,13 @@ import SegmentedControl from "../../commons/components/SegmentedControl.jsx";
 import { ArrowDownIcon, CloseIcon } from "../../commons/components/Icon.jsx";
 import ApiClient from "../../commons/http/ApiClient.js";
 import formatDate from "../../commons/utils/formatDate.js";
+import { t } from "../../commons/i18n/index.js";
 
 const ALL_TAGS = 0;
 
 const ACCESS_OPTIONS = [
-  { value: "read", label: "Read" },
-  { value: "write", label: "Read and write" },
+  { value: "read", labelKey: "settings.apiTokens.read" },
+  { value: "write", labelKey: "settings.apiTokens.write" },
 ];
 
 export default function ApiTokensPane() {
@@ -71,7 +72,7 @@ export default function ApiTokensPane() {
 
   function handleCreateTokenClick() {
     if (!newTokenName.trim()) {
-      setError("Token name is required");
+      setError(t('settings.apiTokens.name.required'));
       return;
     }
 
@@ -101,7 +102,7 @@ export default function ApiTokensPane() {
 
   function tagNameFor(tagId) {
     if (tagId === ALL_TAGS) {
-      return "All tags";
+      return t('settings.apiTokens.allTags');
     }
 
     const tag = tags.find(tag => tag.tagId === tagId);
@@ -109,16 +110,16 @@ export default function ApiTokensPane() {
       return tag.name;
     }
 
-    return `Tag ${tagId}`;
+    return t('settings.apiTokens.tagFallback', { id: tagId });
   }
 
   function grantsSummary(tokenScopes) {
     if (!tokenScopes || tokenScopes.length === 0) {
-      return "No access";
+      return t('settings.apiTokens.noAccess');
     }
 
     return tokenScopes.map(scope => {
-      const access = scope.canWrite ? "read and write" : "read";
+      const access = scope.canWrite ? t('settings.apiTokens.grant.write') : t('settings.apiTokens.grant.read');
       return `${tagNameFor(scope.tagId)}: ${access}`;
     }).join(" · ");
   }
@@ -127,7 +128,7 @@ export default function ApiTokensPane() {
   const isFormValid = newTokenName.trim() !== "" && scopes.length > 0 && !hasDuplicateTags;
 
   const tagOptions = [
-    { value: ALL_TAGS, label: "All tags" },
+    { value: ALL_TAGS, label: t('settings.apiTokens.allTags') },
     ...tags.map(tag => ({ value: tag.tagId, label: tag.name }))
   ];
 
@@ -145,7 +146,7 @@ export default function ApiTokensPane() {
           isDisabled={isCreating}
           onChange={value => handleScopeAccessChange(index, value)}
         />
-        <Button variant="ghost" onClick={() => handleRemoveScopeClick(index)} title="Remove">
+        <Button variant="ghost" onClick={() => handleRemoveScopeClick(index)} title={t('settings.apiTokens.remove')}>
           <CloseIcon />
         </Button>
       </div>
@@ -162,19 +163,19 @@ export default function ApiTokensPane() {
         </div>
       </div>
       <Button variant="danger" onClick={() => handleRevokeClick(token.tokenId)}>
-        Revoke
+        {t('settings.apiTokens.revoke')}
       </Button>
     </div>
   ));
 
-  const buttonText = isCreating ? "Generating..." : "Generate Token";
+  const buttonText = isCreating ? t('settings.apiTokens.generating') : t('settings.apiTokens.generate');
 
   let tokenDisplay = null;
   if (newlyCreatedToken) {
     tokenDisplay = (
       <div className="api-token-display">
         <div className="api-token-display-header">
-          <strong>Your New Token</strong>
+          <strong>{t('settings.apiTokens.created')}</strong>
         </div>
         <div className="api-token-value">
           <code>{newlyCreatedToken}</code>
@@ -185,12 +186,12 @@ export default function ApiTokensPane() {
 
   let scopeWarning = null;
   if (hasDuplicateTags) {
-    scopeWarning = <p className="api-token-scope-warning">Each tag can only be granted once.</p>;
+    scopeWarning = <p className="api-token-scope-warning">{t('settings.apiTokens.duplicate')}</p>;
   }
 
   let tokensContent = null;
   if (tokens.length === 0 && isTokensLoading === false) {
-    tokensContent = <p className="api-no-tokens">No tokens created yet. Create your first token above.</p>;
+    tokensContent = <p className="api-no-tokens">{t('settings.apiTokens.empty')}</p>;
   } else {
     tokensContent = (
       <div className="api-tokens-list">
@@ -201,15 +202,15 @@ export default function ApiTokensPane() {
 
   return (
     <div className="settings-tab-content">
-      <h3>API Tokens</h3>
-      <p>Create tokens for agents and scripts to access your notes over the API. Each token is limited to the tags and permissions you grant it.</p>
+      <h3>{t('settings.apiTokens.title')}</h3>
+      <p>{t('settings.apiTokens.desc')}</p>
 
       <div className="api-token-creator">
         <Input
           id="api-token-name"
-          label="Token Name"
+          label={t('settings.apiTokens.name')}
           type="text"
-          placeholder="e.g., Ingest agent, Quick capture, etc."
+          placeholder={t('settings.apiTokens.name.placeholder')}
           value={newTokenName}
           error={error}
           isDisabled={isCreating}
@@ -217,11 +218,11 @@ export default function ApiTokensPane() {
         />
 
         <div className="api-token-scopes">
-          <label className="api-token-field-label">Access</label>
+          <label className="api-token-field-label">{t('settings.apiTokens.access')}</label>
           {scopeRows}
           {scopeWarning}
           <Button variant="secondary" onClick={handleAddScopeClick} isDisabled={isCreating}>
-            Add tag
+            {t('settings.apiTokens.addTag')}
           </Button>
         </div>
 
@@ -235,7 +236,7 @@ export default function ApiTokensPane() {
       <hr/>
 
       <div className="api-tokens-section">
-        <h4>Active Tokens</h4>
+        <h4>{t('settings.apiTokens.active')}</h4>
         {tokensContent}
       </div>
     </div>

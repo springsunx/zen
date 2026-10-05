@@ -4,6 +4,7 @@ import { openModal, closeModal } from "../../commons/components/Modal.jsx";
 import { showToast } from "../../commons/components/Toast.jsx";
 import { useNotes } from "../../commons/contexts/NotesContext.jsx";
 import NoteVersionsModal from "./NoteVersionsModal.jsx";
+import { t } from "../../commons/i18n/index.js";
 
 export default function useNoteVersions({ note, onRestored, cancelAutoSave }) {
   const { handleNoteChange } = useNotes();
@@ -23,14 +24,14 @@ export default function useNoteVersions({ note, onRestored, cancelAutoSave }) {
     return ApiClient.restoreNoteVersion(note.noteId, versionId)
       .then(restoredNote => {
         handleVersionsCloseClick();
-        showToast("Note restored.");
+        showToast(t('versions.restored'));
         if (onRestored != null) {
           onRestored(restoredNote);
         }
         handleNoteChange();
       })
       .catch(() => {
-        showToast("Failed to restore note.");
+        showToast(t('versions.restore.failed'));
       });
   }
 

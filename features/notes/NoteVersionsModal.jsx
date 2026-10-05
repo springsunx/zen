@@ -6,6 +6,7 @@ import Spinner from "../../commons/components/Spinner.jsx";
 import EmptyState from "../../commons/components/EmptyState.jsx";
 import ApiClient from "../../commons/http/ApiClient.js";
 import renderMarkdown from "../../commons/utils/renderMarkdown.js";
+import { t } from "../../commons/i18n/index.js";
 import "./NoteVersionsModal.css";
 
 const CURRENT_VERSION_ID = -1;
@@ -89,7 +90,7 @@ export default function NoteVersionsModal({ note, onRestoreClick, onCloseClick }
   if (isLoading === true && versions.length === 0) {
     railContent = <div className="note-versions-spinner"><Spinner /></div>;
   } else if (versions.length === 0) {
-    railContent = <EmptyState icon={<HistoryIcon />} title="No versions" description="Edits to this note will show up here" />;
+    railContent = <EmptyState icon={<HistoryIcon />} title={t('versions.empty.title')} description={t('versions.empty.desc')} />;
   } else {
     railContent = versionRows;
   }
@@ -99,24 +100,24 @@ export default function NoteVersionsModal({ note, onRestoreClick, onCloseClick }
     if (isLoading === true) {
       loadMoreButton = <div className="note-versions-spinner"><Spinner /></div>;
     } else {
-      loadMoreButton = <Button className="note-versions-load-more-button" onClick={handleLoadMoreClick}>Load more</Button>;
+      loadMoreButton = <Button className="note-versions-load-more-button" onClick={handleLoadMoreClick}>{t('versions.loadMore')}</Button>;
     }
   }
 
-  const restoreButtonText = isRestoreLoading ? "Restoring..." : "Restore";
+  const restoreButtonText = isRestoreLoading ? t('versions.restoring') : t('versions.restore');
 
   const currentRowClasses = isCurrentSelected ? "note-versions-row is-selected" : "note-versions-row";
-  const titleText = selectedTitle !== "" ? selectedTitle : "Untitled";
+  const titleText = selectedTitle !== "" ? selectedTitle : t('versions.untitled');
 
   return (
     <ModalBackdrop onClose={onCloseClick} isCentered>
       <ModalContainer className="note-versions-modal">
         <div className="note-versions-rail">
-          <div className="note-versions-rail-header">Version history</div>
+          <div className="note-versions-rail-header">{t('versions.title')}</div>
           <div className="note-versions-rail-list">
             <div className={currentRowClasses} onClick={() => setSelectedVersionId(CURRENT_VERSION_ID)}>
               <div className="note-versions-row-timestamp">{formatVersionDate(note.updatedAt)}</div>
-              <div className="note-versions-row-label">Current version</div>
+              <div className="note-versions-row-label">{t('versions.current')}</div>
             </div>
             {railContent}
             {loadMoreButton}
@@ -140,10 +141,10 @@ export default function NoteVersionsModal({ note, onRestoreClick, onCloseClick }
 
 function NoteVersionTiers() {
   const tiers = [
-    { age: "Last hour", kept: "Every edit" },
-    { age: "Up to 7 days", kept: "Hourly" },
-    { age: "Up to 30 days", kept: "Daily" },
-    { age: "Older", kept: "Weekly" },
+    { age: t('versions.retention.hour'), kept: t('versions.retention.hour.value') },
+    { age: t('versions.retention.week'), kept: t('versions.retention.week.value') },
+    { age: t('versions.retention.month'), kept: t('versions.retention.month.value') },
+    { age: t('versions.retention.older'), kept: t('versions.retention.older.value') },
   ];
 
   const tierRows = tiers.map(tier => (
@@ -155,7 +156,7 @@ function NoteVersionTiers() {
 
   return (
     <div className="note-versions-tiers">
-      <div className="note-versions-tiers-header">What's kept and for how long:</div>
+      <div className="note-versions-tiers-header">{t('versions.retention.title')}</div>
       {tierRows}
     </div>
   );

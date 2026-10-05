@@ -3,6 +3,7 @@ import { ModalBackdrop, ModalContainer, ModalHeader, ModalContent, ModalFooter }
 import Button from "../../commons/components/Button.jsx";
 import buildMarkdownTable from "../../commons/utils/buildMarkdownTable.js";
 import parseMarkdownTable from "../../commons/utils/parseMarkdownTable.js";
+import { t } from "../../commons/i18n/index.js";
 import "./TableEditorModal.css";
 
 const EMPTY_TABLE = [["", "", ""], ["", "", ""], ["", "", ""]];
@@ -101,12 +102,12 @@ export default function TableEditorModal({ isEditing = false, selectedText = "",
     return <tr key={rowIndex}>{cells}</tr>;
   });
 
-  let title = "Insert Table";
-  let confirmLabel = "Insert";
+  let title = t('notes.table.insert.title');
+  let confirmLabel = t('notes.table.insert.confirm');
 
   if (isEditing) {
-    title = "Edit Table";
-    confirmLabel = "Update";
+    title = t('notes.table.edit.title');
+    confirmLabel = t('notes.table.edit.confirm');
   }
 
   const canRemoveRow = rows.length > 1;
@@ -118,10 +119,10 @@ export default function TableEditorModal({ isEditing = false, selectedText = "",
         <ModalContainer className="table-editor-modal">
           <ModalHeader title={title} onClose={onCloseClick} />
           <ModalContent>
-            <p className="modal-description">Select a whole table to edit it.</p>
+            <p className="modal-description">{t('notes.table.selectWhole')}</p>
           </ModalContent>
           <ModalFooter isRightAligned>
-            <Button onClick={onCloseClick}>Close</Button>
+            <Button onClick={onCloseClick}>{t('notes.table.close')}</Button>
           </ModalFooter>
         </ModalContainer>
       </ModalBackdrop>
@@ -134,10 +135,10 @@ export default function TableEditorModal({ isEditing = false, selectedText = "",
         <ModalHeader title={title} onClose={onCloseClick} />
         <ModalContent>
           <div className="table-editor-actions">
-            <Button variant="ghost" onClick={handleAddRowClick}>Add Row</Button>
-            <Button variant="ghost" onClick={handleAddColumnClick}>Add Column</Button>
-            <Button variant="ghost" onClick={handleRemoveRowClick} isDisabled={!canRemoveRow}>Remove Row</Button>
-            <Button variant="ghost" onClick={handleRemoveColumnClick} isDisabled={!canRemoveColumn}>Remove Column</Button>
+            <Button variant="ghost" onClick={handleAddRowClick}>{t('notes.table.addRow')}</Button>
+            <Button variant="ghost" onClick={handleAddColumnClick}>{t('notes.table.addColumn')}</Button>
+            <Button variant="ghost" onClick={handleRemoveRowClick} isDisabled={!canRemoveRow}>{t('notes.table.removeRow')}</Button>
+            <Button variant="ghost" onClick={handleRemoveColumnClick} isDisabled={!canRemoveColumn}>{t('notes.table.removeColumn')}</Button>
           </div>
           <div className="table-editor-grid">
             <table>
@@ -149,7 +150,7 @@ export default function TableEditorModal({ isEditing = false, selectedText = "",
           </div>
         </ModalContent>
         <ModalFooter isRightAligned>
-          <Button onClick={onCloseClick}>Cancel</Button>
+          <Button onClick={onCloseClick}>{t('common.cancel')}</Button>
           <Button variant="primary" onClick={handleConfirmClick}>{confirmLabel}</Button>
         </ModalFooter>
       </ModalContainer>

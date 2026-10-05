@@ -6,6 +6,7 @@ import Spinner from "../../commons/components/Spinner.jsx";
 import { ArrowUpIcon, ArrowDownIcon } from "../../commons/components/Icon.jsx";
 import { closeModal } from "../../commons/components/Modal.jsx";
 import useMatchHighlighter from "./useMatchHighlighter.js";
+import { t } from "../../commons/i18n/index.js";
 import "../notes/NotesEditor.css";
 import "./SearchPreview.css";
 
@@ -118,7 +119,7 @@ export default function SearchPreview({ item, hasInlineContent, query }) {
   let previewBody = null;
 
   if (noteId === null) {
-    previewBody = <div className="search-preview-empty">Select a note to preview</div>;
+    previewBody = <div className="search-preview-empty">{t('search.preview.select')}</div>;
   } else if (canRenderInline === true) {
     previewBody = renderNoteContent(item.title, item.content, htmlCacheRef.current, noteId);
   } else if (isLoading === true) {
@@ -128,7 +129,7 @@ export default function SearchPreview({ item, hasInlineContent, query }) {
       </div>
     );
   } else if (hasFailed === true) {
-    previewBody = <div className="search-preview-empty">Note not available</div>;
+    previewBody = <div className="search-preview-empty">{t('search.preview.unavailable')}</div>;
   } else if (fetchedNote !== null) {
     previewBody = renderNoteContent(fetchedNote.title, fetchedNote.content, htmlCacheRef.current, noteId);
   } else {
@@ -139,11 +140,11 @@ export default function SearchPreview({ item, hasInlineContent, query }) {
   if (matchCount > 0) {
     matchStepper = (
       <div className="search-preview-find">
-        <span className="search-preview-find-count">{currentMatchIndex + 1} of {matchCount}</span>
-        <button type="button" title="Previous match" onMouseDown={handleStepButtonMouseDown} onClick={goToPreviousMatch}>
+        <span className="search-preview-find-count">{t('search.preview.matchCount', { current: currentMatchIndex + 1, total: matchCount })}</span>
+        <button type="button" title={t('search.preview.previous')} onMouseDown={handleStepButtonMouseDown} onClick={goToPreviousMatch}>
           <ArrowUpIcon />
         </button>
-        <button type="button" title="Next match" onMouseDown={handleStepButtonMouseDown} onClick={goToNextMatch}>
+        <button type="button" title={t('search.preview.next')} onMouseDown={handleStepButtonMouseDown} onClick={goToNextMatch}>
           <ArrowDownIcon />
         </button>
       </div>
@@ -171,7 +172,7 @@ function addToCache(cache, key, value) {
 function renderNoteContent(title, content, htmlCache, noteId) {
   let titleText = title;
   if (titleText === undefined || titleText === "") {
-    titleText = "Untitled";
+    titleText = t('search.preview.untitled');
   }
 
   const cacheKey = `${noteId}-${content.length}`;
