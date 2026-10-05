@@ -2,6 +2,7 @@ package canvas
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 	"time"
@@ -24,8 +25,7 @@ func HandleGetCanvases(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(canvases)
+	utils.SendJSON(w, http.StatusOK, canvases)
 }
 
 func HandleGetCanvas(w http.ResponseWriter, r *http.Request) {
@@ -38,12 +38,15 @@ func HandleGetCanvas(w http.ResponseWriter, r *http.Request) {
 
 	canvas, err := GetCanvasByID(canvasID)
 	if err != nil {
-		utils.SendErrorResponse(w, "CANVAS_READ_FAILED", "Error fetching canvas.", err, http.StatusNotFound)
+		status := http.StatusInternalServerError
+		if errors.Is(err, utils.ErrNotFound) {
+			status = http.StatusNotFound
+		}
+		utils.SendErrorResponse(w, "CANVAS_READ_FAILED", "Error fetching canvas.", err, status)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(canvas)
+	utils.SendJSON(w, http.StatusOK, canvas)
 }
 
 func HandleCreateCanvas(w http.ResponseWriter, r *http.Request) {
@@ -58,9 +61,7 @@ func HandleCreateCanvas(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(canvas)
+	utils.SendJSON(w, http.StatusCreated, canvas)
 }
 
 func HandleUpdateCanvas(w http.ResponseWriter, r *http.Request) {
@@ -84,8 +85,7 @@ func HandleUpdateCanvas(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(canvas)
+	utils.SendJSON(w, http.StatusOK, canvas)
 }
 
 func HandleDeleteCanvas(w http.ResponseWriter, r *http.Request) {

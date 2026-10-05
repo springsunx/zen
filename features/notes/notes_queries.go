@@ -4,12 +4,15 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"zen/commons/auth"
 	"zen/commons/sqlite"
 	"zen/features/tags"
 )
 
-func SearchNotes(term string, limit int) ([]Note, error) {
+func SearchNotes(access auth.Access, term string, limit int, sort string) ([]Note, error) {
 	notes := []Note{}
+
+	scopePredicate, scopeArgs := buildReadableNotesPredicate(access)
 
 	query := `
 		SELECT
@@ -30,7 +33,7 @@ func SearchNotes(term string, limit int) ([]Note, error) {
 			tags t ON nt.tag_id = t.tag_id
 		WHERE
 			n.deleted_at IS NULL
-			AND (n.title LIKE '%' || ? || '%' OR n.content LIKE '%' || ? || '%')
+			AND (n.title LIKE '%' || ? || '%' OR n.content LIKE '%' || ? || '%') ` + scopePredicate + `
 		GROUP BY
 			n.note_id
 		ORDER BY
@@ -48,7 +51,11 @@ func SearchNotes(term string, limit int) ([]Note, error) {
 			?
 	`
 
-	rows, err := sqlite.DB.Query(query, term, term, term, term, limit)
+	queryArgs := []interface{}{term, term, term, term}
+	queryArgs = append(queryArgs, scopeArgs...)
+	queryArgs = append(queryArgs, limit)
+
+	rows, err := sqlite.DB.Query(query, queryArgs...)
 	if err != nil {
 		err = fmt.Errorf("error searching notes: %w", err)
 		slog.Error(err.Error())

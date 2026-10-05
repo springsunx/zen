@@ -23,8 +23,12 @@ English | [中文](./readme-cn.md)
 * Templates
 * Pinned notes
 * Archive and soft delete notes
+* Bulk archive and delete
+* Version history
+* Internal note links with side panel preview
 * Minimal dependency footprint
 * Automated backups (via [Zen Backup](https://github.com/sheshbabu/zen-backup))
+* Import from other services (via [Zen Import](https://github.com/sheshbabu/zen-import))
 
 ### Add Features
 * Add multilingual support

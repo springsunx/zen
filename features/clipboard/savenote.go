@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"zen/commons/auth"
 	"zen/commons/utils"
 	"zen/features/attachments"
 	"zen/features/images"
@@ -64,7 +65,7 @@ func handleSingleSaveAsNote(w http.ResponseWriter, id string) {
 		return
 	}
 
-	createdNote, err := notes.CreateNote(notes.Note{Title: title, Content: content})
+	createdNote, err := notes.CreateNote(auth.Unrestricted, notes.Note{Title: title, Content: content})
 	if err != nil {
 		utils.SendErrorResponse(w, "NOTE_CREATE_FAILED", "Error creating note.", err, http.StatusInternalServerError)
 		return
@@ -145,7 +146,7 @@ func handleBatchSaveAsNote(w http.ResponseWriter, batchID string) {
 
 	content := strings.Join(contentParts, "\n\n")
 
-	createdNote, err := notes.CreateNote(notes.Note{Title: title, Content: content})
+	createdNote, err := notes.CreateNote(auth.Unrestricted, notes.Note{Title: title, Content: content})
 	if err != nil {
 		utils.SendErrorResponse(w, "NOTE_CREATE_FAILED", "Error creating note.", err, http.StatusInternalServerError)
 		return

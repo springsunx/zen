@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"image"
 	_ "image/gif"
@@ -14,6 +15,7 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"zen/commons/auth"
 	"zen/commons/utils"
 	"zen/features/images"
 	"zen/features/notes"
@@ -100,26 +102,6 @@ type ToolContent struct {
 	Text string `json:"text"`
 }
 
-func extractTokenID(r *http.Request) int {
-	authHeader := r.Header.Get("Authorization")
-	if authHeader == "" {
-		return 0
-	}
-
-	if !strings.HasPrefix(authHeader, "Bearer ") {
-		return 0
-	}
-
-	token := strings.TrimPrefix(authHeader, "Bearer ")
-
-	id, err := GetTokenIDByToken(token)
-	if err != nil {
-		slog.Error("MCP token validation failed", "error", err)
-		return 0
-	}
-	return id
-}
-
 func HandleMCP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
@@ -136,8 +118,8 @@ func HandleMCP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tokenID := extractTokenID(r)
-	if tokenID == 0 {
+	access, isValid := auth.GetAccessFromBearer(r)
+	if !isValid {
 		utils.SendErrorResponse(w, "UNAUTHORIZED", "Valid access token required", nil, http.StatusUnauthorized)
 		return
 	}
@@ -148,18 +130,16 @@ func HandleMCP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := handleMCPMessage(req, tokenID)
+	response := handleMCPMessage(req, access)
 	if response == nil {
 		w.WriteHeader(http.StatusOK)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+	utils.SendJSON(w, http.StatusOK, response)
 }
 
-func handleMCPMessage(req Request, tokenID int) interface{} {
+func handleMCPMessage(req Request, access auth.Access) interface{} {
 	switch req.Method {
 	case "initialize":
 		return handleInitialize(req)
@@ -168,7 +148,7 @@ func handleMCPMessage(req Request, tokenID int) interface{} {
 	case "tools/list":
 		return handleToolsList(req)
 	case "tools/call":
-		return handleToolsCall(req, tokenID)
+		return handleToolsCall(req, access)
 	default:
 		return createErrorResponse(req.ID, -32601, "Method not found", nil)
 	}
@@ -333,7 +313,7 @@ func handleToolsList(req Request) *Response {
 	}
 }
 
-func handleToolsCall(req Request, tokenID int) *Response {
+func handleToolsCall(req Request, access auth.Access) *Response {
 	var params ToolCallParams
 	paramBytes, err := json.Marshal(req.Params)
 	if err != nil {
@@ -348,15 +328,15 @@ func handleToolsCall(req Request, tokenID int) *Response {
 
 	switch params.Name {
 	case "search_notes":
-		result = handleSearchNotes(params.Arguments)
+		result = handleSearchNotes(params.Arguments, access)
 	case "list_notes":
-		result = handleListNotes(params.Arguments)
+		result = handleListNotes(params.Arguments, access)
 	case "get_note":
-		result = handleGetNote(params.Arguments)
+		result = handleGetNote(params.Arguments, access)
 	case "create_note":
-		result = handleCreateNote(params.Arguments)
+		result = handleCreateNote(params.Arguments, access)
 	case "update_note":
-		result = handleUpdateNote(params.Arguments, tokenID)
+		result = handleUpdateNote(params.Arguments, access)
 	case "upload_image":
 		result = handleUploadImage(params.Arguments)
 	default:
@@ -370,7 +350,7 @@ func handleToolsCall(req Request, tokenID int) *Response {
 	}
 }
 
-func handleSearchNotes(args map[string]interface{}) ToolCallResult {
+func handleSearchNotes(args map[string]interface{}, access auth.Access) ToolCallResult {
 	query, ok := args["query"].(string)
 	if !ok || query == "" {
 		return ToolCallResult{
@@ -384,7 +364,7 @@ func handleSearchNotes(args map[string]interface{}) ToolCallResult {
 		limit = int(l)
 	}
 
-	searchNotes, err := notes.SearchNotes(query, limit)
+	searchNotes, err := notes.SearchNotes(access, query, limit, notes.SortRelevance)
 	if err != nil {
 		slog.Error("MCP search error", "error", err)
 		return ToolCallResult{
@@ -420,7 +400,7 @@ func handleSearchNotes(args map[string]interface{}) ToolCallResult {
 	}
 }
 
-func handleListNotes(args map[string]interface{}) ToolCallResult {
+func handleListNotes(args map[string]interface{}, access auth.Access) ToolCallResult {
 	page := 1
 	if p, ok := args["page"].(float64); ok {
 		page = int(p)
@@ -438,7 +418,7 @@ func handleListNotes(args map[string]interface{}) ToolCallResult {
 
 	filter := notes.NewNotesFilter(page, 0, 0, deleted, archived)
 
-	allNotes, total, err := notes.GetAllNotes(filter)
+	allNotes, total, err := notes.GetAllNotes(access, filter)
 	if err != nil {
 		slog.Error("MCP list notes error", "error", err)
 		return ToolCallResult{
@@ -481,7 +461,7 @@ func handleListNotes(args map[string]interface{}) ToolCallResult {
 	}
 }
 
-func handleGetNote(args map[string]interface{}) ToolCallResult {
+func handleGetNote(args map[string]interface{}, access auth.Access) ToolCallResult {
 	noteIDFloat, ok := args["noteId"].(float64)
 	if !ok {
 		return ToolCallResult{
@@ -491,7 +471,13 @@ func handleGetNote(args map[string]interface{}) ToolCallResult {
 	}
 
 	noteID := int(noteIDFloat)
-	note, err := notes.GetNoteByID(noteID)
+	note, err := notes.GetNoteByID(access, noteID)
+	if errors.Is(err, utils.ErrNotFound) {
+		return ToolCallResult{
+			Content: []ToolContent{{Type: "text", Text: "Error: note not found"}},
+			IsError: true,
+		}
+	}
 	if err != nil {
 		slog.Error("MCP get note error", "error", err)
 		return ToolCallResult{
@@ -530,7 +516,7 @@ func handleGetNote(args map[string]interface{}) ToolCallResult {
 	}
 }
 
-func handleCreateNote(args map[string]interface{}) ToolCallResult {
+func handleCreateNote(args map[string]interface{}, access auth.Access) ToolCallResult {
 	title, ok := args["title"].(string)
 	if !ok || title == "" {
 		return ToolCallResult{
@@ -567,7 +553,20 @@ func handleCreateNote(args map[string]interface{}) ToolCallResult {
 		note.Tags = []tags.Tag{}
 	}
 
-	createdNote, err := notes.CreateNote(note)
+	newTagIDs := []int{}
+	for _, tag := range note.Tags {
+		if tag.TagID >= 0 {
+			newTagIDs = append(newTagIDs, tag.TagID)
+		}
+	}
+	if !auth.CanWrite(access, newTagIDs) {
+		return ToolCallResult{
+			Content: []ToolContent{{Type: "text", Text: "Error: this token has no write grant for these tags."}},
+			IsError: true,
+		}
+	}
+
+	createdNote, err := notes.CreateNote(access, note)
 	if err != nil {
 		slog.Error("MCP create note error", "error", err)
 		return ToolCallResult{
@@ -597,7 +596,7 @@ func handleCreateNote(args map[string]interface{}) ToolCallResult {
 	}
 }
 
-func handleUpdateNote(args map[string]interface{}, tokenID int) ToolCallResult {
+func handleUpdateNote(args map[string]interface{}, access auth.Access) ToolCallResult {
 	noteIDFloat, ok := args["noteId"].(float64)
 	if !ok {
 		return ToolCallResult{
@@ -607,8 +606,8 @@ func handleUpdateNote(args map[string]interface{}, tokenID int) ToolCallResult {
 	}
 	noteID := int(noteIDFloat)
 
-	// ── Permission check: tag-based ──
-	allowed, err := IsNoteAllowedForToken(noteID, tokenID)
+	// ── Permission check: every tag on the note needs a write grant ──
+	allowed, err := CanWriteNote(access, noteID)
 	if err != nil {
 		slog.Error("MCP permission check error", "error", err)
 		return ToolCallResult{
@@ -620,15 +619,14 @@ func handleUpdateNote(args map[string]interface{}, tokenID int) ToolCallResult {
 		return ToolCallResult{
 			Content: []ToolContent{{
 				Type: "text",
-				Text: "Error: this token does not have permission to modify this note. " +
-					"The note must be tagged with one of the tags allowed for this token.",
+				Text: "Error: this token has no write grant for every tag on this note.",
 			}},
 			IsError: true,
 		}
 	}
 
 	// ── Get existing note ──
-	existingNote, err := notes.GetNoteByID(noteID)
+	existingNote, err := notes.GetNoteByID(access, noteID)
 	if err != nil {
 		slog.Error("MCP get note error", "error", err)
 		return ToolCallResult{
@@ -646,7 +644,7 @@ func handleUpdateNote(args map[string]interface{}, tokenID int) ToolCallResult {
 	}
 
 	// ── Save ──
-	updatedNote, err := notes.UpdateNote(existingNote)
+	updatedNote, err := notes.UpdateNote(access, existingNote)
 	if err != nil {
 		slog.Error("MCP update note error", "error", err)
 		return ToolCallResult{
@@ -776,7 +774,5 @@ func createErrorResponse(id interface{}, code int, message string, data interfac
 
 func sendRPCError(w http.ResponseWriter, id interface{}, code int, message string, data interface{}) {
 	response := createErrorResponse(id, code, message, data)
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+	utils.SendJSON(w, http.StatusOK, response)
 }

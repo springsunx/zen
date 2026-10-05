@@ -2,9 +2,12 @@ package tags
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 	"zen/commons/utils"
 )
 
@@ -33,7 +36,7 @@ func HandleGetTags(w http.ResponseWriter, r *http.Request) {
 	if section == "templates" {
 		tags, err = GetFilteredTags(focusModeID, isArchived, isDeleted, section, query)
 	} else if query != "" {
-		tags, err = SearchTags(query)
+		tags, err = GetFilteredTags(focusModeID, isArchived, isDeleted, "notes", query)
 	} else {
 		tags, err = GetFilteredTags(focusModeID, isArchived, isDeleted, "notes", "")
 	}
@@ -79,6 +82,16 @@ func HandleUpdateTag(w http.ResponseWriter, r *http.Request) {
 	var tag Tag
 	if err := json.NewDecoder(r.Body).Decode(&tag); err != nil {
 		utils.SendErrorResponse(w, "INVALID_REQUEST_BODY", "Invalid request data", err, http.StatusBadRequest)
+		return
+	}
+
+	defaultColor := DefaultTagColor
+	if tag.Color == nil || *tag.Color == "" {
+		tag.Color = &defaultColor
+	}
+
+	if code, message, err := isValid(tag); err != nil {
+		utils.SendErrorResponse(w, code, message, err, http.StatusBadRequest)
 		return
 	}
 
@@ -136,7 +149,9 @@ func HandleMoveTag(w http.ResponseWriter, r *http.Request) {
 }
 
 func HandleReorderTags(w http.ResponseWriter, r *http.Request) {
-	var payload struct{ Order []int `json:"order"` }
+	var payload struct {
+		Order []int `json:"order"`
+	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		utils.SendErrorResponse(w, "INVALID_REQUEST_BODY", "Invalid request data", err, http.StatusBadRequest)
 		return
@@ -146,4 +161,28 @@ func HandleReorderTags(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func isValid(tag Tag) (string, string, error) {
+	validTagColors := map[string]bool{
+		"gray":   true,
+		"red":    true,
+		"orange": true,
+		"yellow": true,
+		"green":  true,
+		"teal":   true,
+		"blue":   true,
+		"purple": true,
+		"pink":   true,
+	}
+
+	if strings.TrimSpace(tag.Name) == "" {
+		return "INVALID_TAG_NAME", "Tag name cannot be empty", errors.New("tag name cannot be empty")
+	}
+
+	if tag.Color == nil || !validTagColors[*tag.Color] {
+		return "INVALID_TAG_COLOR", "Invalid tag color", fmt.Errorf("invalid tag color: %v", tag.Color)
+	}
+
+	return "", "", nil
 }

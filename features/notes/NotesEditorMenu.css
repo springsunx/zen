@@ -1,0 +1,117 @@
+.notes-editor-menu {
+    position: relative;
+
+    .notes-editor-menu-dropdown {
+        top: 100%;
+        margin-top: var(--spacing-1);
+        position: absolute;
+        left: 0;
+        min-width: 180px;
+        box-shadow: var(--shadow-4);
+        background-color: var(--bg-secondary);
+        z-index: var(--z-base);
+        border: 1px solid var(--neutral-100);
+        border-radius: var(--radius-1);
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(-4px);
+        transition: opacity var(--transition-fast) ease-out, transform var(--transition-fast) ease-out, visibility var(--transition-fast) ease-out;
+        pointer-events: none;
+    }
+
+    .notes-editor-menu-options {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        overflow: auto;
+
+        &::-webkit-scrollbar {
+            display: none;
+        }
+    }
+
+    .notes-editor-menu-option {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-2);
+        padding-left: var(--spacing-2);
+        height: 36px;
+        margin: var(--spacing-1);
+        border-radius: var(--radius-1);
+        white-space: nowrap;
+        overflow: hidden;
+        font: var(--sm);
+        font-weight: 500;
+        cursor: pointer;
+        transition: background-color var(--transition-normal);
+
+        svg.lucide {
+            width: var(--icon-sm);
+            height: var(--icon-sm);
+
+            line,
+            circle,
+            rect,
+            path {
+                stroke: var(--neutral-500);
+            }
+        }
+
+        &:hover {
+            background-color: var(--neutral-200);
+        }
+
+        &:active {
+            transform: scale(0.98);
+            transition: transform var(--transition-fast) ease-out;
+        }
+
+        &.is-destructive {
+            color: var(--red-500);
+
+            svg.lucide line,
+            svg.lucide circle,
+            svg.lucide rect,
+            svg.lucide path {
+                stroke: var(--red-500);
+            }
+        }
+    }
+
+    .notes-editor-menu-footer {
+        display: flex;
+        flex-direction: column;
+        padding: var(--spacing-2) var(--spacing-3);
+        border-top: 1px solid var(--neutral-100);
+        font: var(--sm);
+        white-space: nowrap;
+        margin-top: var(--spacing-2);
+
+        div {
+            display: flex;
+            justify-content: space-between;
+            gap: var(--spacing-4);
+
+            &+div {
+                margin-top: var(--spacing-1);
+            }
+
+            span:first-child {
+                color: var(--neutral-400);
+            }
+
+            span:last-child {
+                color: var(--neutral-500);
+            }
+        }
+    }
+
+    &.is-open {
+        .notes-editor-menu-dropdown {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+    }
+}

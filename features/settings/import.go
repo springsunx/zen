@@ -5,11 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+	"zen/commons/auth"
 	"zen/commons/sqlite"
 	"zen/commons/utils"
 	"zen/features/images"
@@ -20,12 +22,12 @@ import (
 const MAX_UPLOAD_SIZE = 200 << 20 // 200MB
 
 type ImportResult struct {
-	Message     string   `json:"message"`
-	Imported    int      `json:"imported"`
-	Skipped     int      `json:"skipped"`
-	Errors      int      `json:"errors"`
-	ImportedMD  []string `json:"importedMd"`
-	ErrorFiles  []string `json:"errorFiles"`
+	Message      string   `json:"message"`
+	Imported     int      `json:"imported"`
+	Skipped      int      `json:"skipped"`
+	Errors       int      `json:"errors"`
+	ImportedMD   []string `json:"importedMd"`
+	ErrorFiles   []string `json:"errorFiles"`
 	SkippedFiles []string `json:"skippedFiles"`
 }
 
@@ -102,17 +104,14 @@ func HandleImport(w http.ResponseWriter, r *http.Request) {
 		note.CreatedAt = *fm.updatedAt
 		note.UpdatedAt = *fm.updatedAt
 	}
-
-	_, err = notes.CreateNote(note)
+	_, err = notes.CreateNote(auth.Unrestricted, note)
 	if err != nil {
 		err = fmt.Errorf("error creating note: %w", err)
 		utils.SendErrorResponse(w, "NOTES_IMPORT_FAILED", "Error importing note", err, http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"message": "File uploaded successfully"}`))
+	utils.SendJSON(w, http.StatusOK, map[string]string{"message": "File uploaded successfully"})
 }
 
 func handleZipImport(w http.ResponseWriter, src io.Reader, filename string) {
@@ -138,9 +137,9 @@ func handleZipImport(w http.ResponseWriter, src io.Reader, filename string) {
 	defer zipReader.Close()
 
 	result := ImportResult{
-		Message:  "Import completed",
-		ImportedMD: []string{},
-		ErrorFiles: []string{},
+		Message:      "Import completed",
+		ImportedMD:   []string{},
+		ErrorFiles:   []string{},
 		SkippedFiles: []string{},
 	}
 
@@ -192,7 +191,7 @@ func handleZipImport(w http.ResponseWriter, src io.Reader, filename string) {
 				Tags:    resolveTags(extractTagNamesFromPath(name)),
 			}
 
-			_, err = notes.CreateNote(note)
+			_, err = notes.CreateNote(auth.Unrestricted, note)
 			if err != nil {
 				result.ErrorFiles = append(result.ErrorFiles, f.Name)
 				result.Errors++
@@ -474,7 +473,7 @@ func getOrCreateTagWithMeta(name string, color *string, sortOrder *int) int {
 	}
 
 	// Check if tag exists
-	existingTags, err := tags.SearchTags(name)
+	existingTags, err := tags.SearchTags(auth.Unrestricted, name)
 	if err == nil {
 		for _, t := range existingTags {
 			if t.Name == name {
@@ -502,28 +501,6 @@ func getOrCreateTagWithMeta(name string, color *string, sortOrder *int) int {
 		return 0
 	}
 	return tagID
-}
-
-func extractTagNamesFromPath(path string) []string {
-	if path == "" {
-		return nil
-	}
-
-	cleanPath := filepath.Clean(path)
-	pathParts := strings.Split(cleanPath, string(filepath.Separator))
-
-	var folders []string
-	for i, part := range pathParts {
-		if part != "" && i < len(pathParts)-1 {
-			folders = append(folders, part)
-		}
-	}
-
-	if len(folders) == 0 {
-		return nil
-	}
-
-	return []string{folders[len(folders)-1]}
 }
 
 func extractFrontmatter(content string) (string, frontmatter) {
@@ -593,8 +570,10 @@ func splitTags(value string) []string {
 func resolveTags(names []string) []tags.Tag {
 	var result []tags.Tag
 	for _, name := range names {
-		existingTags, err := tags.SearchTags(name)
-		if err == nil {
+		existingTags, err := tags.SearchTags(auth.Unrestricted, name)
+		if err != nil {
+			slog.Error(err.Error())
+		} else {
 			for _, t := range existingTags {
 				if t.Name == name {
 					result = append(result, t)
@@ -606,4 +585,26 @@ func resolveTags(names []string) []tags.Tag {
 	next:
 	}
 	return result
+}
+
+func extractTagNamesFromPath(path string) []string {
+	if path == "" {
+		return nil
+	}
+
+	cleanPath := filepath.Clean(path)
+	pathParts := strings.Split(cleanPath, string(filepath.Separator))
+
+	var folders []string
+	for i, part := range pathParts {
+		if part != "" && i < len(pathParts)-1 {
+			folders = append(folders, part)
+		}
+	}
+
+	if len(folders) == 0 {
+		return nil
+	}
+
+	return []string{folders[len(folders)-1]}
 }

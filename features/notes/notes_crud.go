@@ -7,7 +7,9 @@ import (
 	"log/slog"
 	"regexp"
 	"strings"
+	"zen/commons/auth"
 	"zen/commons/sqlite"
+	"zen/commons/utils"
 	"zen/features/tags"
 )
 
@@ -34,15 +36,17 @@ func syncNoteFileLinks(tx *sql.Tx, noteID int, content string) {
 	}
 }
 
-func GetAllNotes(filter NotesFilter) ([]Note, int, error) {
+func GetAllNotes(access auth.Access, filter NotesFilter) ([]Note, int, error) {
 	notes := []Note{}
 	total := 0
 	offset := (filter.page - 1) * NOTES_LIMIT
 
+	scopePredicate, scopeArgs := buildReadableNotesPredicate(access)
+
 	var query string
 	var queryArgs []interface{}
 
-	statusCond := statusCondition(filter)
+	statusCond := statusCondition(filter) + " " + scopePredicate
 
 	if filter.tagID != 0 {
 		query = fmt.Sprintf(`
@@ -52,7 +56,7 @@ func GetAllNotes(filter NotesFilter) ([]Note, int, error) {
 				n.content,
 				SUBSTR(n.content, 0, 500) AS snippet,
 				n.updated_at,
-				` + fmtTagsJSON("t2") + `,
+				`+fmtTagsJSON("t2")+`,
 				n.archived_at,
 				n.deleted_at,
 				n.pinned_at,
@@ -88,7 +92,9 @@ func GetAllNotes(filter NotesFilter) ([]Note, int, error) {
 			OFFSET
 				?
 		`, statusCond)
-		queryArgs = []interface{}{filter.tagID, NOTES_LIMIT, offset}
+		queryArgs = []interface{}{filter.tagID}
+		queryArgs = append(queryArgs, scopeArgs...)
+		queryArgs = append(queryArgs, NOTES_LIMIT, offset)
 	} else if filter.isUntagged {
 		query = fmt.Sprintf(`
 			SELECT
@@ -120,7 +126,8 @@ func GetAllNotes(filter NotesFilter) ([]Note, int, error) {
 			OFFSET
 				?
 		`, statusCond)
-		queryArgs = []interface{}{NOTES_LIMIT, offset}
+		queryArgs = append([]interface{}{}, scopeArgs...)
+		queryArgs = append(queryArgs, NOTES_LIMIT, offset)
 	} else if filter.focusModeID != 0 {
 		untaggedClause := ""
 		if filter.isDeleted || filter.isArchived {
@@ -133,7 +140,7 @@ func GetAllNotes(filter NotesFilter) ([]Note, int, error) {
 				n.content,
 				SUBSTR(n.content, 0, 500) AS snippet,
 				n.updated_at,
-				` + fmtTagsJSON("t") + `,
+				`+fmtTagsJSON("t")+`,
 				n.archived_at,
 				n.deleted_at,
 				n.pinned_at,
@@ -162,7 +169,9 @@ func GetAllNotes(filter NotesFilter) ([]Note, int, error) {
 			OFFSET
 				?
 		`, statusCond, untaggedClause)
-		queryArgs = []interface{}{filter.focusModeID, filter.focusModeID, NOTES_LIMIT, offset}
+		queryArgs = []interface{}{filter.focusModeID, filter.focusModeID}
+		queryArgs = append(queryArgs, scopeArgs...)
+		queryArgs = append(queryArgs, NOTES_LIMIT, offset)
 	} else {
 		query = fmt.Sprintf(`
 			SELECT
@@ -171,7 +180,7 @@ func GetAllNotes(filter NotesFilter) ([]Note, int, error) {
 				n.content,
 				SUBSTR(n.content, 0, 500) AS snippet,
 				n.updated_at,
-				` + fmtTagsJSON("t") + `,
+				`+fmtTagsJSON("t")+`,
 				n.archived_at,
 				n.deleted_at,
 				n.pinned_at,
@@ -197,7 +206,8 @@ func GetAllNotes(filter NotesFilter) ([]Note, int, error) {
 			OFFSET
 				?
 		`, statusCond)
-		queryArgs = []interface{}{NOTES_LIMIT, offset}
+		queryArgs = append([]interface{}{}, scopeArgs...)
+		queryArgs = append(queryArgs, NOTES_LIMIT, offset)
 	}
 
 	rows, err := sqlite.DB.Query(query, queryArgs...)
@@ -233,7 +243,8 @@ func GetAllNotes(filter NotesFilter) ([]Note, int, error) {
 	return notes, total, nil
 }
 
-func GetNoteByID(noteID int) (Note, error) {
+func GetNoteByID(access auth.Access, noteID int) (Note, error) {
+	scopePredicate, scopeArgs := buildReadableNotesPredicate(access)
 	var note Note
 	var archivedAt sql.NullTime
 	var deletedAt sql.NullTime
@@ -258,13 +269,18 @@ func GetNoteByID(noteID int) (Note, error) {
 		LEFT JOIN
 			tags t ON nt.tag_id = t.tag_id
 		WHERE
-			n.note_id = ?
+			n.note_id = ? ` + scopePredicate + `
 		GROUP BY
 			n.note_id
 	`
 
-	row := sqlite.DB.QueryRow(query, noteID)
+	row := sqlite.DB.QueryRow(query, append([]interface{}{noteID}, scopeArgs...)...)
 	err := row.Scan(&note.NoteID, &note.Title, &note.Content, &note.Snippet, &note.UpdatedAt, &tagsJSON, &archivedAt, &deletedAt, &pinnedAt)
+	if err == sql.ErrNoRows {
+		err = fmt.Errorf("note %d: %w", noteID, utils.ErrNotFound)
+		slog.Error(err.Error())
+		return note, err
+	}
 	if err != nil {
 		err = fmt.Errorf("error retrieving note: %w", err)
 		slog.Error(err.Error())
@@ -279,7 +295,22 @@ func GetNoteByID(noteID int) (Note, error) {
 	return note, nil
 }
 
-func CreateNote(note Note) (Note, error) {
+func CreateNote(access auth.Access, note Note) (Note, error) {
+	tagIDs := []int{}
+	for _, tag := range note.Tags {
+		if tag.TagID >= 0 {
+			tagIDs = append(tagIDs, tag.TagID)
+		}
+	}
+
+	// New tag names resolve to ids inside the transaction, so a scoped token is only
+	// allowed to create a note when no tag name has to be invented.
+	if len(tagIDs) > 0 || access.WriteTagIDs == nil {
+		if !auth.CanWrite(access, tagIDs) {
+			return note, auth.ErrForbidden
+		}
+	}
+
 	tx, err := sqlite.DB.Begin()
 
 	if err != nil {
@@ -372,7 +403,11 @@ func CreateNote(note Note) (Note, error) {
 	return note, nil
 }
 
-func UpdateNote(note Note) (Note, error) {
+func UpdateNote(access auth.Access, note Note) (Note, error) {
+	if err := ensureNoteWritable(access, note.NoteID); err != nil {
+		return note, err
+	}
+
 	tx, err := sqlite.DB.Begin()
 
 	if err != nil {
@@ -503,4 +538,29 @@ func GetNotesCount(isDeleted, isArchived bool) (int, error) {
 	}
 
 	return count, nil
+}
+
+// ensureNoteWritable requires a write grant on every tag the note carries. Unrestricted
+// session access writes anything; a tag-scoped token is blocked by any tag it cannot write.
+func ensureNoteWritable(access auth.Access, noteID int) error {
+	rows, err := sqlite.DB.Query("SELECT tag_id FROM note_tags WHERE note_id = ?", noteID)
+	if err != nil {
+		return fmt.Errorf("error reading note tags: %w", err)
+	}
+	defer rows.Close()
+
+	tagIDs := []int{}
+	for rows.Next() {
+		var tagID int
+		if err := rows.Scan(&tagID); err != nil {
+			return fmt.Errorf("error scanning note tag: %w", err)
+		}
+		tagIDs = append(tagIDs, tagID)
+	}
+
+	if !auth.CanWrite(access, tagIDs) {
+		return auth.ErrForbidden
+	}
+
+	return nil
 }

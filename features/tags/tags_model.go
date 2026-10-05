@@ -3,30 +3,34 @@ package tags
 import (
 	"database/sql"
 	"fmt"
+	"github.com/mozillazg/go-pinyin"
 	"log/slog"
 	"strings"
 	"unicode"
-	"github.com/mozillazg/go-pinyin"
+	"zen/commons/auth"
 	"zen/commons/sqlite"
 )
 
 type Tag struct {
-	TagID     int    `json:"tagId"`
-	Name      string `json:"name"`
-	ParentID  *int   `json:"parentId,omitempty"`
+	TagID     int     `json:"tagId"`
+	Name      string  `json:"name"`
+	ParentID  *int    `json:"parentId,omitempty"`
 	Color     *string `json:"color,omitempty"`
-	SortOrder *int   `json:"sortOrder,omitempty"`
-	NoteCount int    `json:"noteCount"`
-	Children  []Tag  `json:"children,omitempty"`
+	SortOrder *int    `json:"sortOrder,omitempty"`
+	NoteCount int     `json:"noteCount"`
+	Children  []Tag   `json:"children,omitempty"`
 }
+
+const DefaultTagColor = "gray"
 
 type TagsResponse struct {
 	Tags          []Tag `json:"tags"`
 	UntaggedCount int   `json:"untaggedCount"`
 }
 
-func GetAllTags() ([]Tag, error) {
+func GetAllTags(access auth.Access) ([]Tag, error) {
 	tags := []Tag{}
+	scopePredicate, scopeArgs := BuildReadableTagsPredicate(access, "t.tag_id")
 	query := `
 		SELECT
 			t.tag_id,
@@ -39,6 +43,8 @@ func GetAllTags() ([]Tag, error) {
 			tags t
 		LEFT JOIN
 			note_tags nt ON t.tag_id = nt.tag_id
+		WHERE
+			1 ` + scopePredicate + `
 		GROUP BY
 			t.tag_id, t.name, t.parent_id, t.sort_order
 		ORDER BY
@@ -46,7 +52,7 @@ func GetAllTags() ([]Tag, error) {
 			note_count DESC
 	`
 
-	rows, err := sqlite.DB.Query(query)
+	rows, err := sqlite.DB.Query(query, scopeArgs...)
 	if err != nil {
 		err = fmt.Errorf("error retrieving tags: %w", err)
 		slog.Error(err.Error())
@@ -118,7 +124,7 @@ func getAllTagsForSearch() ([]Tag, error) {
 	return tags, nil
 }
 
-func SearchTags(term string) ([]Tag, error) {
+func SearchTags(access auth.Access, term string) ([]Tag, error) {
 	// Phase 1: SQL LIKE search for Chinese name match
 	sqlTags := []Tag{}
 	query := `
@@ -188,7 +194,7 @@ func SearchTags(term string) ([]Tag, error) {
 	return sqlTags, nil
 }
 
-func GetTagsByFocusModeID(focusModeID int) ([]Tag, error) {
+func GetTagsByFocusModeID(access auth.Access, focusModeID int) ([]Tag, error) {
 	tags := []Tag{}
 	query := `
 		SELECT
@@ -660,7 +666,6 @@ func DeleteTag(tagID int) error {
 	return nil
 }
 
-
 func UpdateTagOrder(tagIDs []int) error {
 	tx, err := sqlite.DB.Begin()
 	if err != nil {
@@ -761,4 +766,24 @@ func CleanupUnusedTags() (int, error) {
 
 	slog.Info("unused tags cleaned up", "count", len(tagIDs))
 	return len(tagIDs), nil
+}
+
+// BuildReadableTagsPredicate narrows a query to tags the access grant can read.
+// Tag lists are nil when every tag is covered and empty when none are.
+func BuildReadableTagsPredicate(access auth.Access, tagIDColumn string) (string, []interface{}) {
+	if auth.CanReadAllTags(access) {
+		return "", nil
+	}
+
+	if len(access.ReadTagIDs) == 0 {
+		return "AND 0", nil
+	}
+
+	placeholders := strings.TrimSuffix(strings.Repeat("?,", len(access.ReadTagIDs)), ",")
+	args := []interface{}{}
+	for _, tagID := range access.ReadTagIDs {
+		args = append(args, tagID)
+	}
+
+	return fmt.Sprintf("AND %s IN (%s)", tagIDColumn, placeholders), args
 }

@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"zen/commons/auth"
 	"zen/commons/utils"
 	"zen/features/notes"
 )
@@ -86,7 +87,7 @@ func HandleGetSharedNote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	note, err := notes.GetNoteByID(share.NoteID)
+	note, err := notes.GetNoteByID(auth.Unrestricted, share.NoteID)
 	if err != nil {
 		utils.SendErrorResponse(w, "NOTE_READ_FAILED", "Failed to read note", err, http.StatusInternalServerError)
 		return

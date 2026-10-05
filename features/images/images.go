@@ -9,6 +9,7 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -164,8 +165,7 @@ func HandleGetImages(w http.ResponseWriter, r *http.Request) {
 		Total:  total,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	utils.SendJSON(w, http.StatusOK, response)
 }
 
 func HandleUploadImage(w http.ResponseWriter, r *http.Request) {
@@ -230,10 +230,11 @@ func HandleUploadImage(w http.ResponseWriter, r *http.Request) {
 
 	image.URL = storage.GetImageURL(filename)
 
-	queue.AddImageTask(filename, queue.QUEUE_IMAGE_PROCESS, "process")
+	if _, err = queue.AddImageTask(filename, queue.QUEUE_IMAGE_PROCESS, "process"); err != nil {
+		slog.Error(err.Error())
+	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(image)
+	utils.SendJSON(w, http.StatusOK, image)
 }
 
 func getImageInfo(file io.Reader) (*ImageInfo, error) {

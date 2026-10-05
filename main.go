@@ -17,10 +17,10 @@ import (
 	"zen/commons/auth"
 	"zen/commons/session"
 	"zen/commons/sqlite"
+	"zen/features/ai"
 	"zen/features/attachments"
 	"zen/features/canvas"
 	"zen/features/clipboard"
-	"zen/features/ai"
 	"zen/features/focus"
 	"zen/features/images"
 	"zen/features/intelligence"
@@ -32,6 +32,7 @@ import (
 	"zen/features/storage"
 	"zen/features/tags"
 	"zen/features/templates"
+	"zen/features/tokens"
 	"zen/features/users"
 )
 
@@ -118,117 +119,145 @@ func newRouter() *http.ServeMux {
 	sharing.AssetsFS = Assets
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("GET /api/users/me", users.HandleCheckUser)
-	mux.HandleFunc("POST /api/users/login", users.HandleLogin)
-	addPrivateRoute(mux, "POST /api/users/new", users.HandleCreateUser)
-	addPrivateRoute(mux, "POST /api/users/me/password", users.HandleUpdatePassword)
-	addPrivateRoute(mux, "POST /api/users/logout", users.HandleLogout)
+	addPublicRoute(mux, "GET /api/v1/users/me", users.HandleCheckUser)
+	addPublicRoute(mux, "POST /api/v1/users/login", users.HandleLogin)
+	addSessionRoute(mux, "POST /api/v1/users/new", users.HandleCreateUser)
+	addSessionRoute(mux, "POST /api/v1/users/me/password", users.HandleUpdatePassword)
+	addSessionRoute(mux, "POST /api/v1/users/logout", users.HandleLogout)
 
-	addPrivateRoute(mux, "GET /api/notes/", notes.HandleGetNotes)
-	addPrivateRoute(mux, "GET /api/notes/{noteId}/", notes.HandleGetNote)
-	addPrivateRoute(mux, "POST /api/notes/", notes.HandleCreateNote)
-	addPrivateRoute(mux, "PUT /api/notes/{noteId}/", notes.HandleUpdateNote)
-	addPrivateRoute(mux, "PUT /api/notes/{noteId}", notes.HandleUpdateNote)
-	addPrivateRoute(mux, "DELETE /api/notes/bulk/", notes.HandleBulkSoftDeleteNotes)
-	addPrivateRoute(mux, "DELETE /api/notes/{noteId}/", notes.HandleSoftDeleteNote)
-	addPrivateRoute(mux, "DELETE /api/notes/", notes.HandleDeleteNotes)
-	addPrivateRoute(mux, "PUT /api/notes/bulk/archive/", notes.HandleBulkArchiveNotes)
-	addPrivateRoute(mux, "PUT /api/notes/bulk/tag/", notes.HandleBulkAddTag)
-	addPrivateRoute(mux, "DELETE /api/notes/bulk/tag/", notes.HandleBulkRemoveTag)
-	addPrivateRoute(mux, "PUT /api/notes/{noteId}/archive/", notes.HandleArchiveNote)
-	addPrivateRoute(mux, "PUT /api/notes/{noteId}/unarchive/", notes.HandleUnarchiveNote)
-	addPrivateRoute(mux, "PUT /api/notes/{noteId}/restore/", notes.HandleRestoreDeletedNote)
-	addPrivateRoute(mux, "PUT /api/notes/{noteId}/pin/", notes.HandlePinNote)
-	addPrivateRoute(mux, "PUT /api/notes/{noteId}/unpin/", notes.HandleUnpinNote)
-	addPrivateRoute(mux, "GET /api/notes/{noteId}/backlinks/", notes.HandleGetBacklinks)
+	// ─── Notes ───
+	addAuthenticatedRoute(mux, "GET /api/v1/notes/", notes.HandleGetNotes)
+	addAuthenticatedRoute(mux, "GET /api/v1/notes/{noteId}/", notes.HandleGetNote)
+	addSessionRoute(mux, "GET /api/v1/notes/{noteId}/related/", notes.HandleGetRelatedNotes)
+	addAuthenticatedRoute(mux, "POST /api/v1/notes/", notes.HandleCreateNote)
+	addAuthenticatedRoute(mux, "PUT /api/v1/notes/{noteId}/", notes.HandleUpdateNote)
+	addSessionRoute(mux, "DELETE /api/v1/notes/bulk/", notes.HandleBulkSoftDeleteNotes)
+	addSessionRoute(mux, "DELETE /api/v1/notes/{noteId}/", notes.HandleSoftDeleteNote)
+	addSessionRoute(mux, "DELETE /api/v1/notes/", notes.HandleDeleteNotes)
+	addSessionRoute(mux, "PUT /api/v1/notes/bulk/archive/", notes.HandleBulkArchiveNotes)
+	addSessionRoute(mux, "PUT /api/v1/notes/bulk/tag/", notes.HandleBulkAddTag)
+	addSessionRoute(mux, "DELETE /api/v1/notes/bulk/tag/", notes.HandleBulkRemoveTag)
+	addSessionRoute(mux, "PUT /api/v1/notes/{noteId}/archive/", notes.HandleArchiveNote)
+	addSessionRoute(mux, "PUT /api/v1/notes/{noteId}/unarchive/", notes.HandleUnarchiveNote)
+	addSessionRoute(mux, "PUT /api/v1/notes/{noteId}/restore/", notes.HandleRestoreDeletedNote)
+	addSessionRoute(mux, "PUT /api/v1/notes/{noteId}/pin/", notes.HandlePinNote)
+	addSessionRoute(mux, "PUT /api/v1/notes/{noteId}/unpin/", notes.HandleUnpinNote)
+	addSessionRoute(mux, "GET /api/v1/notes/{noteId}/backlinks/", notes.HandleGetBacklinks)
+	addSessionRoute(mux, "GET /api/v1/notes/{noteId}/versions/", notes.HandleGetNoteVersions)
+	addSessionRoute(mux, "PUT /api/v1/notes/{noteId}/versions/{versionId}/restore/", notes.HandleRestoreNoteVersion)
 
-	addPrivateRoute(mux, "POST /api/notes/{noteId}/share/", sharing.HandleCreateShare)
-	addPrivateRoute(mux, "GET /api/notes/{noteId}/shares/", sharing.HandleGetShares)
-	addPrivateRoute(mux, "DELETE /api/shares/{shareId}/", sharing.HandleDeleteShare)
-	mux.HandleFunc("GET /api/shares/{token}", sharing.HandleGetSharedNote)
-	mux.HandleFunc("GET /s/{token}", sharing.HandleSharedNotePage)
+	addSessionRoute(mux, "POST /api/notes/{noteId}/share/", sharing.HandleCreateShare)
+	addSessionRoute(mux, "GET /api/notes/{noteId}/shares/", sharing.HandleGetShares)
+	addSessionRoute(mux, "DELETE /api/shares/{shareId}/", sharing.HandleDeleteShare)
+	addPublicRoute(mux, "GET /api/shares/{token}", sharing.HandleGetSharedNote)
+	addPublicRoute(mux, "GET /s/{token}", sharing.HandleSharedNotePage)
 
-	addPrivateRoute(mux, "GET /api/tags/", tags.HandleGetTags)
-	addPrivateRoute(mux, "PUT /api/tags/", tags.HandleUpdateTag)
-	addPrivateRoute(mux, "PUT /api/tags/reorder/", tags.HandleReorderTags)
-	addPrivateRoute(mux, "DELETE /api/tags/{tagId}/", tags.HandleDeleteTag)
-	addPrivateRoute(mux, "PATCH /api/tags/{tagId}/parent/", tags.HandleMoveTag)
+	// ─── Tags ───
+	addAuthenticatedRoute(mux, "GET /api/v1/tags", tags.HandleGetTags)
+	addAuthenticatedRoute(mux, "GET /api/v1/tags/", tags.HandleGetTags)
+	addSessionRoute(mux, "PUT /api/v1/tags/", tags.HandleUpdateTag)
+	addSessionRoute(mux, "PUT /api/v1/tags/{tagId}/", tags.HandleUpdateTag)
+	addSessionRoute(mux, "PUT /api/v1/tags/reorder/", tags.HandleReorderTags)
+	addSessionRoute(mux, "DELETE /api/v1/tags/{tagId}/", tags.HandleDeleteTag)
+	addSessionRoute(mux, "PATCH /api/v1/tags/{tagId}/parent/", tags.HandleMoveTag)
 
-	addPrivateRoute(mux, "GET /api/focus/", focus.HandleGetAllFocusModes)
-	addPrivateRoute(mux, "POST /api/focus/", focus.HandleCreateFocusMode)
-	addPrivateRoute(mux, "PUT /api/focus/{focusId}/", focus.HandleUpdateFocusMode)
-	addPrivateRoute(mux, "DELETE /api/focus/{focusId}/", focus.HandleDeleteFocusMode)
+	addSessionRoute(mux, "GET /api/v1/focus/", focus.HandleGetAllFocusModes)
+	addSessionRoute(mux, "GET /api/v1/focus", focus.HandleGetAllFocusModes)
+	addSessionRoute(mux, "POST /api/v1/focus/", focus.HandleCreateFocusMode)
+	addSessionRoute(mux, "POST /api/v1/focus/new", focus.HandleCreateFocusMode)
+	addSessionRoute(mux, "PUT /api/v1/focus/{focusId}/", focus.HandleUpdateFocusMode)
+	addSessionRoute(mux, "PUT /api/v1/focus/{focusId}", focus.HandleUpdateFocusMode)
+	addSessionRoute(mux, "DELETE /api/v1/focus/{focusId}/", focus.HandleDeleteFocusMode)
 
-	addPrivateRoute(mux, "POST /api/images/", images.HandleUploadImage)
-	addPrivateRoute(mux, "GET /api/images/", images.HandleGetImages)
-	addPrivateRoute(mux, "DELETE /api/images/{filename}/", images.HandleDeleteImage)
-	addPrivateRoute(mux, "POST /api/images/cleanup", images.HandleCleanupImages)
+	addSessionRoute(mux, "POST /api/v1/images/", images.HandleUploadImage)
+	addSessionRoute(mux, "GET /api/v1/images/", images.HandleGetImages)
+	addSessionRoute(mux, "DELETE /api/v1/images/{filename}/", images.HandleDeleteImage)
+	addSessionRoute(mux, "POST /api/v1/images/cleanup", images.HandleCleanupImages)
 
-	addPrivateRoute(mux, "GET /api/attachments/", attachments.HandleGetAttachments)
-	addPrivateRoute(mux, "POST /api/attachments/", attachments.HandleUploadAttachment)
-	addPrivateRoute(mux, "DELETE /api/attachments/{filename}/", attachments.HandleDeleteAttachment)
-	addPrivateRoute(mux, "POST /api/attachments/cleanup", attachments.HandleCleanupAttachments)
+	addSessionRoute(mux, "GET /api/v1/attachments/", attachments.HandleGetAttachments)
+	addSessionRoute(mux, "POST /api/v1/attachments/", attachments.HandleUploadAttachment)
+	addSessionRoute(mux, "DELETE /api/v1/attachments/{filename}/", attachments.HandleDeleteAttachment)
+	addSessionRoute(mux, "POST /api/v1/attachments/cleanup", attachments.HandleCleanupAttachments)
 
-	addPrivateRoute(mux, "POST /api/import/", settings.HandleImport)
-	addPrivateRoute(mux, "GET /api/export/", settings.HandleExport)
+	addSessionRoute(mux, "POST /api/v1/import/", settings.HandleImport)
+	addSessionRoute(mux, "GET /api/v1/export/", settings.HandleExport)
 
-	addPrivateRoute(mux, "GET /api/mcp/tokens/", mcp.HandleGetMCPTokens)
-	addPrivateRoute(mux, "POST /api/mcp/tokens/", mcp.HandleCreateMCPToken)
-	addPrivateRoute(mux, "DELETE /api/mcp/tokens/{tokenId}/", mcp.HandleRevokeMCPToken)
+	addSessionRoute(mux, "GET /api/v1/tokens/", tokens.HandleGetAPITokens)
+	addSessionRoute(mux, "POST /api/v1/tokens/", tokens.HandleCreateAPIToken)
+	addSessionRoute(mux, "DELETE /api/v1/tokens/{tokenId}/", tokens.HandleRevokeAPIToken)
 
-	addPrivateRoute(mux, "GET /api/search/", search.HandleSearch)
+	addAuthenticatedRoute(mux, "GET /api/v1/search/", search.HandleSearch)
 
-	addPrivateRoute(mux, "GET /api/intelligence/availability/", intelligence.HandleAvailability)
-	addPrivateRoute(mux, "POST /api/intelligence/index/", intelligence.HandleIndexAllContent)
-	addPrivateRoute(mux, "GET /api/intelligence/queue/", intelligence.HandleQueueStats)
-	addPrivateRoute(mux, "GET /api/intelligence/similarity/images/{filename}/", intelligence.HandleSimilarImages)
+	addSessionRoute(mux, "GET /api/v1/intelligence/availability/", intelligence.HandleAvailability)
+	addSessionRoute(mux, "POST /api/v1/intelligence/index/", intelligence.HandleIndexAllContent)
+	addSessionRoute(mux, "GET /api/v1/intelligence/queue/", intelligence.HandleQueueStats)
+	addSessionRoute(mux, "GET /api/v1/intelligence/similarity/images/{filename}/", intelligence.HandleSimilarImages)
 
-	// AI
-	addPrivateRoute(mux, "GET /api/ai/configs/", ai.HandleGetConfigs)
-	addPrivateRoute(mux, "POST /api/ai/configs/", ai.HandleCreateConfig)
-	addPrivateRoute(mux, "PUT /api/ai/configs/{configId}/", ai.HandleUpdateConfig)
-	addPrivateRoute(mux, "DELETE /api/ai/configs/{configId}/", ai.HandleDeleteConfig)
-	addPrivateRoute(mux, "PUT /api/ai/configs/{configId}/default/", ai.HandleSetDefault)
-	addPrivateRoute(mux, "POST /api/ai/process/", ai.HandleProcess)
-	addPrivateRoute(mux, "POST /api/ai/models/", ai.HandleFetchModels)
+	// ─── AI (fork-only) ───
+	addSessionRoute(mux, "GET /api/v1/ai/configs/", ai.HandleGetConfigs)
+	addSessionRoute(mux, "POST /api/v1/ai/configs/", ai.HandleCreateConfig)
+	addSessionRoute(mux, "PUT /api/v1/ai/configs/{configId}/", ai.HandleUpdateConfig)
+	addSessionRoute(mux, "DELETE /api/v1/ai/configs/{configId}/", ai.HandleDeleteConfig)
+	addSessionRoute(mux, "PUT /api/v1/ai/configs/{configId}/default/", ai.HandleSetDefault)
+	addSessionRoute(mux, "POST /api/v1/ai/process/", ai.HandleProcess)
+	addSessionRoute(mux, "POST /api/v1/ai/models/", ai.HandleFetchModels)
 
-	addPrivateRoute(mux, "GET /api/storage/config", storage.HandleGetConfig)
-	addPrivateRoute(mux, "PUT /api/storage/config", storage.HandleUpdateConfig)
-	addPrivateRoute(mux, "POST /api/storage/test", storage.HandleTestConnection)
+	// ─── Storage (fork-only) ───
+	addSessionRoute(mux, "GET /api/v1/storage/config", storage.HandleGetConfig)
+	addSessionRoute(mux, "PUT /api/v1/storage/config", storage.HandleUpdateConfig)
+	addSessionRoute(mux, "POST /api/v1/storage/test", storage.HandleTestConnection)
 
-	addPrivateRoute(mux, "GET /api/templates/", templates.HandleGetTemplates)
-	addPrivateRoute(mux, "GET /api/templates/{templateId}/", templates.HandleGetTemplate)
-	addPrivateRoute(mux, "POST /api/templates/", templates.HandleCreateTemplate)
-	addPrivateRoute(mux, "PUT /api/templates/{templateId}/", templates.HandleUpdateTemplate)
-	addPrivateRoute(mux, "DELETE /api/templates/{templateId}/", templates.HandleDeleteTemplate)
-	addPrivateRoute(mux, "GET /api/templates/recommended/", templates.HandleGetRecommendedTemplates)
-	addPrivateRoute(mux, "PUT /api/templates/{templateId}/usage/", templates.HandleIncrementTemplateUsage)
+	// ─── Templates ───
+	addAuthenticatedRoute(mux, "GET /api/v1/templates/", templates.HandleGetTemplates)
+	addAuthenticatedRoute(mux, "GET /api/v1/templates/{templateId}/", templates.HandleGetTemplate)
+	addAuthenticatedRoute(mux, "POST /api/v1/templates/", templates.HandleCreateTemplate)
+	addAuthenticatedRoute(mux, "PUT /api/v1/templates/{templateId}/", templates.HandleUpdateTemplate)
+	addAuthenticatedRoute(mux, "DELETE /api/v1/templates/{templateId}/", templates.HandleDeleteTemplate)
+	addAuthenticatedRoute(mux, "GET /api/v1/templates/recommended/", templates.HandleGetRecommendedTemplates)
+	addAuthenticatedRoute(mux, "PUT /api/v1/templates/{templateId}/usage/", templates.HandleIncrementTemplateUsage)
 
-	addPrivateRoute(mux, "GET /api/canvases/", canvas.HandleGetCanvases)
-	addPrivateRoute(mux, "GET /api/canvases/{canvasId}/", canvas.HandleGetCanvas)
-	addPrivateRoute(mux, "POST /api/canvases/", canvas.HandleCreateCanvas)
-	addPrivateRoute(mux, "PUT /api/canvases/{canvasId}/", canvas.HandleUpdateCanvas)
-	addPrivateRoute(mux, "DELETE /api/canvases/{canvasId}/", canvas.HandleDeleteCanvas)
+	// ─── Canvases ───
+	addAuthenticatedRoute(mux, "GET /api/v1/canvases/", canvas.HandleGetCanvases)
+	addAuthenticatedRoute(mux, "GET /api/v1/canvases/{canvasId}/", canvas.HandleGetCanvas)
+	addAuthenticatedRoute(mux, "POST /api/v1/canvases/", canvas.HandleCreateCanvas)
+	addAuthenticatedRoute(mux, "PUT /api/v1/canvases/{canvasId}/", canvas.HandleUpdateCanvas)
+	addAuthenticatedRoute(mux, "DELETE /api/v1/canvases/{canvasId}/", canvas.HandleDeleteCanvas)
 
 	// Clipboard — phone↔computer file/text transfer
-	addPrivateRoute(mux, "POST /api/clipboard/text", clipboard.HandlePushText)
-	addPrivateRoute(mux, "POST /api/clipboard/upload", clipboard.HandleUploadFile)
-	addPrivateRoute(mux, "DELETE /api/clipboard/revoke/{id}/", clipboard.HandleRevoke)
-	addPrivateRoute(mux, "DELETE /api/clipboard/batch/{batch_id}/", clipboard.HandleRevokeBatch)
-	addPrivateRoute(mux, "DELETE /api/clipboard/batch/{batch_id}/text/", clipboard.HandleDeleteBatchText)
-	addPrivateRoute(mux, "POST /api/clipboard/{id}/note/", clipboard.HandleSaveAsNote)
-	addPrivateRoute(mux, "GET /api/clipboard/content/", clipboard.HandleListContent)
-	addPrivateRoute(mux, "GET /api/clipboard/content/latest", clipboard.HandleLatestContent)
-	mux.HandleFunc("GET /api/clipboard/file/", clipboard.HandleDownloadFile)
+	addSessionRoute(mux, "POST /api/v1/clipboard/text", clipboard.HandlePushText)
+	addSessionRoute(mux, "POST /api/v1/clipboard/upload", clipboard.HandleUploadFile)
+	addSessionRoute(mux, "DELETE /api/v1/clipboard/revoke/{id}/", clipboard.HandleRevoke)
+	addSessionRoute(mux, "DELETE /api/v1/clipboard/batch/{batch_id}/", clipboard.HandleRevokeBatch)
+	addSessionRoute(mux, "DELETE /api/v1/clipboard/batch/{batch_id}/text/", clipboard.HandleDeleteBatchText)
+	addSessionRoute(mux, "POST /api/v1/clipboard/{id}/note/", clipboard.HandleSaveAsNote)
+	addSessionRoute(mux, "GET /api/v1/clipboard/content/", clipboard.HandleListContent)
+	addSessionRoute(mux, "GET /api/v1/clipboard/content/latest", clipboard.HandleLatestContent)
+	addSessionRoute(mux, "GET /api/v1/clipboard/file/", clipboard.HandleDownloadFile)
 
 	mux.HandleFunc("POST /mcp", mcp.HandleMCP)
 	mux.HandleFunc("OPTIONS /mcp", mcp.HandleMCP)
 
-	mux.HandleFunc("GET /assets/", handleStaticAssets)
-	mux.HandleFunc("GET /images/", handleUploadedImages)
-	mux.HandleFunc("GET /attachments/", handleUploadedAttachments)
-	mux.HandleFunc("GET /sw.js", handleServiceWorker)
-	mux.HandleFunc("GET /", handleRoot)
+	// Bundles cached by the service worker before the move to /api/v1/ still call /api/ on the first page load after an upgrade.
+	// Token clients never had the unversioned paths, so they are not forwarded.
+	for _, method := range []string{"GET", "POST", "PUT", "DELETE"} {
+		mux.HandleFunc(method+" /api/", func(w http.ResponseWriter, r *http.Request) {
+			if strings.HasPrefix(r.URL.Path, "/api/v1/") || (r.Header.Get("Authorization") != "" && !auth.HasValidSession(r)) {
+				http.NotFound(w, r)
+				return
+			}
+
+			legacyRequest := r.Clone(r.Context())
+			legacyRequest.URL.Path = "/api/v1/" + strings.TrimPrefix(r.URL.Path, "/api/")
+			legacyRequest.URL.RawPath = ""
+			mux.ServeHTTP(w, legacyRequest)
+		})
+	}
+
+	addPublicRoute(mux, "GET /assets/", handleStaticAssets)
+	addPublicRoute(mux, "GET /images/", handleUploadedImages)
+	addPublicRoute(mux, "GET /attachments/", handleUploadedAttachments)
+	addPublicRoute(mux, "GET /sw.js", handleServiceWorker)
+	addPublicRoute(mux, "GET /", handleRoot)
 
 	return mux
 }
@@ -356,20 +385,32 @@ func serveStorageFile(w http.ResponseWriter, r *http.Request, prefix string, isA
 	http.NotFound(w, r)
 }
 
-func addPrivateRoute(mux *http.ServeMux, pattern string, handlerFunc func(w http.ResponseWriter, r *http.Request)) {
+func addPublicRoute(mux *http.ServeMux, pattern string, handlerFunc func(w http.ResponseWriter, r *http.Request)) {
+	mux.HandleFunc(pattern, handlerFunc)
+}
+
+func addAuthenticatedRoute(mux *http.ServeMux, pattern string, handlerFunc func(w http.ResponseWriter, r *http.Request)) {
 	handler := http.HandlerFunc(handlerFunc)
 	mux.HandleFunc(pattern, auth.EnsureAuthenticated(handler))
+}
+
+func addSessionRoute(mux *http.ServeMux, pattern string, handlerFunc func(w http.ResponseWriter, r *http.Request)) {
+	handler := http.HandlerFunc(handlerFunc)
+	mux.HandleFunc(pattern, auth.EnsureSession(handler))
 }
 
 func runBackgroundTasks() {
 	trashCleanupFrequency := 30 * 24 * time.Hour       // 30 days
 	sessionCleanupFrequency := 24 * time.Hour          // 24 hours
+	imageSyncFrequency := 24 * time.Hour               // 24 hours
 	intelligenceProcessingFrequency := 5 * time.Minute // 5 minutes
+	versionPruneFrequency := 24 * time.Hour            // 24 hours
+	tagCleanupFrequency := 24 * time.Hour              // 24 hours
 
 	go func() {
-		notes.EmptyTrash(true) // Run immediately on server start
+		logError(notes.EmptyTrash(true)) // Run immediately on server start
 		for range time.Tick(trashCleanupFrequency) {
-			notes.EmptyTrash(true)
+			logError(notes.EmptyTrash(true))
 		}
 	}()
 
@@ -380,16 +421,28 @@ func runBackgroundTasks() {
 	}()
 
 	go func() {
+		for range time.Tick(imageSyncFrequency) {
+			logError(images.SyncImagesFromDisk())
+		}
+	}()
+
+	go func() {
 		for range time.Tick(intelligenceProcessingFrequency) {
 			intelligence.ProcessQueues()
 		}
 	}()
 
-	tagCleanupFrequency := 24 * time.Hour
 	go func() {
 		tags.CleanupUnusedTags() // Run immediately on server start
 		for range time.Tick(tagCleanupFrequency) {
 			tags.CleanupUnusedTags()
+		}
+	}()
+
+	go func() {
+		logError(notes.PruneNoteVersions()) // Run immediately on server start
+		for range time.Tick(versionPruneFrequency) {
+			logError(notes.PruneNoteVersions())
 		}
 	}()
 }
@@ -401,11 +454,22 @@ func getEnv(key, fallback string) string {
 	return fallback
 }
 
+func logError(err error) {
+	if err != nil {
+		slog.Error(err.Error())
+	}
+}
+
 func handleServiceWorker(w http.ResponseWriter, r *http.Request) {
 	var swContent []byte
 	var err error
 
-	swContent, err = os.ReadFile("./assets/sw.js")
+	if os.Getenv("DEV_MODE") == "true" {
+		swContent, err = os.ReadFile("./assets/sw.js")
+	} else {
+		swContent, err = Assets.ReadFile("assets/sw.js")
+	}
+
 	if err != nil {
 		err = fmt.Errorf("error reading sw.js: %w", err)
 		slog.Error(err.Error())
