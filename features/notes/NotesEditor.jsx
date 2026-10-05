@@ -24,6 +24,9 @@ import { BrainCircuitIcon } from '../../commons/components/Icon.jsx';
 import { useLayout } from '../../commons/contexts/LayoutContext.jsx';
 import { useVisibleHeadings } from "./useVisibleHeadings.js";
 import { useCollapsibleHeadings } from "./useCollapsibleHeadings.js";
+import useRefreshOnTabFocus from "./useRefreshOnTabFocus.js";
+import useNewNoteTag from "./useNewNoteTag.js";
+import Lightbox from "../../commons/components/Lightbox.jsx";
 import useEditorKeyboardShortcuts from "./useEditorKeyboardShortcuts.js";
 import useImageUpload from "./useImageUpload.js";
 import useMarkdownFormatter from "./useMarkdownFormatter.js";
@@ -140,6 +143,16 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   });
   const visibleHeadings = useVisibleHeadings(contentRef, content, isEditable, isEditorExpanded);
   const { handleHeadingClick } = useCollapsibleHeadings(contentRef, selectedNote?.noteId);
+
+  // A new note inherits the tag or single-tag focus mode currently being browsed
+  useNewNoteTag({ isNewNote, setTags });
+
+  // Coming back to the tab picks up edits made elsewhere, but never while typing
+  useRefreshOnTabFocus({
+    note: selectedNote,
+    isEditable,
+    onRefresh: replaceNote
+  });
 
   const { insertAtCursor, applyMarkdownFormat } = useMarkdownFormatter({
     textareaRef,
@@ -495,9 +508,34 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
     });
   }
 
+  // Apply a note fetched from the server without leaving edit mode's baseline stale
+  function replaceNote(latestNote) {
+    savedNoteRef.current = latestNote;
+    setTitle(latestNote.title || "");
+    updateContent(latestNote.content || "");
+    setTags(latestNote.tags || []);
+    patchNote(latestNote.noteId, latestNote);
+  }
+
+  function closeLightbox() {
+    // the lightbox is mounted into .note-modal-root, so it must be cleared there
+    closeModal('.note-modal-root');
+  }
+
   function handleInternalNoteLinkClick(e) {
     // A plain heading click folds or unfolds its section; links and text selections win.
     if (handleHeadingClick(e) === true) {
+      return;
+    }
+
+    const image = e.target.closest('.notes-editor-rendered img');
+    if (image !== null) {
+      const selectedImage = {
+        url: image.src,
+        filename: image.src.substring(image.src.lastIndexOf('/') + 1),
+        aspectRatio: image.naturalWidth / image.naturalHeight,
+      };
+      openModal(<Lightbox selectedImage={selectedImage} imageDetails={[selectedImage]} onClose={closeLightbox} />, '.note-modal-root');
       return;
     }
 
