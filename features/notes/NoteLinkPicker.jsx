@@ -83,8 +83,8 @@ export default function NoteLinkPicker({ onInsertLink, onClose, textareaRef, cur
       ApiClient.search(value.trim()).then(data => {
         const queryLower = value.trim().toLowerCase();
         const noteResults = [
-          ...(data.lexical_notes || []),
-          ...(data.semantic_notes || [])
+          ...(data.lexicalNotes || []),
+          ...(data.semanticNotes || [])
         ];
         const seen = new Set();
         const deduped = noteResults.filter(n => {

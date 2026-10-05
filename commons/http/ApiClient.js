@@ -434,8 +434,14 @@ async function testStorageConnection(config) {
 
 // ─── Search ───
 
-async function search(query) {
-  return await request('GET', `/api/search?query=${query}`);
+async function search(query, sort) {
+  let url = `/api/search?query=${encodeURIComponent(query)}`;
+
+  if (sort) {
+    url += `&sort=${encodeURIComponent(sort)}`;
+  }
+
+  return await request('GET', url);
 }
 
 // ─── Intelligence ───

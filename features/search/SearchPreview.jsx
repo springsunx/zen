@@ -12,7 +12,7 @@ import "./SearchPreview.css";
 const FETCH_DEBOUNCE_MS = 120;
 const MAX_CACHED_NOTES = 30;
 
-export default function SearchPreview({ item, hasInlineContent }) {
+export default function SearchPreview({ item, hasInlineContent, query }) {
   const [fetchedNote, setFetchedNote] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [hasFailed, setHasFailed] = useState(false);
@@ -78,9 +78,18 @@ export default function SearchPreview({ item, hasInlineContent }) {
   let highlightedText = "";
   if (canRenderInline === true) {
     displayedContent = item.content;
-    highlightedText = `${item.highlightedTitle}\n${item.highlightedContent}`;
+    highlightedText = `${item.highlightedTitle || ""}\n${item.highlightedContent || ""}`;
   } else if (fetchedNote !== null) {
     displayedContent = fetchedNote.content;
+  }
+
+  // The LIKE-based search returns raw content rather than <mark> markup, so fall back
+  // to the query itself; the hook only reads the tag contents as search terms.
+  if (highlightedText.trim() === "" && query !== undefined && query.trim() !== "") {
+    const safeQuery = query.trim().replace(/[<>]/g, "");
+    if (safeQuery !== "") {
+      highlightedText = `<mark>${safeQuery}</mark>`;
+    }
   }
 
   const { matchCount, currentMatchIndex, goToNextMatch, goToPreviousMatch } = useMatchHighlighter({

@@ -94,6 +94,7 @@
   "settings.security.ph.new": "Enter new password",
   "settings.security.ph.confirm": "Confirm new password",
   "search.notes": "Notes",
+  "search.preview.toggle": "Toggle preview",
   "search.similar": "Similar Notes",
   "search.similarImages": "Similar Images",
   "search.tags": "Tags",

@@ -1,7 +1,54 @@
 .search-modal {
     width: 600px;
+    max-width: calc(100vw - var(--spacing-8) * 2);
     margin: auto;
     margin-top: 20vh;
+    transition: width var(--transition-fast) ease;
+
+    &:has(.search-modal-body.has-preview) {
+        width: 960px;
+    }
+
+    .search-modal-body {
+        display: grid;
+        grid-template-columns: 1fr;
+
+        &.has-preview {
+            grid-template-columns: 380px 1fr;
+        }
+    }
+
+    .search-preview-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        padding: 0;
+        margin-right: 6px;
+        border: 0;
+        border-radius: 4px;
+        cursor: pointer;
+        background-color: transparent;
+        color: var(--text-secondary);
+        transition: background-color var(--transition-fast) ease;
+
+        &:hover {
+            background-color: var(--neutral-200);
+            color: var(--text-primary);
+        }
+
+        &.is-active {
+            color: var(--text-primary);
+            background-color: var(--neutral-200);
+        }
+
+        svg.lucide {
+            padding: 8px;
+            width: 34px;
+            height: 34px;
+            margin: 0;
+        }
+    }
 
     .search-input-container {
         display: flex;
@@ -28,11 +75,21 @@
     }
 
     .search-tabs {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--spacing-2);
         padding: 0 var(--spacing-2);
         padding-bottom: var(--spacing-2);
+
+        .tabs {
+            flex: 1;
+            min-width: 0;
+        }
     }
 
     .search-results-container {
+        min-width: 0;
         max-height: 450px;
         overflow-y: scroll;
 
@@ -199,5 +256,33 @@
             }
         }
 
+    }
+}
+@media screen and (max-width: 948px) {
+    .search-modal {
+        width: 100%;
+        max-width: 100%;
+        margin-top: 0;
+
+        &:has(.search-modal-body.has-preview) {
+            width: 100%;
+        }
+
+        .search-preview-toggle {
+            display: none;
+        }
+
+        .search-modal-body,
+        .search-modal-body.has-preview {
+            grid-template-columns: 1fr;
+        }
+
+        .search-preview-wrapper {
+            display: none;
+        }
+
+        .search-results-container {
+            max-height: 70vh;
+        }
     }
 }

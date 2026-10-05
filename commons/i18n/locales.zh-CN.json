@@ -94,6 +94,7 @@
   "settings.security.ph.new": "请输入新密码",
   "settings.security.ph.confirm": "请确认新密码",
   "search.notes": "笔记",
+  "search.preview.toggle": "切换预览",
   "search.similar": "相似笔记",
   "search.similarImages": "相似图片",
   "search.tags": "标签",

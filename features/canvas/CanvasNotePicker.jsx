@@ -8,7 +8,7 @@ import { t } from "../../commons/i18n/index.js";
 export default function CanvasNotePicker({ onAddNote, addedItems }) {
   const [activeTab, setActiveTab] = useState("search");
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState({ lexical_notes: [], semantic_notes: [], semantic_images: [] });
+  const [results, setResults] = useState({ lexicalNotes: [], semanticNotes: [], semanticImages: [] });
   const [browseNotes, setBrowseNotes] = useState([]);
   const [browseImages, setBrowseImages] = useState([]);
   const [notesPage, setNotesPage] = useState(1);
@@ -64,7 +64,7 @@ export default function CanvasNotePicker({ onAddNote, addedItems }) {
     }
 
     if (value.trim() === "") {
-      setResults({ lexical_notes: [], semantic_notes: [], semantic_images: [] });
+      setResults({ lexicalNotes: [], semanticNotes: [], semanticImages: [] });
       return;
     }
 
@@ -72,9 +72,9 @@ export default function CanvasNotePicker({ onAddNote, addedItems }) {
       ApiClient.search(value)
         .then(searchResults => {
           setResults({
-            lexical_notes: searchResults.lexical_notes || [],
-            semantic_notes: searchResults.semantic_notes || [],
-            semantic_images: searchResults.semantic_images || [],
+            lexicalNotes: searchResults.lexicalNotes || [],
+            semanticNotes: searchResults.semanticNotes || [],
+            semanticImages: searchResults.semanticImages || [],
           });
         });
     }, 200);
@@ -90,8 +90,8 @@ export default function CanvasNotePicker({ onAddNote, addedItems }) {
   let semanticNotesSection = null;
   let semanticImagesSection = null;
 
-  if (results.lexical_notes.length > 0) {
-    const filteredNotes = results.lexical_notes.filter(item => !addedItems.has(item.noteId));
+  if (results.lexicalNotes.length > 0) {
+    const filteredNotes = results.lexicalNotes.filter(item => !addedItems.has(item.noteId));
 
     if (filteredNotes.length > 0) {
       const noteItems = filteredNotes.map((item, index) => {
@@ -109,8 +109,8 @@ export default function CanvasNotePicker({ onAddNote, addedItems }) {
     }
   }
 
-  if (results.semantic_notes.length > 0) {
-    const filteredNotes = results.semantic_notes.filter(item => !addedItems.has(item.noteId));
+  if (results.semanticNotes.length > 0) {
+    const filteredNotes = results.semanticNotes.filter(item => !addedItems.has(item.noteId));
 
     if (filteredNotes.length > 0) {
       const noteItems = filteredNotes.map((item, index) => {
@@ -128,8 +128,8 @@ export default function CanvasNotePicker({ onAddNote, addedItems }) {
     }
   }
 
-  if (results.semantic_images.length > 0) {
-    const filteredImages = results.semantic_images.filter(item => !addedItems.has(item.filename));
+  if (results.semanticImages.length > 0) {
+    const filteredImages = results.semanticImages.filter(item => !addedItems.has(item.filename));
 
     if (filteredImages.length > 0) {
       const imageItems = filteredImages.map((item, index) => {

@@ -1,10 +1,14 @@
 import { h, useEffect, useState, useRef } from "../../assets/preact.esm.js"
 import ApiClient from "../../commons/http/ApiClient.js";
 import navigateTo from "../../commons/utils/navigateTo.js";
-import { SearchIcon, NoteIcon, ArchiveIcon, TrashIcon, TagIcon } from "../../commons/components/Icon.jsx";
+import { SearchIcon, NoteIcon, ArchiveIcon, TrashIcon, TagIcon, PanelRightIcon } from "../../commons/components/Icon.jsx";
 import { ModalBackdrop, ModalContainer, closeModal, openModal } from "../../commons/components/Modal.jsx";
 import Lightbox from "../../commons/components/Lightbox.jsx";
 import SearchHistory from "../../commons/preferences/SearchHistory.js";
+import SearchPreviewPreferences from "../../commons/preferences/SearchPreviewPreferences.js";
+import SearchPreview from "./SearchPreview.jsx";
+import RecentSearchQuery from "./RecentSearchQuery.js";
+import SearchSortDropdown, { SORT_OPTIONS } from "./SearchSortDropdown.jsx";
 import Tabs from "../../commons/components/Tabs.jsx";
 import { getStaticCommands, getFocusModeCommands, getTemplateCommands, filterCommands, getCommandCategories } from "./commands.js";
 import "./SearchMenu.css";
@@ -13,16 +17,19 @@ import { t } from "../../commons/i18n/index.js";
 export default function SearchMenu({ initialMode }) {
   const isCommandMode = initialMode === "commands";
 
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState({ lexical_notes: [], semantic_notes: [], semantic_images: [], tags: [] });
+  const [query, setQuery] = useState(RecentSearchQuery.get());
+  const [results, setResults] = useState({ lexicalNotes: [], semanticNotes: [], semanticImages: [], tags: [] });
   const [selectedItem, setSelectedItem] = useState(null);
   const [searchHistory, setSearchHistory] = useState([]);
   const [activeTab, setActiveTab] = useState(isCommandMode ? "commands" : "all");
   const [allCommands, setAllCommands] = useState([]);
   const [isCommandsLoading, setIsCommandsLoading] = useState(true);
+  const [activeSort, setActiveSort] = useState(SORT_OPTIONS[0].value);
+  const [isPreviewVisible, setIsPreviewVisible] = useState(SearchPreviewPreferences.isVisible());
 
   const inputRef = useRef(null);
   const debounceTimerRef = useRef(null);
+  const isPointerActiveRef = useRef(false);
 
   function handleCloseModal() {
     closeModal();
@@ -60,6 +67,12 @@ export default function SearchMenu({ initialMode }) {
       inputRef.current.focus();
     }
     setSearchHistory(SearchHistory.getItems());
+
+    // Reopening the palette keeps the last query for five minutes, so run it once
+    // instead of showing an empty box next to a filled input.
+    if (query.trim() !== "") {
+      runSearch(query, activeSort);
+    }
   }, []);
 
   // Auto-scroll to keep selected item visible during keyboard navigation
@@ -88,19 +101,34 @@ export default function SearchMenu({ initialMode }) {
     }
 
     if (value.trim() === "") {
-      setResults({ lexical_notes: [], semantic_notes: [], semantic_images: [], tags: [] });
+      setResults({ lexicalNotes: [], semanticNotes: [], semanticImages: [], tags: [] });
       const cmdItems = wrapCommandsAsItems(visibleCmds);
       setSelectedItem(searchHistory.length > 0 ? searchHistory[0] : (cmdItems.length > 0 ? cmdItems[0] : null));
       return;
     }
 
+    RecentSearchQuery.set(value);
+
     debounceTimerRef.current = setTimeout(() => {
-      ApiClient.search(value)
-        .then(searchResults => {
-          setResults(searchResults);
-          updateSelectedForQuery(value, searchResults);
-        });
+      runSearch(value, activeSort);
     }, 200);
+  }
+
+  function runSearch(value, sort) {
+    return ApiClient.search(value, sort)
+      .then(searchResults => {
+        setResults(searchResults);
+        updateSelectedForQuery(value, searchResults);
+      })
+      .catch(() => {});
+  }
+
+  function handleSortChange(sort) {
+    setActiveSort(sort);
+
+    if (query.trim() !== "") {
+      runSearch(query, sort);
+    }
   }
 
   function updateSelectedForQuery(value, searchResults) {
@@ -110,11 +138,11 @@ export default function SearchMenu({ initialMode }) {
     if (activeTab === "commands") {
       allItems = cmdItems;
     } else if (activeTab === "notes") {
-      allItems = [...(searchResults?.lexical_notes || []), ...(searchResults?.semantic_notes || []), ...(searchResults?.semantic_images || [])];
+      allItems = [...(searchResults?.lexicalNotes || []), ...(searchResults?.semanticNotes || []), ...(searchResults?.semanticImages || [])];
     } else if (activeTab === "tags") {
       allItems = searchResults?.tags || [];
     } else {
-      allItems = [...(searchResults?.lexical_notes || []), ...(searchResults?.semantic_notes || []), ...(searchResults?.semantic_images || []), ...(searchResults?.tags || []), ...cmdItems];
+      allItems = [...(searchResults?.lexicalNotes || []), ...(searchResults?.semanticNotes || []), ...(searchResults?.semanticImages || []), ...(searchResults?.tags || []), ...cmdItems];
     }
 
     if (allItems.length > 0) {
@@ -185,7 +213,7 @@ export default function SearchMenu({ initialMode }) {
     }
 
     if (activeTab === "notes") {
-      return [...results.lexical_notes, ...results.semantic_notes, ...results.semantic_images];
+      return [...results.lexicalNotes, ...results.semanticNotes, ...results.semanticImages];
     }
 
     if (activeTab === "tags") {
@@ -193,9 +221,22 @@ export default function SearchMenu({ initialMode }) {
     }
 
     // "all" tab
-    return [...results.lexical_notes, ...results.semantic_notes, ...results.semantic_images, ...results.tags, ...filteredCmdItems];
+    return [...results.lexicalNotes, ...results.semanticNotes, ...results.semanticImages, ...results.tags, ...filteredCmdItems];
   }
 
+
+  // A stationary pointer should not fight the keyboard, so hover only takes over
+  // after the pointer actually moves inside the results list.
+  function handleResultsMouseMove() {
+    isPointerActiveRef.current = true;
+  }
+
+  function handleResultMouseEnter(item) {
+    if (isPointerActiveRef.current !== true) {
+      return;
+    }
+    setSelectedItem(item);
+  }
 
   function handleResultClick(item) {
     if (item._isCommand && item.action) {
@@ -212,7 +253,7 @@ export default function SearchMenu({ initialMode }) {
       navigateTo(`/?tagId=${item.tagId}`);
       closeModal();
     } else if (item.filename) {
-      const imageDetails = results.semantic_images.map(image => ({
+      const imageDetails = results.semanticImages.map(image => ({
         url: `/images/${image.filename}`,
         width: image.width,
         height: image.height,
@@ -245,7 +286,7 @@ export default function SearchMenu({ initialMode }) {
         const isSelected = (item.noteId && item.noteId === selectedItem?.noteId) || (item.tagId && item.tagId === selectedItem?.tagId);
         return (
           <div className="search-history-item" key={`history-${index}`}>
-            <SearchResultItem item={item} isSelected={isSelected} onClick={() => handleResultClick(item)} />
+            <SearchResultItem item={item} isSelected={isSelected} onClick={() => handleResultClick(item)} onMouseEnter={() => handleResultMouseEnter(item)} />
             <div className="search-history-delete" onClick={(e) => { e.stopPropagation(); const updated = SearchHistory.removeItem(item); setSearchHistory(updated); }} title={t('common.delete') || '删除'}>&#x2715;</div>
           </div>
         )
@@ -268,11 +309,11 @@ export default function SearchMenu({ initialMode }) {
     const showCommands = activeTab === "all" || activeTab === "commands";
 
     if (showNotes === true) {
-      if (results.lexical_notes.length > 0) {
-        const noteItems = results.lexical_notes.map((item, index) => {
+      if (results.lexicalNotes.length > 0) {
+        const noteItems = results.lexicalNotes.map((item, index) => {
           const isSelected = item.noteId === selectedItem?.noteId;
           return (
-            <SearchResultItem key={`lexical-note-${index}`} item={item} isSelected={isSelected} onClick={() => handleResultClick(item)} />
+            <SearchResultItem key={`lexical-note-${index}`} item={item} isSelected={isSelected} onClick={() => handleResultClick(item)} onMouseEnter={() => handleResultMouseEnter(item)} />
           )
         });
 
@@ -284,11 +325,11 @@ export default function SearchMenu({ initialMode }) {
         );
       }
 
-      if (results.semantic_notes.length > 0) {
-        const noteItems = results.semantic_notes.map((item, index) => {
+      if (results.semanticNotes.length > 0) {
+        const noteItems = results.semanticNotes.map((item, index) => {
           const isSelected = item.noteId === selectedItem?.noteId;
           return (
-            <SearchResultItem key={`semantic-note-${index}`} item={item} isSelected={isSelected} onClick={() => handleResultClick(item)} />
+            <SearchResultItem key={`semantic-note-${index}`} item={item} isSelected={isSelected} onClick={() => handleResultClick(item)} onMouseEnter={() => handleResultMouseEnter(item)} />
           )
         });
 
@@ -300,11 +341,11 @@ export default function SearchMenu({ initialMode }) {
         );
       }
 
-      if (results.semantic_images.length > 0) {
+      if (results.semanticImages.length > 0) {
         semanticImagesSection = (
           <div className="search-section">
             <h4 className="search-section-title">{t('search.similarImages')}</h4>
-            <SearchResultImages items={results.semantic_images} onClick={handleResultClick} />
+            <SearchResultImages items={results.semanticImages} onClick={handleResultClick} />
           </div>
         );
       }
@@ -315,7 +356,7 @@ export default function SearchMenu({ initialMode }) {
         const tagItems = results.tags.map((item, index) => {
           const isSelected = item.tagId === selectedItem?.tagId;
           return (
-            <SearchResultItem key={`tag-${index}`} item={item} isSelected={isSelected} onClick={() => handleResultClick(item)} />
+            <SearchResultItem key={`tag-${index}`} item={item} isSelected={isSelected} onClick={() => handleResultClick(item)} onMouseEnter={() => handleResultMouseEnter(item)} />
           )
         });
 
@@ -341,6 +382,26 @@ export default function SearchMenu({ initialMode }) {
     }
   }
 
+  const placeholder = isCommandMode ? t('command.palette.placeholder') : t('search.placeholder');
+
+  // Sorting only reorders lexical notes, so it is hidden on the tags-only tab.
+  const shouldShowSort = isCommandMode !== true && activeTab !== "tags";
+  const showPreview = isCommandMode !== true && isPreviewVisible === true;
+  const hasInlineContent = results.lexicalNotes.includes(selectedItem);
+
+  function handleTogglePreviewClick() {
+    setIsPreviewVisible(prevIsVisible => {
+      const nextIsVisible = prevIsVisible !== true;
+      SearchPreviewPreferences.setVisible(nextIsVisible);
+      return nextIsVisible;
+    });
+  }
+
+  let previewSection = null;
+  if (showPreview === true) {
+    previewSection = <SearchPreview item={selectedItem} hasInlineContent={hasInlineContent} query={query} />;
+  }
+
   const showTabs = hasQuery;
 
   let tabsSection = null;
@@ -357,11 +418,12 @@ export default function SearchMenu({ initialMode }) {
           activeTab={activeTab}
           onTabChange={setActiveTab}
         />
+        {shouldShowSort === true && (
+          <SearchSortDropdown activeSort={activeSort} onSortChange={handleSortChange} />
+        )}
       </div>
     );
   }
-
-  const placeholder = isCommandMode ? t('command.palette.placeholder') : t('search.placeholder');
 
   return (
     <ModalBackdrop onClose={handleCloseModal} isCentered={false}>
@@ -377,9 +439,19 @@ export default function SearchMenu({ initialMode }) {
             onKeyDown={handleKeyDown}
             onKeyUp={handleKeyUp}
           />
+          {isCommandMode !== true && (
+            <button
+              className={`search-preview-toggle ${isPreviewVisible === true ? "is-active" : ""}`}
+              onClick={handleTogglePreviewClick}
+              data-tooltip={t('search.preview.toggle')}
+            >
+              <PanelRightIcon />
+            </button>
+          )}
         </div>
         {tabsSection}
-        <div className="search-results-container">
+        <div className={`search-modal-body ${showPreview === true ? "has-preview" : ""}`}>
+        <div className="search-results-container" onMouseMove={handleResultsMouseMove}>
           {historySection}
           {quickActionsSection}
           {lexicalNotesSection}
@@ -387,6 +459,8 @@ export default function SearchMenu({ initialMode }) {
           {semanticImagesSection}
           {tagsSection}
           {commandsSection}
+        </div>
+        {previewSection}
         </div>
       </ModalContainer>
     </ModalBackdrop>
@@ -475,7 +549,7 @@ function CommandResultItem({ item, isSelected, onClick }) {
   );
 }
 
-function SearchResultItem({ item, isSelected, onClick }) {
+function SearchResultItem({ item, isSelected, onClick, onMouseEnter }) {
   let icon = <NoteIcon />
   let title = item.title || item.name
   let subtitle = ""
@@ -502,7 +576,7 @@ function SearchResultItem({ item, isSelected, onClick }) {
   }
 
   return (
-    <div className={`search-result-item ${isSelected ? "is-selected" : ""}`} onClick={onClick}>
+    <div className={`search-result-item ${isSelected ? "is-selected" : ""}`} onClick={onClick} onMouseEnter={onMouseEnter}>
       {icon}
       <div className="search-result-item-content">
         <p className="title" dangerouslySetInnerHTML={{ __html: displayTitle }}></p>

@@ -14,6 +14,26 @@ func SearchNotes(access auth.Access, term string, limit int, sort string) ([]Not
 
 	scopePredicate, scopeArgs := buildReadableNotesPredicate(access)
 
+	// Relevance keeps the title-match boost; the other sorts are plain column orders
+	// and drop those placeholders, so the arguments have to be built alongside.
+	orderClause := `
+			CASE
+				WHEN n.title LIKE ? || '%' THEN 1
+				WHEN n.title LIKE '%' || ? || '%' THEN 2
+				ELSE 3
+			END,`
+	orderArgs := []interface{}{term, term}
+
+	if sort == SortUpdated {
+		orderClause = `
+			n.updated_at DESC,`
+		orderArgs = []interface{}{}
+	} else if sort == SortCreated {
+		orderClause = `
+			n.created_at DESC,`
+		orderArgs = []interface{}{}
+	}
+
 	query := `
 		SELECT
 			n.note_id,
@@ -36,12 +56,7 @@ func SearchNotes(access auth.Access, term string, limit int, sort string) ([]Not
 			AND (n.title LIKE '%' || ? || '%' OR n.content LIKE '%' || ? || '%') ` + scopePredicate + `
 		GROUP BY
 			n.note_id
-		ORDER BY
-			CASE
-				WHEN n.title LIKE ? || '%' THEN 1
-				WHEN n.title LIKE '%' || ? || '%' THEN 2
-				ELSE 3
-			END,
+		ORDER BY` + orderClause + `
 			CASE 
 				WHEN n.pinned_at IS NOT NULL THEN 1 
 				ELSE 2 
@@ -51,8 +66,9 @@ func SearchNotes(access auth.Access, term string, limit int, sort string) ([]Not
 			?
 	`
 
-	queryArgs := []interface{}{term, term, term, term}
+	queryArgs := []interface{}{term, term}
 	queryArgs = append(queryArgs, scopeArgs...)
+	queryArgs = append(queryArgs, orderArgs...)
 	queryArgs = append(queryArgs, limit)
 
 	rows, err := sqlite.DB.Query(query, queryArgs...)
