@@ -303,6 +303,12 @@ func handleStaticAssets(w http.ResponseWriter, r *http.Request) {
 	var fsys http.FileSystem
 
 	if os.Getenv("DEV_MODE") == "true" {
+		// The bundle is rebuilt on every change and the page references it without a
+		// version query, so a browser left to its own heuristic freshness keeps serving
+		// the previous build and any UI change looks like it never happened.
+		w.Header().Set("Cache-Control", "no-store, must-revalidate")
+		w.Header().Set("Pragma", "no-cache")
+		w.Header().Set("Expires", "0")
 		fsys = http.Dir("./assets")
 	} else {
 		subtree, err := fs.Sub(Assets, "assets")
