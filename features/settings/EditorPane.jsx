@@ -10,11 +10,19 @@ export default function EditorPane() {
   function handleAutoSaveChange(newValue) {
     setIsAutoSaveEnabled(newValue);
     AutoSavePreferences.setEnabled(newValue);
+    notifyEditorPreferencesChanged();
   }
 
   function handleSpellcheckChange(newValue) {
     setIsSpellcheckEnabled(newValue);
     SpellcheckPreferences.setEnabled(newValue);
+    notifyEditorPreferencesChanged();
+  }
+
+  // The editor reads these preferences during render, so an open editor has to be told
+  // to render again or the toggle appears to do nothing until the note is reopened.
+  function notifyEditorPreferencesChanged() {
+    window.dispatchEvent(new CustomEvent('editor-preferences:change'));
   }
 
   return (

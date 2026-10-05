@@ -16,6 +16,7 @@
   "nav.trash": "回收站",
   "settings.title": "设置",
   "settings.tabs.appearance": "外观",
+  "settings.tabs.editor": "编辑器",
   "settings.tabs.security": "安全",
   "settings.tabs.import": "导入",
   "settings.tabs.export": "导出",

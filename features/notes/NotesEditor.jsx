@@ -29,6 +29,8 @@ import useAIPanel from "./useAIPanel.js";
 import { consumeEditMode } from "../../commons/utils/editMode.js";
 import useSlashCommands from "./useSlashCommands.js";
 import useNoteVersions from "./useNoteVersions.js";
+import useAutoSave from "./useAutoSave.js";
+import SpellcheckPreferences from "../../commons/preferences/SpellcheckPreferences.js";
 import "./NotesEditor.css";
 import { t } from "../../commons/i18n/index.js";
 
@@ -36,9 +38,25 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   const { selectedNote, handleNoteChange, patchNote, handlePinToggle } = useNotes();
   const { refreshTags } = useAppContext();
   const { isEditorExpanded, toggleEditorExpanded } = useLayout();
+
+  // ─── Refs (declared before the autosave hook, which captures them) ───
+  const titleRef = useRef(null);
+  const textareaRef = useRef(null);
+  // Mirrored into a ref because the autosave closure reads it without re-subscribing.
+  const tagsRef = useRef(selectedNote?.tags || []);
+
+  const { scheduleAutoSave, cancelAutoSave } = useAutoSave({
+    isNewNote,
+    noteId: selectedNote?.noteId,
+    titleRef,
+    textareaRef,
+    tagsRef,
+  });
+
   const { handleVersionsClick } = useNoteVersions({
     note: selectedNote,
     onRestored: () => handleNoteChange(),
+    cancelAutoSave,
   });
 
   if (!isNewNote && selectedNote === null) {
@@ -51,6 +69,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   const [content, setContent] = useState(selectedNote?.content || "");
   const [tags, setTags] = useState(selectedNote?.tags || []);
   const [isSaveLoading, setIsSaveLoading] = useState(false);
+  const [, setPreferencesVersion] = useState(0);
   const [showLinkPicker, setShowLinkPicker] = useState(false);
   const [linkPickerPos, setLinkPickerPos] = useState(null);
   const [backlinks, setBacklinks] = useState([]);
@@ -66,8 +85,6 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   const noteTags = selectedNote?.tags;
 
   // ─── Refs ───
-  const titleRef = useRef(null);
-  const textareaRef = useRef(null);
   const contentRef = useRef(null);
   const savedNoteRef = useRef(null);
 
@@ -207,6 +224,21 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
     }
   }, [isEditable]);
 
+  // Keep the autosave snapshot of the tags in step with the editor state
+  useEffect(() => {
+    tagsRef.current = tags;
+  }, [tags]);
+
+  // Re-render when the editor preferences change so spellcheck applies without a reopen
+  useEffect(() => {
+    function handlePreferencesChange() {
+      setPreferencesVersion(version => version + 1);
+    }
+
+    window.addEventListener('editor-preferences:change', handlePreferencesChange);
+    return () => window.removeEventListener('editor-preferences:change', handlePreferencesChange);
+  }, []);
+
   // Activate edit mode when navigated from edit button (same note already selected)
   useEffect(() => {
     function handleNavigate() {
@@ -218,6 +250,11 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
     }
     window.addEventListener('navigate', handleNavigate);
     return () => window.removeEventListener('navigate', handleNavigate);
+  }, [selectedNote?.noteId]);
+
+  // A pending autosave belongs to the note that was open when it was scheduled
+  useEffect(() => {
+    return () => cancelAutoSave();
   }, [selectedNote?.noteId]);
 
   // Fetch backlinks when note changes
@@ -279,6 +316,8 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   }
 
   const handleSaveClick = useCallback((closeAfter = false) => {
+    cancelAutoSave();
+
     const currentTitle = titleRef.current?.textContent || "";
     const currentContent = textareaRef.current?.value || content;
     const note = { title: currentTitle, content: currentContent, tags };
@@ -320,6 +359,8 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   }
 
   function handleCloseClick() {
+    cancelAutoSave();
+
     if (onClose) onClose(); else navigateTo("/", true);
   }
 
@@ -341,6 +382,8 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   });
 
   function handleEditCancelClick() {
+    cancelAutoSave();
+
     if (isNewNote) {
       if (onClose) onClose(); else navigateTo("/", true);
     } else {
@@ -354,14 +397,17 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
 
   function handleTitleChange(e) {
     setTitle(e.target.textContent);
+    scheduleAutoSave();
   }
 
   function handleAddTag(tag) {
     setTags(prev => [...prev, tag]);
+    scheduleAutoSave();
   }
 
   function handleRemoveTag(tag) {
     setTags(prev => prev.filter(t => t.tagId !== tag.tagId));
+    scheduleAutoSave();
   }
 
   function handleDeleteClick() {
@@ -374,6 +420,8 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   }
 
   function handleDeleteConfirmClick() {
+    cancelAutoSave();
+
     ApiClient.deleteNote(selectedNote.noteId).then(() => {
       closeModal();
       handleNoteChange();
@@ -546,6 +594,8 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   }
 
   // ─── Content Area ───
+  const spellcheckValue = SpellcheckPreferences.isEnabled() ? "true" : "false";
+
   let contentArea = null;
   if (isEditable) {
     contentArea = (
@@ -553,12 +603,13 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
         <textarea
           className="notes-editor-textarea"
           placeholder={t('notes.editor.placeholder')}
-          spellCheck="false"
+          spellCheck={spellcheckValue}
           ref={textareaRef}
           value={content}
           onInput={e => {
             const v = e.target.value;
             updateContent(v);
+            scheduleAutoSave();
             handleTextAreaHeight(e);
             handleTextareaInput(e);
             if (!skipSlashCheck.current) pendingCursorPos.current = null;
@@ -682,7 +733,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
         onFitToWindowToggle={onFitToWindowToggle}
       />
       <div className="notes-editor-header">
-        <div className="notes-editor-title" contentEditable={isEditable} ref={titleRef} onBlur={handleTitleChange} dangerouslySetInnerHTML={{ __html: title }} />
+        <div className="notes-editor-title" spellCheck={spellcheckValue} contentEditable={isEditable} ref={titleRef} onBlur={handleTitleChange} dangerouslySetInnerHTML={{ __html: title }} />
       </div>
       <NotesEditorTags tags={tags} isEditable={isEditable} canCreateTag onAddTag={handleAddTag} onRemoveTag={handleRemoveTag} />
       {showImageDropzone && (

@@ -16,6 +16,7 @@
   "nav.trash": "Trash",
   "settings.title": "Settings",
   "settings.tabs.appearance": "Appearance",
+  "settings.tabs.editor": "Editor",
   "settings.tabs.security": "Security",
   "settings.tabs.import": "Import",
   "settings.tabs.export": "Export",
