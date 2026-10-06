@@ -78,6 +78,38 @@ func GetSharesByNoteID(noteID int) ([]SharedNote, error) {
 	return shares, nil
 }
 
+func GetAllShares() ([]SharedNote, error) {
+	query := `SELECT shared_notes.id, shared_notes.share_token, shared_notes.note_id,
+		shared_notes.expires_at, shared_notes.created_at, COALESCE(notes.title, '')
+		FROM shared_notes
+		LEFT JOIN notes ON notes.note_id = shared_notes.note_id
+		ORDER BY shared_notes.created_at DESC`
+	rows, err := sqlite.DB.Query(query)
+	if err != nil {
+		slog.Error("get all shares failed", "error", err)
+		return nil, fmt.Errorf("get all shares: %w", err)
+	}
+	defer rows.Close()
+
+	shares := []SharedNote{}
+	for rows.Next() {
+		var s SharedNote
+		var expiresAt sql.NullTime
+		if err := rows.Scan(&s.ID, &s.ShareToken, &s.NoteID, &expiresAt, &s.CreatedAt, &s.NoteTitle); err != nil {
+			slog.Error("scan share row failed", "error", err)
+			return nil, fmt.Errorf("scan share: %w", err)
+		}
+		if expiresAt.Valid {
+			s.ExpiresAt = &expiresAt.Time
+		}
+		shares = append(shares, s)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate shares: %w", err)
+	}
+	return shares, nil
+}
+
 func GetShareByToken(token string) (*SharedNote, error) {
 	query := `SELECT id, share_token, note_id, expires_at, created_at FROM shared_notes WHERE share_token = ?`
 	var s SharedNote

@@ -282,6 +282,10 @@ async function getShares(noteId) {
   return await request('GET', `/api/notes/${noteId}/shares/`);
 }
 
+async function getAllShares() {
+  return await request('GET', '/api/shares/');
+}
+
 async function deleteShare(shareId) {
   return await request('DELETE', `/api/shares/${shareId}/`);
 }
@@ -617,6 +621,7 @@ export default {
   unpinNote,
   createShare,
   getShares,
+  getAllShares,
   deleteShare,
   clearTrash,
   getTags,

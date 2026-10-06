@@ -1,20 +1,28 @@
-import { h, Fragment } from "../../assets/preact.esm.js"
+import { h, Fragment, useEffect, useState } from "../../assets/preact.esm.js"
 import Link from './Link.jsx';
 import SidebarTagsList from "../../features/tags/SidebarTagsList.jsx";
 import FocusSwitcher from "../../features/focus/FocusSwitcher.jsx";
 import SearchMenu from "../../features/search/SearchMenu.jsx";
 import SettingsModal from "../../features/settings/SettingsModal.jsx";
 import { openModal } from "./Modal.jsx";
-import { NotesIcon, SearchIcon, NewIcon, ArchiveIcon, TrashIcon, BoardIcon, SettingsIcon, TemplatesIcon, ClipboardIcon } from "./Icon.jsx";
+import { NotesIcon, SearchIcon, NewIcon, ArchiveIcon, TrashIcon, BoardIcon, SettingsIcon, TemplatesIcon, ClipboardIcon, ShareIcon } from "./Icon.jsx";
 import { useAppContext } from "../../commons/contexts/AppContext.jsx";
 import { useLayout } from "../../commons/contexts/LayoutContext.jsx";
 import { t } from "../../commons/i18n/index.js";
 import navigateTo from "../utils/navigateTo.js";
+import SidebarPreferences from "../preferences/SidebarPreferences.js";
 import "./Sidebar.css";
 
 export default function Sidebar() {
   const { isSidebarOpen, closeSidebar } = useLayout();
   const { focusModes, tags } = useAppContext();
+  const [visibility, setVisibility] = useState(() => SidebarPreferences.getVisibility());
+
+  useEffect(() => {
+    const handleChange = (event) => setVisibility(event.detail || SidebarPreferences.getVisibility());
+    window.addEventListener("sidebar-preferences:change", handleChange);
+    return () => window.removeEventListener("sidebar-preferences:change", handleChange);
+  }, []);
 
   function handleSearchClick() {
     openModal(<SearchMenu />);
@@ -70,44 +78,51 @@ export default function Sidebar() {
       <div className={`sidebar-backdrop-container ${isSidebarOpen ? 'is-open' : ''}`} onClick={handleBackdropClick}>&nbsp;</div>
       <div className={`sidebar-container ${isSidebarOpen ? 'is-open' : ''}`}>
         <div className="sidebar-fixed">
-          <FocusSwitcher focusModes={focusModes} />
+          <div className="sidebar-topbar">
+            <FocusSwitcher focusModes={focusModes} />
+            <button type="button" className="sidebar-button sidebar-icon-button settings" onClick={handleSettingsClick} title={t("nav.settings")} aria-label={t("nav.settings")}>
+              <SettingsIcon />
+            </button>
+          </div>
 
-          <Link className="sidebar-button new" to={newNoteLink()} shouldPreserveSearchParams>
-            <NewIcon />
-            {t("nav.new")}
-          </Link>
-          <div className="sidebar-button search" onClick={handleSearchClick}>
-            <SearchIcon />
-            {t("nav.search")}
+          <div className="sidebar-quick-actions">
+            <Link className="sidebar-button new" to={newNoteLink()} shouldPreserveSearchParams title={t("nav.new")}>
+              <NewIcon />
+              {t("nav.new")}
+            </Link>
+            <button type="button" className="sidebar-button search" onClick={handleSearchClick} title={t("nav.search")}>
+              <SearchIcon />
+              {t("nav.search")}
+            </button>
           </div>
           <Link className="sidebar-button notes" to={notesLink()}>
             <NotesIcon />
             {t("nav.notes")}
           </Link>
-          <Link className="sidebar-button canvas" activeClassName="is-active" to={canvasLink}>
+          {visibility.canvas && <Link className="sidebar-button canvas" activeClassName="is-active" to={canvasLink}>
             <BoardIcon />
             {t("nav.canvas")}
-          </Link>
-          <Link className="sidebar-button templates" activeClassName="is-active" to={templatesLink}>
+          </Link>}
+          {visibility.templates && <Link className="sidebar-button templates" activeClassName="is-active" to={templatesLink}>
             <TemplatesIcon />
             {t("nav.templates")}
-          </Link>
-          <div className="sidebar-button clipboard" onClick={() => navigateTo('/clipboard/')}>
+          </Link>}
+          {visibility.clipboard && <div className="sidebar-button clipboard" onClick={() => navigateTo('/clipboard/')}>
             <ClipboardIcon />
             {t("nav.clipboard")}
-          </div>
-          <Link className="sidebar-button archives" activeClassName="is-active" to={archiveLink}>
+          </div>}
+          {visibility.archives && <Link className="sidebar-button archives" activeClassName="is-active" to={archiveLink}>
             <ArchiveIcon />
             {t("nav.archives")}
-          </Link>
-          <Link className="sidebar-button trash" activeClassName="is-active" to={trashLink}>
+          </Link>}
+          {visibility.trash && <Link className="sidebar-button trash" activeClassName="is-active" to={trashLink}>
             <TrashIcon />
             {t("nav.trash")}
-          </Link>
-          <div className="sidebar-button settings" onClick={handleSettingsClick}>
-            <SettingsIcon />
-            {t("nav.settings")}
-          </div>
+          </Link>}
+          {visibility.shares && <Link className="sidebar-button shares" activeClassName="is-active" to="/shares/">
+            <ShareIcon />
+            {t("nav.shares")}
+          </Link>}
         </div>
 
         {!window.location.pathname.includes('/clipboard/') && (

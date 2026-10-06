@@ -1,0 +1,190 @@
+.shares-page-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--spacing-6);
+    width: 100%;
+    max-width: none;
+    margin: 0;
+}
+
+.shares-header h1 {
+    margin: 0;
+    color: var(--text-primary);
+    font: var(--h4);
+}
+
+.shares-header p {
+    margin: var(--spacing-1) 0 var(--spacing-5);
+    color: var(--text-secondary);
+    font: var(--sm);
+}
+
+.shares-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-3);
+    margin-bottom: var(--spacing-4);
+}
+
+.shares-controls input {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 10px;
+    border: 1px solid var(--neutral-300);
+    border-radius: var(--radius-1);
+    color: var(--text-primary);
+    background: var(--bg-primary);
+    font: var(--sm);
+}
+
+.shares-filter {
+    display: flex;
+    gap: var(--spacing-1);
+    padding: 3px;
+    border-radius: var(--radius-2);
+    background: var(--neutral-100);
+}
+
+.shares-filter button,
+.shares-action-button {
+    border: 0;
+    border-radius: var(--radius-1);
+    padding: 6px 9px;
+    color: var(--text-secondary);
+    background: transparent;
+    cursor: pointer;
+    font: var(--sm);
+}
+
+.shares-filter button.is-active {
+    color: var(--text-primary);
+    background: var(--bg-primary);
+    box-shadow: var(--shadow-1);
+}
+
+.shares-list {
+    overflow-x: auto;
+    border: 1px solid var(--neutral-200);
+    border-radius: var(--radius-2);
+    background: var(--bg-primary);
+}
+
+.shares-table {
+    width: 100%;
+    min-width: 1000px;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+.shares-note-column { width: 28%; }
+.shares-link-column { width: 30%; }
+.shares-status-column { width: 7%; }
+.shares-expiry-column { width: 9%; }
+.shares-created-column { width: 12%; }
+.shares-actions-column { width: 14%; }
+
+.shares-table th,
+.shares-table td {
+    padding: var(--spacing-4);
+    border-bottom: 1px solid var(--neutral-200);
+    text-align: left;
+    vertical-align: middle;
+}
+
+.shares-table th {
+    color: var(--text-secondary);
+    background: var(--bg-secondary);
+    font: 600 var(--xs);
+}
+
+.shares-table th:last-child,
+.shares-table td:last-child {
+    text-align: right;
+}
+
+.shares-table tr:last-child td {
+    border-bottom: 0;
+}
+
+.shares-item:last-child {
+    border-bottom: 0;
+}
+
+.shares-note-title {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    padding: 0;
+    border: 0;
+    color: var(--text-primary);
+    background: transparent;
+    cursor: pointer;
+    font: 600 var(--sm);
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.shares-note-title:hover {
+    color: var(--primary-600, #2563eb);
+}
+
+.shares-link {
+    display: block;
+    overflow: hidden;
+    color: var(--primary-600, #2563eb);
+    font: var(--xs);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.shares-link:hover {
+    text-decoration: underline;
+}
+
+.shares-item-detail {
+    min-width: 110px;
+    color: var(--text-secondary);
+    font: var(--xs);
+}
+
+.shares-status {
+    font-weight: 600;
+}
+
+.shares-status.is-active { color: var(--green-600); }
+.shares-status.is-expired { color: var(--neutral-500); }
+
+.shares-item-actions {
+    display: flex;
+    gap: var(--spacing-1);
+    justify-content: flex-end;
+    white-space: nowrap;
+}
+
+.shares-action-button {
+    border: 1px solid var(--neutral-300);
+    color: var(--text-primary);
+    background: var(--bg-primary);
+    white-space: nowrap;
+}
+
+.shares-action-button.is-danger:hover {
+    border-color: var(--red-500);
+    color: var(--red-600);
+}
+
+.shares-loading {
+    display: flex;
+    justify-content: center;
+    min-height: 220px;
+    align-items: center;
+}
+
+@media screen and (max-width: 700px) {
+    .shares-page-content { padding: var(--spacing-4); padding-bottom: calc(var(--mobile-navbar-height) + var(--safe-area-bottom) + var(--spacing-3)); }
+    .shares-controls { align-items: stretch; flex-direction: column; }
+    .shares-filter { width: fit-content; }
+    .shares-list { margin-right: calc(var(--spacing-4) * -1); }
+}

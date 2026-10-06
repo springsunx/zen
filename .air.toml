@@ -1,0 +1,17 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+  cmd = "scripts\\dev-build.cmd"
+  bin = "tmp/main.exe"
+  delay = 600
+  include_ext = ["go", "js", "jsx", "css", "json", "html"]
+  exclude_dir = ["assets", "node_modules", "tmp", "test-data"]
+  exclude_regex = ["_test.go", "assets/bundle\\.(js|css)(\\.map)?$"]
+  stop_on_error = true
+
+[log]
+  time = true
+
+[misc]
+  clean_on_exit = true

@@ -8,6 +8,7 @@ import TemplatesPage from "./features/templates/TemplatesPage.jsx";
 import CanvasPage from "./features/canvas/CanvasPage.jsx";
 import CanvasesPage from "./features/canvas/CanvasesPage.jsx";
 import ClipboardPage from "./features/clipboard/ClipboardPage.jsx";
+import SharesPage from "./features/sharing/SharesPage.jsx";
 import LoginPage from './features/users/LoginPage.jsx';
 import navigateTo from './commons/utils/navigateTo.js';
 import SearchMenu from './features/search/SearchMenu.jsx';
@@ -105,6 +106,7 @@ function App() {
         <Route path="/canvases/" component={CanvasesPage} />
         <Route path="/canvases/:canvasId" component={CanvasPage} />
         <Route path="/clipboard/" component={ClipboardPage} />
+        <Route path="/shares/" component={SharesPage} />
       </Router>
     </AppProvider>
   );

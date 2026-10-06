@@ -155,6 +155,7 @@ func newRouter() *http.ServeMux {
 
 	addSessionRoute(mux, "POST /api/notes/{noteId}/share/", sharing.HandleCreateShare)
 	addSessionRoute(mux, "GET /api/notes/{noteId}/shares/", sharing.HandleGetShares)
+	addSessionRoute(mux, "GET /api/shares/", sharing.HandleGetAllShares)
 	addSessionRoute(mux, "DELETE /api/shares/{shareId}/", sharing.HandleDeleteShare)
 	addPublicRoute(mux, "GET /api/shares/{token}", sharing.HandleGetSharedNote)
 	addPublicRoute(mux, "GET /s/{token}", sharing.HandleSharedNotePage)

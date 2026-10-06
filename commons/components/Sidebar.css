@@ -15,6 +15,59 @@
         flex-shrink: 0;
     }
 
+    .sidebar-quick-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: var(--spacing-1);
+        padding: 0 8px var(--spacing-2);
+
+        .sidebar-button {
+            width: 100%;
+            min-height: 36px;
+            justify-content: center;
+            gap: 5px;
+            padding: 0 6px;
+            border: 1px solid var(--neutral-200);
+            background: var(--bg-primary);
+
+            svg.lucide {
+                width: 18px;
+                height: 18px;
+                padding: 0;
+            }
+
+            &:hover {
+                border-color: var(--neutral-300);
+                background: var(--neutral-100);
+            }
+        }
+    }
+
+    .sidebar-topbar {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-1);
+        padding: 0 8px var(--spacing-2);
+
+        .sidebar-focus-switcher {
+            flex: 1;
+            min-width: 0;
+            margin: 0;
+            padding: 0;
+        }
+
+        .sidebar-icon-button {
+            width: 32px;
+            min-height: 32px;
+            flex: 0 0 32px;
+
+            svg.lucide {
+                width: 18px;
+                height: 18px;
+            }
+        }
+    }
+
     .sidebar-scrollable {
         flex: 1;
         overflow-y: auto;
@@ -65,6 +118,25 @@
 
         svg.lucide {
             padding: 8px;
+        }
+
+        &.sidebar-icon-button {
+            justify-content: center;
+            width: 40px;
+            min-height: 40px;
+            padding: 0;
+            border: 0;
+            border-radius: var(--radius-1);
+            background: transparent;
+            font: inherit;
+
+            &:hover {
+                background: var(--neutral-100);
+            }
+
+            svg.lucide {
+                padding: 0;
+            }
         }
     }
 
@@ -237,11 +309,14 @@
 
                 &.new,
                 &.search,
-                &.settings,
                 &.canvas,
                 &.templates {
                     display: none;
                 }
+            }
+
+            .sidebar-topbar .settings {
+                display: none;
             }
 
             .sidebar-section {

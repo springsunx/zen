@@ -52,6 +52,17 @@ func HandleGetShares(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(shares)
 }
 
+func HandleGetAllShares(w http.ResponseWriter, r *http.Request) {
+	shares, err := GetAllShares()
+	if err != nil {
+		utils.SendErrorResponse(w, "SHARES_READ_FAILED", "Failed to fetch shares", err, http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(shares)
+}
+
 func HandleDeleteShare(w http.ResponseWriter, r *http.Request) {
 	shareIDStr := r.PathValue("shareId")
 	shareID, err := strconv.Atoi(shareIDStr)

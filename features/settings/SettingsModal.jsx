@@ -1,6 +1,6 @@
 import { h, useState, useEffect } from "../../assets/preact.esm.js"
 import { ModalBackdrop, ModalContainer, ModalHeader, closeModal } from "../../commons/components/Modal.jsx";
-import { UploadIcon, DownloadIcon, ThemeIcon, BrainCircuitIcon, SecurityIcon, ImagesIcon, PencilIcon } from "../../commons/components/Icon.jsx";
+import { UploadIcon, DownloadIcon, ThemeIcon, BrainCircuitIcon, SecurityIcon, ImagesIcon, PencilIcon, SettingsIcon } from "../../commons/components/Icon.jsx";
 import ImportPane from "./ImportPane.jsx";
 import ExportPane from "./ExportPane.jsx";
 import AppearancePane from "./AppearancePane.jsx";
@@ -9,6 +9,7 @@ import ApiTokensPane from "./ApiTokensPane.jsx";
 import SecurityPane from "./SecurityPane.jsx";
 import AiPane from "./AiPane.jsx";
 import StoragePane from "./StoragePane.jsx";
+import SidebarPane from "./SidebarPane.jsx";
 import { t } from "../../commons/i18n/index.js";
 import "./SettingsModal.css";
 
@@ -24,6 +25,7 @@ export default function SettingsModal() {
   const tabs = [
     { id: "appearance", label: t("settings.tabs.appearance"), icon: <ThemeIcon className="settings-tab-icon" />, content: <AppearancePane /> },
     { id: "editor", label: t("settings.tabs.editor"), icon: <PencilIcon className="settings-tab-icon" />, content: <EditorPane /> },
+    { id: "sidebar", label: t("settings.tabs.sidebar"), icon: <SettingsIcon className="settings-tab-icon" />, content: <SidebarPane /> },
     { id: "account", label: t("settings.tabs.security"), icon: <SecurityIcon className="settings-tab-icon" />, content: <SecurityPane /> },
     { id: "import", label: t("settings.tabs.import"), icon: <UploadIcon className="settings-tab-icon" />, content: <ImportPane /> },
     { id: "export", label: t("settings.tabs.export"), icon: <DownloadIcon className="settings-tab-icon" />, content: <ExportPane /> },

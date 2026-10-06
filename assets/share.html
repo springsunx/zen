@@ -113,6 +113,11 @@
             overflow-y: auto;
             background: var(--bg-primary);
         }
+        html.is-resizing-shared-note,
+        html.is-resizing-shared-note * {
+            cursor: col-resize !important;
+            user-select: none !important;
+        }
         a { color: #2563EB; text-decoration: none; }
         a:hover { text-decoration: underline; }
 
@@ -150,15 +155,65 @@
         }
         .shared-container {
             flex: 1;
-            width: 100%; max-width: 780px;
+            width: 100%; max-width: var(--shared-content-width, 850px);
             margin: 0 auto; padding: 40px 32px;
         }
-        .shared-container.is-wide { max-width: 960px; }
+
+        /* Page-edge grips match the normal note reader and stay unobtrusive until used. */
+        .shared-resize-handle {
+            position: fixed; top: 44px; bottom: 0; z-index: 5;
+            cursor: col-resize; touch-action: none;
+        }
+        .shared-resize-handle::after {
+            content: ""; position: absolute; top: 0; bottom: 0; width: 3px;
+            border-radius: 3px;
+            background: linear-gradient(
+                to bottom,
+                transparent calc(var(--shared-handle-y, 50%) - 52px),
+                color-mix(in srgb, var(--neutral-500) 38%, transparent) calc(var(--shared-handle-y, 50%) - 12px),
+                color-mix(in srgb, var(--neutral-500) 38%, transparent) calc(var(--shared-handle-y, 50%) + 12px),
+                transparent calc(var(--shared-handle-y, 50%) + 52px)
+            );
+            opacity: 0; pointer-events: none; transition: opacity .15s ease;
+        }
+        .shared-resize-handle[data-side="left"]::after { right: 16px; }
+        .shared-resize-handle[data-side="right"]::after { left: 16px; }
+        .shared-resize-handle:hover::after,
+        .shared-resize-handle[data-dragging]::after { opacity: 1; }
+
+        .shared-outline {
+            position: fixed; top: 50%; right: 12px; z-index: 6;
+            transform: translateY(-50%); display: flex; flex-direction: column;
+            align-items: flex-end; gap: 4px; padding: 8px 4px; pointer-events: none;
+        }
+        .shared-outline-row {
+            position: relative; display: flex; justify-content: flex-end; align-items: center;
+            padding: 4px 0; cursor: pointer; pointer-events: auto;
+        }
+        .shared-outline-bar {
+            height: 3px; border-radius: 2px; background: var(--neutral-300);
+            transition: background .15s ease;
+        }
+        .shared-outline-bar.level-1 { width: 30px; }
+        .shared-outline-bar.level-2 { width: 22px; }
+        .shared-outline-bar.level-3 { width: 14px; }
+        .shared-outline-row:hover .shared-outline-bar,
+        .shared-outline-bar.is-active { background: var(--neutral-900); }
+        .shared-outline-label {
+            position: absolute; right: 100%; top: 50%; transform: translateY(-50%);
+            margin-right: 14px; max-width: 320px; padding: 10px 14px;
+            display: none; overflow: hidden; border: 1px solid var(--neutral-200); border-radius: 6px;
+            background: var(--bg-primary); box-shadow: 0 6px 16px rgba(0, 0, 0, .12);
+            color: var(--text-primary); font: var(--sm); font-weight: 600;
+            white-space: nowrap; text-overflow: ellipsis; pointer-events: none;
+        }
+        .shared-outline-row:hover .shared-outline-label { display: block; }
 
         @media (max-width: 780px) {
             .shared-container { padding: 28px 20px; }
-            .shared-container.is-wide { max-width: 100%; }
-            .shared-topbar-actions { display: none; }
+        }
+        @media (max-width: 948px) {
+            .shared-resize-handle, .shared-outline { display: none; }
         }
 
         /* ─── Header ─── */
@@ -296,7 +351,7 @@
     (function() {
         var token = window.location.pathname.replace(/^\/s\//, '').replace(/\/$/, '');
         var app = document.getElementById('app');
-        var widthMode = 'wide';
+        var sharedContentWidth = 850;
 
         function showError(msg) {
             app.innerHTML = '<div class="shared-error"><p>' + msg + '</p></div>';
@@ -304,6 +359,128 @@
 
         function showExpired() {
             app.innerHTML = '<div class="shared-expired"><h2>Share Expired</h2><p>This shared note has expired or is no longer available.</p></div><div class="shared-footer">Shared via <a href="/">Zen</a></div>';
+        }
+
+        function clampSharedWidth(width) {
+            return Math.max(480, Math.round(width));
+        }
+
+        function applySharedWidth(width) {
+            sharedContentWidth = clampSharedWidth(width);
+            document.documentElement.style.setProperty('--shared-content-width', sharedContentWidth + 'px');
+        }
+
+        function setupSharedReaderControls() {
+            var container = document.getElementById('shared-container');
+            var leftHandle = document.getElementById('shared-resize-left');
+            var rightHandle = document.getElementById('shared-resize-right');
+            if (!container || !leftHandle || !rightHandle) return;
+
+            function placeHandles() {
+                var rect = container.getBoundingClientRect();
+                var leftStart = Math.max(0, rect.left - 40);
+                var rightEnd = Math.min(window.innerWidth, rect.right + 40);
+                leftHandle.style.left = leftStart + 'px';
+                leftHandle.style.width = Math.max(0, rect.left - leftStart) + 'px';
+                rightHandle.style.left = rect.right + 'px';
+                rightHandle.style.width = Math.max(0, rightEnd - rect.right) + 'px';
+            }
+
+            function setHandleMark(handle, event) {
+                var rect = handle.getBoundingClientRect();
+                handle.style.setProperty('--shared-handle-y', (event.clientY - rect.top) + 'px');
+            }
+
+            function startDrag(event) {
+                if (event.button !== 0) return;
+                event.preventDefault();
+                var handle = event.currentTarget;
+                var direction = handle.dataset.side === 'left' ? -1 : 1;
+                var startX = event.clientX;
+                var startWidth = Math.min(container.getBoundingClientRect().width, window.innerWidth - 40);
+                var latestWidth = sharedContentWidth;
+                try { handle.setPointerCapture(event.pointerId); } catch (ignore) {}
+                handle.dataset.dragging = '';
+                document.documentElement.classList.add('is-resizing-shared-note');
+
+                function move(moveEvent) {
+                    latestWidth = Math.min(
+                        clampSharedWidth(startWidth + (moveEvent.clientX - startX) * direction * 2),
+                        Math.max(480, window.innerWidth - 40)
+                    );
+                    applySharedWidth(latestWidth);
+                    setHandleMark(handle, moveEvent);
+                    placeHandles();
+                }
+
+                function finish(upEvent) {
+                    handle.removeEventListener('pointermove', move);
+                    handle.removeEventListener('pointerup', finish);
+                    handle.removeEventListener('pointercancel', finish);
+                    delete handle.dataset.dragging;
+                    document.documentElement.classList.remove('is-resizing-shared-note');
+                    try { handle.releasePointerCapture(upEvent.pointerId); } catch (ignore) {}
+                    try { localStorage.setItem('zen.shareContentWidth', String(latestWidth)); } catch (ignore) {}
+                }
+
+                handle.addEventListener('pointermove', move);
+                handle.addEventListener('pointerup', finish);
+                handle.addEventListener('pointercancel', finish);
+            }
+
+            [leftHandle, rightHandle].forEach(function(handle) {
+                handle.addEventListener('pointermove', function(event) { setHandleMark(handle, event); });
+                handle.addEventListener('pointerdown', startDrag);
+            });
+            window.addEventListener('resize', placeHandles);
+            placeHandles();
+            setupSharedOutline(container);
+        }
+
+        function setupSharedOutline(container) {
+            var outline = document.getElementById('shared-outline');
+            if (!outline) return;
+            var headings = Array.from(container.querySelectorAll('.shared-rendered h1, .shared-rendered h2, .shared-rendered h3'));
+            if (headings.length === 0) {
+                outline.remove();
+                return;
+            }
+
+            var bars = headings.map(function(heading, index) {
+                var level = heading.tagName.toLowerCase();
+                var row = document.createElement('div');
+                row.className = 'shared-outline-row';
+                var bar = document.createElement('div');
+                bar.className = 'shared-outline-bar level-' + level.slice(1);
+                var label = document.createElement('div');
+                label.className = 'shared-outline-label';
+                label.textContent = heading.textContent.trim() || 'Untitled';
+                row.appendChild(bar);
+                row.appendChild(label);
+                row.addEventListener('click', function() {
+                    window.scrollTo({ top: Math.max(0, heading.getBoundingClientRect().top + window.scrollY - 68), behavior: 'smooth' });
+                });
+                outline.appendChild(row);
+                return { heading: heading, bar: bar, index: index };
+            });
+
+            function updateActive() {
+                var current = 0;
+                var line = 78;
+                bars.forEach(function(item) {
+                    if (item.heading.getBoundingClientRect().top <= line) current = item.index;
+                });
+                bars.forEach(function(item) { item.bar.classList.toggle('is-active', item.index === current); });
+            }
+
+            var frame = null;
+            function scheduleActiveUpdate() {
+                if (frame !== null) return;
+                frame = requestAnimationFrame(function() { frame = null; updateActive(); });
+            }
+            window.addEventListener('scroll', scheduleActiveUpdate, { passive: true });
+            window.addEventListener('resize', scheduleActiveUpdate);
+            updateActive();
         }
 
         function renderPage(note) {
@@ -502,12 +679,6 @@
                 '<span>Shared Note</span>' +
                 '</div>' +
                 '<div class="shared-topbar-actions" style="display:flex;gap:4px">' +
-                '<button class="shared-topbar-btn" id="btn-normal" title="标准宽度" onclick="window._zenSetWidth(\'normal\')">' +
-                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/></svg>' +
-                '</button>' +
-                '<button class="shared-topbar-btn" id="btn-wide" title="宽屏" onclick="window._zenSetWidth(\'wide\')">' +
-                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>' +
-                '</button>' +
                 '<button class="shared-topbar-btn" id="btn-theme" title="切换主题" onclick="window._zenToggleTheme()">' +
                 '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>' +
                 '</button>' +
@@ -523,7 +694,12 @@
                 '<div class="shared-rendered">' + rendered + '</div>' +
                 '</div>' +
                 '<div class="shared-footer">Shared via <a href="/">Zen</a></div>' +
-                '</div>';
+                '</div>' +
+                '<div class="shared-resize-handle" id="shared-resize-left" data-side="left" aria-hidden="true"></div>' +
+                '<div class="shared-resize-handle" id="shared-resize-right" data-side="right" aria-hidden="true"></div>' +
+                '<div class="shared-outline" id="shared-outline" aria-label="目录"></div>';
+
+            setupSharedReaderControls();
         }
 
         function esc(text) {
@@ -545,19 +721,6 @@
             setTimeout(function() { btn.textContent = '复制'; }, 2000);
         };
 
-        window._zenSetWidth = function(mode) {
-            widthMode = mode;
-            var el = document.getElementById('shared-container');
-            var btnN = document.getElementById('btn-normal');
-            var btnW = document.getElementById('btn-wide');
-            if (el) {
-                el.classList.toggle('is-wide', mode === 'wide');
-            }
-            if (btnN) btnN.classList.toggle('is-active', mode === 'normal');
-            if (btnW) btnW.classList.toggle('is-active', mode === 'wide');
-            try { localStorage.setItem('zen.shareWidth', mode); } catch(e) {}
-        };
-
         window._zenToggleTheme = function() {
             var html = document.documentElement;
             var isDark = html.getAttribute('data-theme') === 'dark';
@@ -569,8 +732,12 @@
             try { localStorage.setItem('zen.shareTheme', isDark ? 'light' : 'dark'); } catch(e) {}
         };
 
-        // Restore saved preferences
-        try { widthMode = localStorage.getItem('zen.shareWidth') || 'wide'; } catch(e) {}
+        // Restore the independently adjustable reading width and the theme.
+        try {
+            var savedWidth = parseInt(localStorage.getItem('zen.shareContentWidth'), 10);
+            if (Number.isFinite(savedWidth)) sharedContentWidth = clampSharedWidth(savedWidth);
+        } catch(e) {}
+        applySharedWidth(sharedContentWidth);
         try {
             if (localStorage.getItem('zen.shareTheme') === 'dark') {
                 document.documentElement.setAttribute('data-theme', 'dark');
@@ -586,7 +753,6 @@
             .then(function(note) {
                 if (note) {
                     renderPage(note);
-                    setTimeout(function() { window._zenSetWidth(widthMode); }, 50);
                 } else { showExpired(); }
             })
             .catch(function() { showError('Failed to load note.'); });

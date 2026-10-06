@@ -11,6 +11,7 @@ import {
   NotesIcon,
   TemplatesIcon,
   BoardIcon,
+  ShareIcon,
   SettingsIcon,
 } from "../../commons/components/Icon.jsx";
 import navigateTo from "../../commons/utils/navigateTo.js";
@@ -210,6 +211,17 @@ export function getStaticCommands() {
       action() {
         closeModal();
         navigateTo("/notes/?isDeleted=true");
+      },
+    },
+    {
+      id: "go-shares",
+      label: () => t("nav.shares"),
+      icon: ShareIcon,
+      keywords: ["share", "sharing", "公开", "分享", "fenxiang", "fx"],
+      category: "navigation",
+      action() {
+        closeModal();
+        navigateTo("/shares/");
       },
     },
     {

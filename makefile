@@ -5,15 +5,13 @@ build:
 	go build --tags "fts5"
 
 dev:
-	esbuild index.js --bundle --minify --format=esm --outfile=assets/bundle.js --sourcemap --loader:.js=jsx --jsx-factory=h --jsx-fragment=Fragment
 ifeq ($(OS),Windows_NT)
-	set "DEV_MODE=true" && go run --tags "fts5" main.go
+	set "DEV_MODE=true" && "$(shell go env GOPATH)/bin/air.exe" -c .air.toml
 else
-	DEV_MODE=true go run --tags "fts5" main.go
+	DEV_MODE=true air -c .air.toml
 endif
 
-watch:
-	DEV_MODE=true air --build.cmd 'go build --tags "fts5" -o ./tmp/main .' & esbuild index.js --bundle --outfile=assets/bundle.js --loader:.js=jsx --jsx-factory=h --jsx-fragment=Fragment --watch
+watch: dev
 
 test:
 	go test --tags "fts5" ./...
