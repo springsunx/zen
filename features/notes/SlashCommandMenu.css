@@ -15,6 +15,20 @@
     display: none;
 }
 
+.slash-command-group + .slash-command-group {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--neutral-100, #f5f5f5);
+}
+
+.slash-command-group-title {
+    padding: 4px 10px 5px;
+    color: var(--neutral-500, #737373);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
 .slash-command-item {
     display: flex;
     align-items: center;
@@ -54,10 +68,27 @@
     flex: 1;
 }
 
+.slash-command-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-width: 0;
+}
+
 .slash-command-label {
     font-size: 13px;
     font-weight: 500;
     color: var(--text-primary, #111);
+}
+
+.slash-command-token {
+    flex-shrink: 0;
+    padding: 1px 5px;
+    border-radius: 4px;
+    color: var(--neutral-600, #525252);
+    background: var(--neutral-100, #f5f5f5);
+    font: 11px/1.35 var(--font-family-code);
 }
 
 .slash-command-desc {

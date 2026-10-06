@@ -42,6 +42,7 @@ import useSlashCommands from "./useSlashCommands.js";
 import useNoteVersions from "./useNoteVersions.js";
 import useAutoSave from "./useAutoSave.js";
 import SpellcheckPreferences from "../../commons/preferences/SpellcheckPreferences.js";
+import CodeMirrorEditor from "./CodeMirrorEditor.jsx";
 import "./NotesEditor.css";
 import { t } from "../../commons/i18n/index.js";
 
@@ -148,7 +149,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
     slashMenu, setSlashMenu, skipSlashCheck, filteredCommands,
     handleTextareaInput, handleSlashKeyDown, executeSlashCommand, handleSlashUndo,
   } = useSlashCommands({
-    textareaRef, updateContent, pendingCursorPos,
+    textareaRef, updateContent,
     onLinkPicker: handleShowLinkPicker,
     onTemplatePicker: handleOpenTemplateSlashMenu,
   });
@@ -346,10 +347,6 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
     onEditModeChange(isEditable);
   }, [isEditable, onEditModeChange]);
 
-  useEffect(() => {
-    handleTextAreaHeight();
-  }, [content, isEditable]);
-
   // Sync from selectedNote when switching to a different note or content changes externally
   useEffect(() => {
     if (selectedNote) {
@@ -384,7 +381,6 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
       setTimeout(() => {
         const container = getScrollContainer();
         const savedTop = readScrollRef.current;
-        try { handleTextAreaHeight(); } catch {}
         const ta = textareaRef.current;
         if (ta && typeof ta.focus === 'function') {
           try {
@@ -479,12 +475,6 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   }, [content, isEditable]);
 
   // ─── Handlers ───
-  function handleTextAreaHeight() {
-    if (textareaRef.current === null) return;
-    const textarea = textareaRef.current;
-    textarea.style.height = `${textarea.scrollHeight + 2}px`;
-  }
-
   function handleInsertInternalLink(link) {
     if (textareaRef.current) {
       const textarea = textareaRef.current;
@@ -492,14 +482,10 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
       const savedScrollTop = editorContainer ? editorContainer.scrollTop : null;
       const startPos = textarea.selectionStart;
       const endPos = textarea.selectionEnd;
-      const beforeText = textarea.value.substring(0, startPos);
-      const afterText = textarea.value.substring(endPos);
-      updateContent(beforeText + link + afterText);
+      textarea.replaceRange(startPos, endPos, link, startPos + link.length);
+      updateContent(textarea.value);
       requestAnimationFrame(() => {
         textarea.focus({ preventScroll: true });
-        const newPos = startPos + link.length;
-        textarea.selectionStart = newPos;
-        textarea.selectionEnd = newPos;
         requestAnimationFrame(() => {
           if (editorContainer && savedScrollTop !== null) {
             editorContainer.scrollTop = savedScrollTop;
@@ -592,9 +578,9 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
 
   // Table actions open a grid editor instead of splicing markdown blindly; the rest of
   // the formatting actions go straight to the formatter.
-  function handleEditorActions(action, placeholder) {
+  function handleEditorActions(action) {
     if (action !== "insertTable" && action !== "editTable") {
-      applyMarkdownFormat(action, placeholder);
+      applyMarkdownFormat(action);
       return;
     }
 
@@ -612,7 +598,8 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
 
     function handleConfirm(tableMarkdown) {
       closeModal('.note-modal-root');
-      updateContent(beforeText + tableMarkdown + afterText);
+      textarea.replaceRange(startPos, endPos, tableMarkdown);
+      updateContent(textarea.value);
       scheduleAutoSave();
     }
 
@@ -783,20 +770,17 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
     const ta = textareaRef.current;
     const currentVal = ta ? ta.value : content;
     const cursorPos = ta ? ta.selectionStart : currentVal.length;
-    const inserted = currentVal.slice(0, cursorPos) + template.content + currentVal.slice(cursorPos);
-    updateContent(inserted);
+    if (ta) {
+      ta.replaceRange(cursorPos, cursorPos, template.content, cursorPos + template.content.length);
+      updateContent(ta.value);
+    } else {
+      updateContent(currentVal.slice(0, cursorPos) + template.content + currentVal.slice(cursorPos));
+    }
     if (tags.length === 0 && template.tags && template.tags.length > 0) setTags(template.tags);
     setShowTemplateSlashMenu(false);
     setTemplateList([]);
     ApiClient.incrementTemplateUsage(template.templateId).catch(console.error);
-    setTimeout(() => {
-      if (ta) {
-        ta.focus();
-        const newPos = cursorPos + template.content.length;
-        ta.selectionStart = newPos;
-        ta.selectionEnd = newPos;
-      }
-    }, 0);
+    if (ta) ta.focus();
   }
 
   function handleTemplateApply(templateTitle, templateContent, templateTags) {
@@ -804,17 +788,14 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
     const ta = textareaRef.current;
     const currentVal = ta ? ta.value : content;
     const cursorPos = ta ? ta.selectionStart : currentVal.length;
-    const inserted = currentVal.slice(0, cursorPos) + templateContent + currentVal.slice(cursorPos);
-    updateContent(inserted);
+    if (ta) {
+      ta.replaceRange(cursorPos, cursorPos, templateContent, cursorPos + templateContent.length);
+      updateContent(ta.value);
+    } else {
+      updateContent(currentVal.slice(0, cursorPos) + templateContent + currentVal.slice(cursorPos));
+    }
     if (tags.length === 0 && templateTags && templateTags.length > 0) setTags(templateTags);
-    setTimeout(() => {
-      if (ta) {
-        ta.focus();
-        const newPos = cursorPos + templateContent.length;
-        ta.selectionStart = newPos;
-        ta.selectionEnd = newPos;
-      }
-    }, 0);
+    if (ta) ta.focus();
   }
 
   // ─── Memoized rendered content ───
@@ -823,92 +804,51 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
     return renderMarkdown(content, { anchorPrefix: selectedNote ? `n${selectedNote.noteId}-` : '', hasCodeCopyButton: true });
   }, [content, isEditable, title, selectedNote?.noteId]);
 
-  // ─── Selection Highlight (gray overlay when AI panel is open) ───
-  function SelectionHighlight({ textareaRef: taRef, selection }) {
-    if (!taRef.current || !selection || selection.start === selection.end) return null;
-    const ta = taRef.current;
-    const text = ta.value;
-    const before = text.substring(0, selection.start);
-    const selected = text.substring(selection.start, selection.end);
-    const after = text.substring(selection.end);
-
-    const style = window.getComputedStyle(ta);
-    const overlayStyle = {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      width: '100%',
-      height: '100%',
-      pointerEvents: 'none',
-      zIndex: 2,
-      overflow: 'auto',
-      margin: 0,
-      padding: style.padding,
-      border: style.border,
-      font: style.font,
-      lineHeight: style.lineHeight,
-      letterSpacing: style.letterSpacing,
-      wordSpacing: style.wordSpacing,
-      whiteSpace: 'pre-wrap',
-      wordWrap: 'break-word',
-      boxSizing: 'border-box',
-      color: 'transparent',
-      background: 'transparent',
-    };
-
-    return (
-      <pre style={overlayStyle} aria-hidden="true">
-        <span>{before}</span>
-        <span style={{ background: 'rgba(128, 128, 128, 0.25)', borderRadius: '2px' }}>{selected}</span>
-        <span>{after}</span>
-      </pre>
-    );
-  }
-
   // ─── Content Area ───
   const spellcheckValue = SpellcheckPreferences.isEnabled() ? "true" : "false";
+
+  function handleCodeMirrorChange() {
+    scheduleAutoSave();
+    if (textareaRef.current) handleTextareaInput({ target: textareaRef.current });
+    if (!skipSlashCheck.current) pendingCursorPos.current = null;
+  }
+
+  function handleCodeMirrorBlur(value) {
+    updateContent(value);
+  }
+
+  function handleCodeMirrorKeyDown(e) {
+    // Double Ctrl detection: activate AI assistant.
+    if (e.key === 'Control' && !e.shiftKey && !e.altKey && !e.metaKey && !e.repeat) {
+      const now = Date.now();
+      if (now - lastCtrlPress.current < 400) {
+        e.preventDefault();
+        lastCtrlPress.current = 0;
+        handleOpenAI();
+        return true;
+      }
+      lastCtrlPress.current = now;
+      return false;
+    }
+    if (handleTemplateSlashKeyDown(e)) return true;
+    if (handleSlashKeyDown(e)) return true;
+    if (handleSlashUndo(e)) return true;
+    return false;
+  }
 
   let contentArea = null;
   if (isEditable) {
     contentArea = (
       <div style={{ position: 'relative' }}>
-        <textarea
-          className="notes-editor-textarea"
-          placeholder={t('notes.editor.placeholder')}
-          spellCheck={spellcheckValue}
-          ref={textareaRef}
+        <CodeMirrorEditor
           value={content}
-          onInput={e => {
-            const v = e.target.value;
-            updateContent(v);
-            scheduleAutoSave();
-            handleTextAreaHeight(e);
-            handleTextareaInput(e);
-            if (!skipSlashCheck.current) pendingCursorPos.current = null;
-          }}
-          onKeyDown={e => {
-            // Double Ctrl detection: activate AI assistant
-            if (e.key === 'Control' && !e.shiftKey && !e.altKey && !e.metaKey && !e.repeat) {
-              const now = Date.now();
-              if (now - lastCtrlPress.current < 400) {
-                e.preventDefault();
-                lastCtrlPress.current = 0;
-                handleOpenAI();
-                return;
-              }
-              lastCtrlPress.current = now;
-              return;
-            }
-            if (handleTemplateSlashKeyDown(e)) return;
-            if (handleSlashKeyDown(e)) return;
-            if (handleSlashUndo(e)) return;
-          }}
-          onBlur={e => { const v = e.target.value; updateContent(v); }}
-          style={{ position: 'relative', zIndex: 1 }}
+          placeholderText={t('notes.editor.placeholder')}
+          spellcheck={spellcheckValue}
+          editorRef={textareaRef}
+          onChange={handleCodeMirrorChange}
+          onBlur={handleCodeMirrorBlur}
+          onKeyDown={handleCodeMirrorKeyDown}
         />
-        {showAIModal && aiSavedSelection.current && aiSavedSelection.current.start !== aiSavedSelection.current.end && (
-          <SelectionHighlight textareaRef={textareaRef} selection={aiSavedSelection.current} />
-        )}
         {slashMenu && filteredCommands.length > 0 && (
           <SlashCommandMenu
             query={slashMenu.query}
@@ -923,17 +863,12 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
                 const val = ta.value;
                 const pos = ta.selectionStart;
                 savedLineStart = val.lastIndexOf('\n', pos - 1) + 1;
-                const before = val.substring(0, savedLineStart);
-                const after = val.substring(pos);
                 skipSlashCheck.current = true;
-                updateContent(before + after);
-                // Restore cursor position after state update
-                requestAnimationFrame(() => {
-                  if (textareaRef.current) {
-                    textareaRef.current.selectionStart = savedLineStart;
-                    textareaRef.current.selectionEnd = savedLineStart;
-                  }
+                ta.replaceRange(savedLineStart, pos, "", savedLineStart, {
+                  scrollIntoView: false,
+                  preserveViewport: true,
                 });
+                updateContent(ta.value);
               }
               setSlashMenu(null);
               if (action === 'link') {
@@ -1026,7 +961,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
           <NotesEditorFormattingToolbar isEditable={isEditable} onFormat={handleEditorActions} onInsertInternalLink={handleShowLinkPicker} onOpenAI={handleOpenAI} />
           {showAIModal && (
             <AIPanel
-              fullContent={content}
+              fullContent={textareaRef.current?.value || content}
               selectedText={textareaRef.current ? textareaRef.current.value.substring(textareaRef.current.selectionStart, textareaRef.current.selectionEnd) : ""}
               noteTitle={title}
               messages={aiMessages}

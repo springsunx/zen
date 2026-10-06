@@ -1,7 +1,7 @@
 import { useState, useRef } from "../../assets/preact.esm.js";
 import { COMMANDS, generateTable } from './SlashCommandMenu.jsx';
 
-export default function useSlashCommands({ textareaRef, updateContent, pendingCursorPos, onLinkPicker, onTemplatePicker }) {
+export default function useSlashCommands({ textareaRef, updateContent, onLinkPicker, onTemplatePicker }) {
   const [slashMenu, setSlashMenu] = useState(null); // { query, selectedIndex }
   const skipSlashCheck = useRef(false);
   const slashUndoStack = useRef([]); // custom undo stack: [{content, pos}]
@@ -19,6 +19,18 @@ export default function useSlashCommands({ textareaRef, updateContent, pendingCu
     } else {
       setSlashMenu(null);
     }
+  }
+
+  function replaceSlashRange(from, to, text, cursorPosition) {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    // Work against CodeMirror's document rather than replacing the controlled value.
+    // That preserves the editor's scroll anchor while the slash command is applied.
+    ta.replaceRange(from, to, text, cursorPosition, {
+      scrollIntoView: false,
+      preserveViewport: true,
+    });
+    updateContent(ta.value);
   }
 
   function handleSlashKeyDown(e) {
@@ -77,10 +89,7 @@ export default function useSlashCommands({ textareaRef, updateContent, pendingCu
         const val = ta.value;
         const pos = ta.selectionStart;
         const lineStart = val.lastIndexOf('\n', pos - 1) + 1;
-        const before = val.substring(0, lineStart);
-        const after = val.substring(pos);
-        pendingCursorPos.current = { start: lineStart, end: lineStart };
-        updateContent(before + after);
+        replaceSlashRange(lineStart, pos, "", lineStart);
       }
       setSlashMenu(null);
       return true;
@@ -101,19 +110,13 @@ export default function useSlashCommands({ textareaRef, updateContent, pendingCu
 
     if (cmd.action === 'link') {
       setSlashMenu(null);
-      const before = val.substring(0, lineStart);
-      const after = val.substring(pos);
-      updateContent(before + after);
-      pendingCursorPos.current = { start: lineStart, end: lineStart };
+      replaceSlashRange(lineStart, pos, "", lineStart);
       setTimeout(() => { onLinkPicker(); skipSlashCheck.current = false; }, 50);
       return;
     }
     if (cmd.action === 'template') {
       setSlashMenu(null);
-      const before = val.substring(0, lineStart);
-      const after = val.substring(pos);
-      updateContent(before + after);
-      pendingCursorPos.current = { start: lineStart, end: lineStart };
+      replaceSlashRange(lineStart, pos, "", lineStart);
       setTimeout(() => { onTemplatePicker(); skipSlashCheck.current = false; }, 50);
       return;
     }
@@ -131,20 +134,16 @@ export default function useSlashCommands({ textareaRef, updateContent, pendingCu
       };
       const fmt = formatPrefixMap[cmd.format];
       if (!fmt) return;
-      const newVal = val.substring(0, lineStart) + fmt.text + val.substring(pos);
-      updateContent(newVal);
+      replaceSlashRange(lineStart, pos, fmt.text, lineStart + fmt.cursor);
       setSlashMenu(null);
-      pendingCursorPos.current = { start: lineStart + fmt.cursor, end: lineStart + fmt.cursor };
       setTimeout(() => { skipSlashCheck.current = false; }, 50);
     } else if (cmd.insert) {
       const insertText = cmd.insert();
       const cursorOff = cmd.cursorOffset !== undefined ? cmd.cursorOffset : insertText.length;
       const finalText = cmd.postInsert ? insertText.substring(0, cursorOff) + cmd.postInsert + insertText.substring(cursorOff) : insertText;
       const finalCursorOff = cmd.postInsert ? cursorOff + cmd.postInsert.length + (cmd.cursorAfterPost || 0) : cursorOff;
-      const newVal = val.substring(0, lineStart) + finalText + val.substring(pos);
-      updateContent(newVal);
+      replaceSlashRange(lineStart, pos, finalText, lineStart + finalCursorOff);
       setSlashMenu(null);
-      pendingCursorPos.current = { start: lineStart + finalCursorOff, end: lineStart + finalCursorOff };
       setTimeout(() => { skipSlashCheck.current = false; }, 50);
     }
   }
@@ -154,8 +153,12 @@ export default function useSlashCommands({ textareaRef, updateContent, pendingCu
       if (slashUndoStack.current.length > 0) {
         e.preventDefault();
         const state = slashUndoStack.current.pop();
-        updateContent(state.content);
-        pendingCursorPos.current = { start: state.pos, end: state.pos };
+        const ta = textareaRef.current;
+        if (ta) {
+          replaceSlashRange(0, ta.value.length, state.content, state.pos);
+        } else {
+          updateContent(state.content);
+        }
         return true;
       }
     }

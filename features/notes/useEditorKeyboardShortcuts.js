@@ -18,7 +18,7 @@ export default function useEditorKeyboardShortcuts({
   onInsertInternalLink
 }) {
   const handleKeyDown = useCallback(e => {
-    const isTextAreaFocused = document.activeElement.className == "notes-editor-textarea";
+    const isTextAreaFocused = textareaRef.current?.hasFocus() === true;
 
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
       e.preventDefault();

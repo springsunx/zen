@@ -11,4 +11,5 @@ zen
 /assets/bundle.js.map
 /assets/bundle.css
 /assets/bundle.css.map
+/node_modules
 zen*

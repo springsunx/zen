@@ -34,6 +34,13 @@
         background-color: var(--bg-primary);
     }
 
+    /* The page-width grips are fixed elements that are rendered later in the DOM.
+       Promote the whole toolbar while any of its menus is open, otherwise a grip
+       at the column edge can sit above the menu and steal its pointer events. */
+    .notes-editor-sticky:has(.dropdown-container.is-open) {
+        z-index: var(--z-popover);
+    }
+
     .notes-editor {
         position: relative;
         display: flex;
@@ -342,6 +349,97 @@
     border-radius: 4px;
 }
 
+.notes-editor-code-mirror {
+    width: 100%;
+    height: 100%;
+    min-height: 200px;
+    border: 1px solid var(--neutral-200);
+    border-radius: 4px;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    overflow: hidden;
+}
+
+.notes-editor-code-mirror .cm-editor {
+    height: 100%;
+    outline: none;
+}
+
+.notes-editor-code-mirror .cm-scroller {
+    overflow: auto;
+    font-family: Consolas, "Cascadia Code", "Microsoft YaHei UI", "Microsoft YaHei", "JetBrains Mono", "SFMono-Regular", "Liberation Mono", Menlo, "Courier New", monospace;
+    font-size: 1rem;
+    line-height: 1.6;
+    font-variant-ligatures: contextual common-ligatures;
+}
+
+.notes-editor-code-mirror .cm-content {
+    min-height: 100%;
+    padding: var(--spacing-4);
+    caret-color: var(--text-primary);
+}
+
+.notes-editor-code-mirror .cm-gutters {
+    border: 0;
+    background-color: var(--bg-primary);
+    color: var(--neutral-400);
+}
+
+.notes-editor-code-mirror .cm-activeLine,
+.notes-editor-code-mirror .cm-activeLineGutter {
+    background-color: color-mix(in srgb, var(--neutral-200) 35%, transparent);
+}
+
+.notes-editor-code-mirror .cm-selectionBackground,
+.notes-editor-code-mirror .cm-focused .cm-selectionBackground {
+    background-color: color-mix(in srgb, var(--neutral-500) 28%, transparent);
+}
+
+.notes-editor-code-mirror .cm-search {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--spacing-1);
+    padding: var(--spacing-2) var(--spacing-3);
+    border-bottom: 1px solid var(--neutral-200);
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    box-shadow: var(--shadow-1);
+}
+
+.notes-editor-code-mirror .cm-search input,
+.notes-editor-code-mirror .cm-search button {
+    font: var(--sm);
+}
+
+.notes-editor-code-mirror .cm-search input {
+    min-width: 150px;
+    border: 1px solid var(--neutral-300);
+    border-radius: var(--radius-1);
+    padding: 5px 7px;
+    color: var(--text-primary);
+    background-color: var(--bg-primary);
+}
+
+.notes-editor-code-mirror .cm-search input:focus {
+    outline: 2px solid color-mix(in srgb, var(--primary-600, #2563eb) 45%, transparent);
+    outline-offset: 1px;
+}
+
+.notes-editor-code-mirror .cm-search button {
+    border: 1px solid var(--neutral-300);
+    border-radius: var(--radius-1);
+    padding: 5px 8px;
+    color: var(--text-primary);
+    background-color: var(--bg-primary);
+    cursor: pointer;
+}
+
+.notes-editor-code-mirror .cm-search button:hover {
+    border-color: var(--primary-600, #2563eb);
+    color: var(--primary-600, #2563eb);
+}
+
 .notes-grid-item-content,
 .notes-editor-rendered {
     display: block;
@@ -430,6 +528,7 @@
 
     code {
         font: var(--code);
+        font-family: var(--font-family);
         background-color: var(--neutral-150);
         color: var(--text-primary);
         border-radius: 4px;
@@ -456,6 +555,7 @@
 
         * {
             font: var(--code);
+            font-family: var(--font-family);
         }
     }
 
@@ -600,7 +700,7 @@
             padding: 16px;
             margin: 0 !important;
             overflow-x: auto;
-            font: var(--code-block-font-size)/var(--code-block-line-height) var(--font-family-code);
+            font: var(--code-block-font-size)/var(--code-block-line-height) var(--font-family);
             /* Unwrapped by default: long lines scroll sideways until the reader
                turns wrapping on for this block. */
             white-space: pre;
@@ -656,7 +756,7 @@
             min-width: 0;
             overflow: hidden;
             color: light-dark(#0f1115, #f9fafb);
-            font-family: var(--font-family-code);
+            font-family: var(--font-family);
             font-size: var(--code-block-banner-size);
             line-height: var(--code-block-banner-line-height);
             text-overflow: ellipsis;
@@ -775,8 +875,6 @@
             align-items: center;
             justify-content: center;
             white-space: nowrap;
-            margin: 4px;
-
             &:hover {
                 background-color: var(--neutral-200);
             }
