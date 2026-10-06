@@ -1,4 +1,4 @@
-const CACHE_NAME = 'zen-v2';
+const CACHE_NAME = 'zen-v3';
 const STATIC_ASSETS = [
   '/',
   '/assets/index.html',
@@ -47,11 +47,19 @@ async function handleFetch(request) {
         return fetch(request);
     }
 
+    // Browser extensions inject GET requests into the same page context. Cache Storage
+    // only accepts http(s) requests, so passing chrome-extension: URLs to cache.put()
+    // creates an unhandled rejection and can interrupt ordinary page work.
+    const url = new URL(request.url);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+        return fetch(request);
+    }
+
     try {
         const res = await fetch(request);
         if (res.ok) {
             const cache = await caches.open(CACHE_NAME);
-            cache.put(request, res.clone());
+            await cache.put(request, res.clone());
         }
         return res;
     } catch (error) {

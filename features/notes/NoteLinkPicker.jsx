@@ -37,39 +37,12 @@ export default function NoteLinkPicker({ onInsertLink, onClose, textareaRef, cur
     };
   }, []);
 
-  // Position at cursor — calculated synchronously (no flash)
+  // CodeMirror gives us the real visual cursor position, including wrapped lines.
   const position = (() => {
     if (!textareaRef?.current) return { top: 0, left: 0 };
-    const ta = textareaRef.current;
-    const pos = cursorPos != null ? cursorPos : ta.selectionStart;
-    const style = window.getComputedStyle(ta);
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    ctx.font = `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
-    const paddingLeft = parseFloat(style.paddingLeft) || 0;
-    const paddingTop = parseFloat(style.paddingTop) || 0;
-    const lineHeight = parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.2;
-    const borderLeft = parseFloat(style.borderLeftWidth) || 0;
-    const borderTop = parseFloat(style.borderTopWidth) || 0;
-    const textBefore = ta.value.substring(0, pos);
-    const lines = textBefore.split('\n');
-    const contentWidth = ta.clientWidth - paddingLeft - parseFloat(style.paddingRight || 0);
-
-    // Calculate visual Y by counting wrapped lines
-    let visualY = 0;
-    for (let i = 0; i < lines.length - 1; i++) {
-      const w = ctx.measureText(lines[i]).width;
-      visualY += Math.max(1, Math.ceil(w / contentWidth)) * lineHeight;
-    }
-    // Current line (up to cursor) may also wrap
-    const currentLine = lines[lines.length - 1];
-    const cursorX = ctx.measureText(currentLine).width;
-    if (contentWidth > 0) {
-      visualY += (Math.ceil(cursorX / contentWidth) - 1) * lineHeight;
-    }
-    const top = borderTop + paddingTop + visualY - ta.scrollTop + lineHeight + 4;
-    const left = borderLeft + paddingLeft + cursorX - ta.scrollLeft;
-    return { top, left: Math.max(0, left) };
+    const pos = cursorPos != null ? cursorPos : textareaRef.current.selectionStart;
+    const coords = textareaRef.current.getCursorCoords(pos);
+    return { top: coords.bottom + 4, left: Math.max(0, coords.left) };
   })();
 
   function handleInput(e) {

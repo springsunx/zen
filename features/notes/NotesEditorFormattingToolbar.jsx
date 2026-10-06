@@ -10,19 +10,19 @@ export default function NotesEditorFormattingToolbar({ isEditable, onFormat, onI
   return (
     <div className="formatting-toolbar">
       <div className="formatting-toolbar-group">
-        <button type="button" className="formatting-button" onClick={() => onFormat("bold", "bold text")} title={t('notes.toolbar.bold')}>
+        <button type="button" className="formatting-button" onClick={() => onFormat("bold")} title={t('notes.toolbar.bold')}>
           <BoldIcon />
         </button>
-        <button type="button" className="formatting-button" onClick={() => onFormat("italic", "italic text")} title={t('notes.toolbar.italic')}>
+        <button type="button" className="formatting-button" onClick={() => onFormat("italic")} title={t('notes.toolbar.italic')}>
           <ItalicIcon />
         </button>
-        <button type="button" className="formatting-button" onClick={() => onFormat("strikethrough", "strikethrough text")} title={t('notes.toolbar.strike')}>
+        <button type="button" className="formatting-button" onClick={() => onFormat("strikethrough")} title={t('notes.toolbar.strike')}>
           <StrikethroughIcon />
         </button>
-        <button type="button" className="formatting-button" onClick={() => onFormat("highlight", "highlight text")} title={t('notes.toolbar.highlight')}>
+        <button type="button" className="formatting-button" onClick={() => onFormat("highlight")} title={t('notes.toolbar.highlight')}>
           <HighlightIcon />
         </button>
-        <button type="button" className="formatting-button" onClick={() => onFormat("code", "code")} title={t('notes.toolbar.inlineCode')}>
+        <button type="button" className="formatting-button" onClick={() => onFormat("code")} title={t('notes.toolbar.inlineCode')}>
           <CodeIcon />
         </button>
         <button type="button" className="formatting-button" onClick={() => onFormat("codeblock")} title={t('notes.toolbar.codeblock')}>
@@ -31,34 +31,34 @@ export default function NotesEditorFormattingToolbar({ isEditable, onFormat, onI
       </div>
 
       <div className="formatting-toolbar-group">
-        <button type="button" className="formatting-button" onClick={() => onFormat("h1", "Heading 1")} title={t('notes.toolbar.h1')}>
+        <button type="button" className="formatting-button" onClick={() => onFormat("h1")} title={t('notes.toolbar.h1')}>
           <Heading1Icon />
         </button>
-        <button type="button" className="formatting-button" onClick={() => onFormat("h2", "Heading 2")} title={t('notes.toolbar.h2')}>
+        <button type="button" className="formatting-button" onClick={() => onFormat("h2")} title={t('notes.toolbar.h2')}>
           <Heading2Icon />
         </button>
-        <button type="button" className="formatting-button" onClick={() => onFormat("h3", "Heading 3")} title={t('notes.toolbar.h3')}>
+        <button type="button" className="formatting-button" onClick={() => onFormat("h3")} title={t('notes.toolbar.h3')}>
           <Heading3Icon />
         </button>
       </div>
 
       <div className="formatting-toolbar-group">
-        <button type="button" className="formatting-button" onClick={() => onFormat("ul", "list item")} title={t('notes.toolbar.ul')}>
+        <button type="button" className="formatting-button" onClick={() => onFormat("ul")} title={t('notes.toolbar.ul')}>
           <ListIcon />
         </button>
-        <button type="button" className="formatting-button" onClick={() => onFormat("ol", "list item")} title={t('notes.toolbar.ol')}>
+        <button type="button" className="formatting-button" onClick={() => onFormat("ol")} title={t('notes.toolbar.ol')}>
           <ListOrderedIcon />
         </button>
-        <button type="button" className="formatting-button" onClick={() => onFormat("todo", "todo item")} title={t('notes.toolbar.todo')}>
+        <button type="button" className="formatting-button" onClick={() => onFormat("todo")} title={t('notes.toolbar.todo')}>
           <ListTodoIcon />
         </button>
       </div>
 
       <div className="formatting-toolbar-group">
-        <button type="button" className="formatting-button" onClick={() => onFormat("quote", "quote text")} title={t('notes.toolbar.quote')}>
+        <button type="button" className="formatting-button" onClick={() => onFormat("quote")} title={t('notes.toolbar.quote')}>
           <QuoteIcon />
         </button>
-        <button type="button" className="formatting-button" onClick={() => onFormat("link", "link text")} title={t('notes.toolbar.link')}>
+        <button type="button" className="formatting-button" onClick={() => onFormat("link")} title={t('notes.toolbar.link')}>
           <LinkIcon />
         </button>
         <button type="button" className="formatting-button" onClick={() => onInsertInternalLink()} title={t('notes.toolbar.internalLink')}>

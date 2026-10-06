@@ -1,3 +1,10 @@
+FROM node:22-bookworm AS frontend-deps
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci
+
 FROM --platform=$BUILDPLATFORM golang:1.25.0-bookworm as builder
 
 ARG BUILDPLATFORM
@@ -13,6 +20,7 @@ RUN go install github.com/evanw/esbuild/cmd/esbuild@latest
 COPY go.mod go.sum ./
 RUN go mod download && go mod verify
 
+COPY --from=frontend-deps /app/node_modules ./node_modules
 COPY . .
 
 RUN esbuild index.js --bundle --minify --format=esm --outfile=assets/bundle.js --loader:.js=jsx --jsx-factory=h --jsx-fragment=Fragment
