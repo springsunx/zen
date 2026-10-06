@@ -3,7 +3,7 @@ import { EditorState } from "@codemirror/state";
 import { EditorView, placeholder } from "@codemirror/view";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { markdown } from "@codemirror/lang-markdown";
-import { search } from "@codemirror/search";
+import { SearchQuery, closeSearchPanel, findNext, findPrevious, getSearchQuery, replaceAll, replaceNext, search, selectMatches, setSearchQuery } from "@codemirror/search";
 import { tags } from "@lezer/highlight";
 import { basicSetup } from "codemirror";
 
@@ -20,6 +20,15 @@ const markdownHighlightStyle = HighlightStyle.define([
   { tag: [tags.meta, tags.contentSeparator], color: "var(--neutral-500)" },
   { tag: tags.quote, color: "var(--neutral-600)" },
 ]);
+
+const chineseEditorPhrases = EditorState.phrases.of({
+  "Go to line": "跳转到行",
+  go: "跳转",
+  "current match": "当前匹配",
+  "on line": "第",
+  "replaced match on line $": "已替换第 $ 行的匹配项",
+  "replaced $ matches": "已替换 $ 个匹配项",
+});
 
 function markdownPairInputHandler(view, from, to, text) {
   if (from !== to || text !== "*") return false;
@@ -46,6 +55,127 @@ function markdownPairInputHandler(view, from, to, text) {
   }
 
   return false;
+}
+
+function createChineseSearchPanel(view) {
+  let query;
+  const dom = document.createElement("div");
+  dom.className = "cm-search cm-search-panel";
+
+  function createInput(name, placeholder, isMainField = false) {
+    const input = document.createElement("input");
+    input.className = "cm-textfield";
+    input.name = name;
+    input.placeholder = placeholder;
+    input.setAttribute("aria-label", placeholder);
+    if (isMainField) input.setAttribute("main-field", "true");
+    return input;
+  }
+
+  function createButton(name, label, onClick) {
+    const button = document.createElement("button");
+    button.className = "cm-button";
+    button.name = name;
+    button.type = "button";
+    button.textContent = label;
+    button.addEventListener("click", onClick);
+    return button;
+  }
+
+  function createOption(input, label) {
+    const option = document.createElement("label");
+    option.append(input, ` ${label}`);
+    return option;
+  }
+
+  const searchField = createInput("search", "查找", true);
+  const replaceField = createInput("replace", "替换为");
+  const caseField = document.createElement("input");
+  caseField.type = "checkbox";
+  const regexpField = document.createElement("input");
+  regexpField.type = "checkbox";
+  const wholeWordField = document.createElement("input");
+  wholeWordField.type = "checkbox";
+
+  const searchRow = document.createElement("div");
+  searchRow.className = "cm-search-row";
+  searchRow.append(
+    searchField,
+    createButton("previous", "上一个", () => findPrevious(view)),
+    createButton("next", "下一个", () => findNext(view)),
+    createButton("select", "全选", () => selectMatches(view)),
+    createButton("dismiss", "关闭", () => closeSearchPanel(view)),
+  );
+
+  const optionsRow = document.createElement("div");
+  optionsRow.className = "cm-search-options";
+  optionsRow.append(
+    createOption(caseField, "区分大小写"),
+    createOption(regexpField, "正则表达式"),
+    createOption(wholeWordField, "全词匹配"),
+  );
+
+  const replaceRow = document.createElement("div");
+  replaceRow.className = "cm-search-row cm-search-replace-row";
+  replaceRow.append(
+    replaceField,
+    createButton("replace", "替换", () => replaceNext(view)),
+    createButton("replaceAll", "全部替换", () => replaceAll(view)),
+  );
+
+  dom.append(searchRow, optionsRow, replaceRow);
+
+  function commit() {
+    const nextQuery = new SearchQuery({
+      search: searchField.value,
+      replace: replaceField.value,
+      caseSensitive: caseField.checked,
+      regexp: regexpField.checked,
+      wholeWord: wholeWordField.checked,
+    });
+    if (!nextQuery.eq(query)) {
+      query = nextQuery;
+      view.dispatch({ effects: setSearchQuery.of(nextQuery) });
+    }
+  }
+
+  function setQuery(nextQuery) {
+    query = nextQuery;
+    searchField.value = nextQuery.search;
+    replaceField.value = nextQuery.replace;
+    caseField.checked = nextQuery.caseSensitive;
+    regexpField.checked = nextQuery.regexp;
+    wholeWordField.checked = nextQuery.wholeWord;
+  }
+
+  [searchField, replaceField].forEach(field => field.addEventListener("input", commit));
+  [caseField, regexpField, wholeWordField].forEach(field => field.addEventListener("change", commit));
+  dom.addEventListener("keydown", event => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeSearchPanel(view);
+    } else if (event.key === "Enter" && event.target === searchField) {
+      event.preventDefault();
+      (event.shiftKey ? findPrevious : findNext)(view);
+    } else if (event.key === "Enter" && event.target === replaceField) {
+      event.preventDefault();
+      replaceNext(view);
+    }
+  });
+
+  setQuery(getSearchQuery(view.state));
+
+  return {
+    dom,
+    top: true,
+    mount() {
+      searchField.select();
+    },
+    update(update) {
+      const nextQuery = getSearchQuery(update.state);
+      if (!nextQuery.eq(query)) setQuery(nextQuery);
+    },
+  };
 }
 
 export default function CodeMirrorEditor({ value, placeholderText, spellcheck, editorRef, onChange, onBlur, onKeyDown }) {
@@ -143,8 +273,9 @@ export default function CodeMirrorEditor({ value, placeholderText, spellcheck, e
         doc: value,
         extensions: [
           basicSetup,
+          chineseEditorPhrases,
           markdown(),
-          search({ top: true }),
+          search({ top: true, createPanel: createChineseSearchPanel }),
           syntaxHighlighting(markdownHighlightStyle),
           EditorView.lineWrapping,
           EditorView.inputHandler.of(markdownPairInputHandler),

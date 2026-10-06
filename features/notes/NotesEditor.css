@@ -367,7 +367,7 @@
 
 .notes-editor-code-mirror .cm-scroller {
     overflow: auto;
-    font-family: Consolas, "Cascadia Code", "Microsoft YaHei UI", "Microsoft YaHei", "JetBrains Mono", "SFMono-Regular", "Liberation Mono", Menlo, "Courier New", monospace;
+    font-family: var(--font-family-code);
     font-size: 1rem;
     line-height: 1.6;
     font-variant-ligatures: contextual common-ligatures;
@@ -397,28 +397,82 @@
 
 .notes-editor-code-mirror .cm-search {
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    align-items: stretch;
     flex-wrap: wrap;
-    gap: var(--spacing-1);
-    padding: var(--spacing-2) var(--spacing-3);
-    border-bottom: 1px solid var(--neutral-200);
+    width: min(680px, calc(100% - 16px));
+    margin: 8px auto;
+    gap: 6px;
+    padding: 8px;
+    border: 1px solid var(--neutral-200);
+    border-radius: var(--radius-2);
     background-color: var(--bg-primary);
     color: var(--text-primary);
-    box-shadow: var(--shadow-1);
+    box-shadow: var(--shadow-2);
+}
+
+.notes-editor-code-mirror .cm-panels-top {
+    position: sticky;
+    top: 0;
+    z-index: var(--z-popover);
+    border: 0;
+    background: transparent;
+}
+
+.notes-editor-code-mirror .cm-search-row,
+.notes-editor-code-mirror .cm-search-options {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    width: 100%;
+}
+
+.notes-editor-code-mirror .cm-search-options label {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin: 0;
+    padding: 3px 7px;
+    border: 1px solid var(--neutral-200);
+    border-radius: var(--radius-1);
+    color: var(--neutral-600);
+    font: 12px/1.3 var(--font-family);
+    white-space: nowrap;
 }
 
 .notes-editor-code-mirror .cm-search input,
 .notes-editor-code-mirror .cm-search button {
-    font: var(--sm);
+    box-sizing: border-box;
+    font: 13px/1.3 var(--font-family);
+}
+
+.notes-editor-code-mirror .cm-panel.cm-search input,
+.notes-editor-code-mirror .cm-panel.cm-search button,
+.notes-editor-code-mirror .cm-panel.cm-search label {
+    margin: 0;
 }
 
 .notes-editor-code-mirror .cm-search input {
-    min-width: 150px;
+    min-width: 180px;
     border: 1px solid var(--neutral-300);
     border-radius: var(--radius-1);
-    padding: 5px 7px;
+    padding: 6px 8px;
     color: var(--text-primary);
     background-color: var(--bg-primary);
+}
+
+.notes-editor-code-mirror .cm-search-row input {
+    flex: 1 1 200px;
+}
+
+.notes-editor-code-mirror .cm-search input[type="checkbox"] {
+    width: 14px;
+    min-width: 0;
+    height: 14px;
+    margin: 0;
+    padding: 0;
+    accent-color: var(--primary-600, #2563eb);
 }
 
 .notes-editor-code-mirror .cm-search input:focus {
@@ -429,7 +483,8 @@
 .notes-editor-code-mirror .cm-search button {
     border: 1px solid var(--neutral-300);
     border-radius: var(--radius-1);
-    padding: 5px 8px;
+    min-height: 30px;
+    padding: 5px 9px;
     color: var(--text-primary);
     background-color: var(--bg-primary);
     cursor: pointer;
@@ -438,6 +493,29 @@
 .notes-editor-code-mirror .cm-search button:hover {
     border-color: var(--primary-600, #2563eb);
     color: var(--primary-600, #2563eb);
+}
+
+.notes-editor-code-mirror .cm-search [name="dismiss"] {
+    min-height: 30px;
+    padding: 5px 8px;
+    color: var(--neutral-500);
+    font-size: 12px;
+}
+
+.notes-editor-code-mirror .cm-search [name="dismiss"]:hover {
+    color: var(--red-600);
+    border-color: var(--red-500);
+}
+
+@media screen and (max-width: 640px) {
+    .notes-editor-code-mirror .cm-search {
+        width: calc(100% - 8px);
+        margin: 4px auto;
+    }
+
+    .notes-editor-code-mirror .cm-search-row .cm-textfield {
+        flex-basis: 100%;
+    }
 }
 
 .notes-grid-item-content,
@@ -528,7 +606,6 @@
 
     code {
         font: var(--code);
-        font-family: var(--font-family);
         background-color: var(--neutral-150);
         color: var(--text-primary);
         border-radius: 4px;
@@ -555,7 +632,6 @@
 
         * {
             font: var(--code);
-            font-family: var(--font-family);
         }
     }
 
@@ -700,7 +776,7 @@
             padding: 16px;
             margin: 0 !important;
             overflow-x: auto;
-            font: var(--code-block-font-size)/var(--code-block-line-height) var(--font-family);
+            font: var(--code-block-font-size)/var(--code-block-line-height) var(--font-family-code);
             /* Unwrapped by default: long lines scroll sideways until the reader
                turns wrapping on for this block. */
             white-space: pre;
@@ -745,7 +821,7 @@
             justify-content: flex-start;
             gap: var(--spacing-2);
             padding: 9px 14px;
-            font: var(--code-block-banner-size)/var(--code-block-banner-line-height) var(--font-family);
+            font: var(--code-block-banner-size)/var(--code-block-banner-line-height) var(--font-family-code);
             background: light-dark(#f9fafb, #2c2c2e);
             border-radius: 16px 16px 0 0;
             /* Only the controls are interactive, so the banner never swallows clicks. */
@@ -756,7 +832,7 @@
             min-width: 0;
             overflow: hidden;
             color: light-dark(#0f1115, #f9fafb);
-            font-family: var(--font-family);
+            font-family: var(--font-family-code);
             font-size: var(--code-block-banner-size);
             line-height: var(--code-block-banner-line-height);
             text-overflow: ellipsis;
@@ -1005,6 +1081,14 @@
     flex: 1;
     min-height: 0;
     overflow-y: auto;
+}
+
+/* The inner CodeMirror scroller, rather than this outer content area, owns editor
+   scrolling. This keeps its top search panel pinned while the note moves beneath it. */
+.notes-editor.is-editable .notes-editor-editing-surface {
+    position: relative;
+    height: 100%;
+    min-height: 0;
 }
 
 /* 确保在可编辑模式下文本区域填满内容区域 */

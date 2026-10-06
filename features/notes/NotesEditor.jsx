@@ -839,7 +839,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   let contentArea = null;
   if (isEditable) {
     contentArea = (
-      <div style={{ position: 'relative' }}>
+      <div className="notes-editor-editing-surface">
         <CodeMirrorEditor
           value={content}
           placeholderText={t('notes.editor.placeholder')}
