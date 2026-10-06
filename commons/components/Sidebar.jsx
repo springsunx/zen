@@ -86,11 +86,11 @@ export default function Sidebar() {
           </div>
 
           <div className="sidebar-quick-actions">
-            <Link className="sidebar-button new" to={newNoteLink()} shouldPreserveSearchParams title={t("nav.new")}>
+            <Link className="sidebar-button new" to={newNoteLink()} shouldPreserveSearchParams>
               <NewIcon />
               {t("nav.new")}
             </Link>
-            <button type="button" className="sidebar-button search" onClick={handleSearchClick} title={t("nav.search")}>
+            <button type="button" className="sidebar-button search" onClick={handleSearchClick}>
               <SearchIcon />
               {t("nav.search")}
             </button>

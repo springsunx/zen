@@ -6,8 +6,9 @@ let activeAnchor = null;
 let showTimeout = null;
 let hideTimeout = null;
 let autoDismissTimeout = null;
+let initialized = false;
 
-const AUTO_DISMISS_MS = 30000;
+const ANCHOR_WATCH_INTERVAL_MS = 250;
 
 function handleMouseOver(e) {
   const element = e.target.closest('[data-tooltip]');
@@ -18,12 +19,16 @@ function handleMouseOver(e) {
 
 function handleMouseOut(e) {
   const related = e.relatedTarget;
-  // 如果鼠标移到了另一个 data-tooltip 元素，不隐藏
-  if (related && related.closest && related.closest('[data-tooltip]')) {
+  const element = e.target.closest('[data-tooltip]');
+  const nextElement = related && related.closest ? related.closest('[data-tooltip]') : null;
+  // Moving within the same control fires bubbling mouseout events too.
+  if (nextElement === element) {
     return;
   }
-  const element = e.target.closest('[data-tooltip]');
-  if (element) {
+  // Switching controls must not leave the old tooltip waiting for a delayed hide.
+  if (nextElement) {
+    showTooltip(nextElement);
+  } else if (element) {
     hideTooltip();
   }
 }
@@ -31,7 +36,7 @@ function handleMouseOut(e) {
 function handleMouseMove(e) {
   if (!activeTooltip) return;
   const element = e.target.closest('[data-tooltip]');
-  if (!element) {
+  if (element !== activeAnchor) {
     hideTooltip();
   }
 }
@@ -54,17 +59,28 @@ function handleClick() {
   }
 }
 
+function handleGlobalVisibilityChange() {
+  if (document.hidden || activeTooltip) {
+    hideTooltip(true);
+  }
+}
+
 function addGlobalEventListeners() {
   document.addEventListener('mouseover', handleMouseOver);
   document.addEventListener('mouseout', handleMouseOut);
   document.addEventListener('mousemove', handleMouseMove);
   document.addEventListener('scroll', handleScroll, true);
   document.addEventListener('mousedown', handleClick, true);
+  document.addEventListener('visibilitychange', handleGlobalVisibilityChange);
+  window.addEventListener('blur', handleGlobalVisibilityChange);
   window.addEventListener('resize', handleResize);
 }
 
 function observeElements() {
   const observer = new MutationObserver((mutations) => {
+    if (activeAnchor && !activeAnchor.isConnected) {
+      hideTooltip(true);
+    }
     for (const mutation of mutations) {
       // Handle added nodes
       for (const node of mutation.addedNodes) {
@@ -112,7 +128,9 @@ function processNewElements(element) {
 }
 
 function showTooltip(element) {
-  clearTimeout(hideTimeout);
+  if (activeAnchor && activeAnchor !== element) {
+    hideTooltip(true);
+  }
   clearTimeout(showTimeout);
   clearTimeout(autoDismissTimeout);
 
@@ -122,8 +140,9 @@ function showTooltip(element) {
       return;
     }
 
-    // 如果元素已经不在 DOM 中，不显示 tooltip
-    if (!element.parentNode) {
+    // A detached element can still retain a parentNode inside a removed subtree.
+    // It must never create a tooltip after a route or component transition.
+    if (!element.isConnected || !element.matches(':hover')) {
       return;
     }
 
@@ -131,7 +150,7 @@ function showTooltip(element) {
 
     const tooltip = document.createElement('div');
     tooltip.className = 'tooltip';
-    tooltip.innerHTML = tooltipText;
+    tooltip.textContent = tooltipText;
     document.body.appendChild(tooltip);
 
     const position = calculatePosition(element, tooltip);
@@ -146,14 +165,25 @@ function showTooltip(element) {
       tooltip.classList.add('visible');
     });
 
-    // Safety auto-dismiss
-    autoDismissTimeout = setTimeout(() => {
-      hideTooltip();
-    }, AUTO_DISMISS_MS);
+    scheduleAnchorWatch();
   }, 400);
 }
 
-function hideTooltip() {
+function scheduleAnchorWatch() {
+  clearTimeout(autoDismissTimeout);
+
+  function checkAnchor() {
+    if (!activeTooltip || !activeAnchor || !activeAnchor.isConnected || !activeAnchor.matches(':hover')) {
+      hideTooltip(true);
+      return;
+    }
+    autoDismissTimeout = setTimeout(checkAnchor, ANCHOR_WATCH_INTERVAL_MS);
+  }
+
+  autoDismissTimeout = setTimeout(checkAnchor, ANCHOR_WATCH_INTERVAL_MS);
+}
+
+function hideTooltip(immediate = false) {
   clearTimeout(showTimeout);
   clearTimeout(autoDismissTimeout);
 
@@ -162,10 +192,16 @@ function hideTooltip() {
   if (activeTooltip) {
     const tooltip = activeTooltip;
     activeTooltip = null;
-    tooltip.classList.remove('visible');
+    clearTimeout(hideTimeout);
+    if (immediate) {
+      removeTooltip(tooltip);
+      return;
+    }
 
+    tooltip.classList.remove('visible');
     hideTimeout = setTimeout(() => {
       removeTooltip(tooltip);
+      hideTimeout = null;
     }, 150);
   }
 }
@@ -174,9 +210,9 @@ function removeTooltip(tooltip) {
   if (tooltip && tooltip.parentNode) {
     tooltip.parentNode.removeChild(tooltip);
   }
-  if (activeTooltip && activeTooltip.parentNode) {
-    activeTooltip.parentNode.removeChild(activeTooltip);
+  if (activeTooltip === tooltip) {
     activeTooltip = null;
+    activeAnchor = null;
   }
 }
 
@@ -246,10 +282,14 @@ function constrainToViewport(position, elementRect, viewportWidth, viewportHeigh
 }
 
 function init() {
-  if (isMobile()) {
+  if (initialized || isMobile()) {
     return
   }
 
+  initialized = true;
+  // A hot reload can leave markup created by an older tooltip implementation in
+  // the document. Tooltips are owned by this module, so start from a clean slate.
+  document.querySelectorAll('.tooltip').forEach((tooltip) => tooltip.remove());
   addGlobalEventListeners();
   observeElements();
 }
