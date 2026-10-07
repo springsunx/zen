@@ -129,7 +129,7 @@ export default function TemplateEditor({ selectedTemplate, isNewTemplate, onChan
     }
 
     return [
-      <div onClick={handleDeleteClick}>{t('common.delete')}</div>
+      { content: <div>{t('common.delete')}</div>, onClick: handleDeleteClick }
     ];
   }
 

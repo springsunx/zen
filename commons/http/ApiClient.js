@@ -315,7 +315,7 @@ async function getTags(focusId, isArchived, isDeleted, section) {
 }
 
 async function searchTags(query) {
-  const resp = await request('GET', `/api/tags?query=${query}`);
+  const resp = await request('GET', `/api/tags?query=${encodeURIComponent(query)}`);
   if (resp?.tags && Array.isArray(resp.tags)) return resp.tags;
   return [];
 }

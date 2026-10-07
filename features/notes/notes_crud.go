@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"regexp"
 	"strings"
+	"time"
 	"zen/commons/auth"
 	"zen/commons/sqlite"
 	"zen/commons/utils"
@@ -49,12 +50,15 @@ func GetAllNotes(access auth.Access, filter NotesFilter) ([]Note, int, error) {
 	statusCond := statusCondition(filter) + " " + scopePredicate
 
 	if filter.tagID != 0 {
+		// Tag hierarchy is for sidebar organisation only. Selecting a tag always
+		// matches notes explicitly carrying that exact tag, never its descendants.
 		query = fmt.Sprintf(`
 			SELECT
 				n.note_id,
 				n.title,
 				n.content,
 				SUBSTR(n.content, 0, 500) AS snippet,
+				n.created_at,
 				n.updated_at,
 				`+fmtTagsJSON("t2")+`,
 				n.archived_at,
@@ -72,13 +76,7 @@ func GetAllNotes(access auth.Access, filter NotesFilter) ([]Note, int, error) {
 			LEFT JOIN
 				tags t2 ON nt2.tag_id = t2.tag_id
 			WHERE
-				t.tag_id IN (
-					WITH RECURSIVE descendants(id) AS (
-						SELECT ? UNION ALL
-						SELECT t3.tag_id FROM tags t3 INNER JOIN descendants d ON t3.parent_id = d.id
-					)
-					SELECT id FROM descendants
-				) AND %s
+			t.tag_id = ? AND %s
 			GROUP BY
 				n.note_id
 			ORDER BY
@@ -102,6 +100,7 @@ func GetAllNotes(access auth.Access, filter NotesFilter) ([]Note, int, error) {
 				n.title,
 				n.content,
 				SUBSTR(n.content, 0, 500) AS snippet,
+				n.created_at,
 				n.updated_at,
 				'[]' as tags_json,
 				n.archived_at,
@@ -139,6 +138,7 @@ func GetAllNotes(access auth.Access, filter NotesFilter) ([]Note, int, error) {
 				n.title,
 				n.content,
 				SUBSTR(n.content, 0, 500) AS snippet,
+				n.created_at,
 				n.updated_at,
 				`+fmtTagsJSON("t")+`,
 				n.archived_at,
@@ -179,6 +179,7 @@ func GetAllNotes(access auth.Access, filter NotesFilter) ([]Note, int, error) {
 				n.title,
 				n.content,
 				SUBSTR(n.content, 0, 500) AS snippet,
+				n.created_at,
 				n.updated_at,
 				`+fmtTagsJSON("t")+`,
 				n.archived_at,
@@ -225,7 +226,7 @@ func GetAllNotes(access auth.Access, filter NotesFilter) ([]Note, int, error) {
 		var pinnedAt sql.NullTime
 		var tagsJSON string
 
-		err = rows.Scan(&note.NoteID, &note.Title, &note.Content, &note.Snippet, &note.UpdatedAt, &tagsJSON, &archivedAt, &deletedAt, &pinnedAt, &total)
+		err = rows.Scan(&note.NoteID, &note.Title, &note.Content, &note.Snippet, &note.CreatedAt, &note.UpdatedAt, &tagsJSON, &archivedAt, &deletedAt, &pinnedAt, &total)
 		if err != nil {
 			err = fmt.Errorf("error scanning note: %w", err)
 			slog.Error(err.Error())
@@ -257,6 +258,7 @@ func GetNoteByID(access auth.Access, noteID int) (Note, error) {
 			n.title,
 			n.content,
 			SUBSTR(n.content, 0, 500) AS snippet,
+			n.created_at,
 			n.updated_at,
 			` + fmtTagsJSON("t") + `,
 			n.archived_at,
@@ -275,7 +277,7 @@ func GetNoteByID(access auth.Access, noteID int) (Note, error) {
 	`
 
 	row := sqlite.DB.QueryRow(query, append([]interface{}{noteID}, scopeArgs...)...)
-	err := row.Scan(&note.NoteID, &note.Title, &note.Content, &note.Snippet, &note.UpdatedAt, &tagsJSON, &archivedAt, &deletedAt, &pinnedAt)
+	err := row.Scan(&note.NoteID, &note.Title, &note.Content, &note.Snippet, &note.CreatedAt, &note.UpdatedAt, &tagsJSON, &archivedAt, &deletedAt, &pinnedAt)
 	if err == sql.ErrNoRows {
 		err = fmt.Errorf("note %d: %w", noteID, utils.ErrNotFound)
 		slog.Error(err.Error())
@@ -296,6 +298,23 @@ func GetNoteByID(access auth.Access, noteID int) (Note, error) {
 }
 
 func CreateNote(access auth.Access, note Note) (Note, error) {
+	return createNote(access, note, false)
+}
+
+// CreateImportedNote preserves source timestamps when they are available. When
+// an import has no original creation time, the import time becomes the local
+// creation time instead of persisting Go's zero date.
+func CreateImportedNote(access auth.Access, note Note) (Note, error) {
+	if note.CreatedAt.IsZero() {
+		note.CreatedAt = time.Now().UTC()
+	}
+	if note.UpdatedAt.IsZero() {
+		note.UpdatedAt = note.CreatedAt
+	}
+	return createNote(access, note, true)
+}
+
+func createNote(access auth.Access, note Note, preserveTimestamps bool) (Note, error) {
 	tagIDs := []int{}
 	for _, tag := range note.Tags {
 		if tag.TagID >= 0 {
@@ -334,8 +353,25 @@ func CreateNote(access auth.Access, note Note) (Note, error) {
 			created_at,
 			updated_at
 	`
+	args := []interface{}{note.Title, note.Content}
+	if preserveTimestamps {
+		query = `
+			INSERT INTO
+				notes (title, content, created_at, updated_at)
+			VALUES
+				(?, ?, ?, ?)
+			RETURNING
+				note_id,
+				title,
+				content,
+				SUBSTR(content, 0, 500) AS snippet,
+				created_at,
+				updated_at
+		`
+		args = append(args, note.CreatedAt, note.UpdatedAt)
+	}
 
-	row := tx.QueryRow(query, note.Title, note.Content)
+	row := tx.QueryRow(query, args...)
 	err = row.Scan(&note.NoteID, &note.Title, &note.Content, &note.Snippet, &note.CreatedAt, &note.UpdatedAt)
 
 	if err != nil {

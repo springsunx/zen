@@ -3,7 +3,7 @@ import Button from '../../commons/components/Button.jsx';
 import DropdownMenu from '../../commons/components/DropdownMenu.jsx';
 import { CloseIcon, SidebarCloseIcon, SidebarOpenIcon, BackIcon, CopyIcon, ShareIcon } from "../../commons/components/Icon.jsx";
 import isMobile from '../../commons/utils/isMobile.js';
-import { t } from "../../commons/i18n/index.js";
+import { getLang, t } from "../../commons/i18n/index.js";
 import { showToast } from "../../commons/components/Toast.jsx";
 
 export default function NotesEditorToolbar({ note, isNewNote, isEditable, isModal, isSaveLoading, isExpanded, isExpandable, onSaveClick, onSaveAndCloseClick, onEditClick, onEditCancelClick, onCloseClick, onDeleteClick, onArchiveClick, onUnarchiveClick, onRestoreClick, onExpandToggleClick, onPinClick, onUnpinClick, onVersionsClick, onToggleShare }) {
@@ -86,31 +86,36 @@ export default function NotesEditorToolbar({ note, isNewNote, isEditable, isModa
       {
         key: 'pin',
         condition: !isNewNote && !note?.isDeleted && !note?.isArchived,
-        component: <div onClick={note?.isPinned ? onUnpinClick : onPinClick}>
+        component: <div>
           {note?.isPinned ? t('notes.pin.unpin') : t('notes.pin.pin')}
-        </div>
+        </div>,
+        onClick: note?.isPinned ? onUnpinClick : onPinClick
       },
       {
         key: 'archive',
         condition: !isNewNote && !note?.isDeleted,
-        component: <div onClick={note?.isArchived ? onUnarchiveClick : onArchiveClick}>
+        component: <div>
           {note?.isArchived ? t('notes.archive.unarchive') : t('notes.archive.archive')}
-        </div>
+        </div>,
+        onClick: note?.isArchived ? onUnarchiveClick : onArchiveClick
       },
       {
         key: 'restore',
         condition: !isNewNote && note?.isDeleted,
-        component: <div onClick={onRestoreClick}>{t('notes.restore')}</div>
+        component: <div>{t('notes.restore')}</div>,
+        onClick: onRestoreClick
       },
       {
         key: 'versions',
         condition: !isNewNote && !note?.isDeleted && onVersionsClick != null,
-        component: <div onClick={onVersionsClick}>{t('notes.versions')}</div>
+        component: <div>{t('notes.versions')}</div>,
+        onClick: onVersionsClick
       },
       {
         key: 'delete',
         condition: !isNewNote && !note?.isDeleted,
-        component: <div onClick={onDeleteClick}>{t('common.delete')}</div>
+        component: <div>{t('common.delete')}</div>,
+        onClick: onDeleteClick
       }
     ]
   };
@@ -124,8 +129,14 @@ export default function NotesEditorToolbar({ note, isNewNote, isEditable, isModa
     .map(action => action.component);
 
   const menuActions = actions.menu
-    .filter(action => action.condition)
-    .map(action => action.component);
+    .filter(action => action.condition);
+
+  const noteMetadata = !isNewNote && note ? (
+    <div className="note-menu-metadata">
+      <div className="note-menu-metadata-row"><span>{t("notes.metadata.createdAt")}</span><span>{formatNoteDate(note.createdAt)}</span></div>
+      <div className="note-menu-metadata-row"><span>{t("notes.metadata.updatedAt")}</span><span>{formatNoteDate(note.updatedAt)}</span></div>
+    </div>
+  ) : null;
 
   return (
     <div className="notes-editor-toolbar" onClick={handleClick}>
@@ -134,8 +145,15 @@ export default function NotesEditorToolbar({ note, isNewNote, isEditable, isModa
       </div>
       <div className="right-toolbar">
         {rightToolbarActions}
-        <DropdownMenu actions={menuActions} />
+        <DropdownMenu actions={menuActions} footer={noteMetadata} />
       </div>
     </div>
   );
+}
+
+function formatNoteDate(value) {
+  if (!value) return t("common.unknown");
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime()) || date.getUTCFullYear() <= 1) return t("common.unknown");
+  return new Intl.DateTimeFormat(getLang(), { dateStyle: "medium" }).format(date);
 }

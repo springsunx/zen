@@ -105,10 +105,14 @@ func matchesPinyin(name, query string) bool {
 	return strings.Contains(full, query) || strings.Contains(init, query)
 }
 
-// getAllTagsForSearch loads all tags for runtime pinyin matching.
-func getAllTagsForSearch() ([]Tag, error) {
+// getAllTagsForSearch loads readable tags for runtime pinyin matching.
+func getAllTagsForSearch(access auth.Access) ([]Tag, error) {
 	tags := []Tag{}
-	rows, err := sqlite.DB.Query("SELECT tag_id, name, color, parent_id, sort_order, 0 FROM tags")
+	scopePredicate, scopeArgs := BuildReadableTagsPredicate(access, "tag_id")
+	rows, err := sqlite.DB.Query(`
+		SELECT tag_id, name, color, parent_id, sort_order, 0
+		FROM tags
+		WHERE 1 `+scopePredicate, scopeArgs...)
 	if err != nil {
 		return tags, err
 	}
@@ -127,6 +131,7 @@ func getAllTagsForSearch() ([]Tag, error) {
 func SearchTags(access auth.Access, term string) ([]Tag, error) {
 	// Phase 1: SQL LIKE search for Chinese name match
 	sqlTags := []Tag{}
+	scopePredicate, scopeArgs := BuildReadableTagsPredicate(access, "t.tag_id")
 	query := `
 		SELECT
 			t.tag_id,
@@ -140,7 +145,8 @@ func SearchTags(access auth.Access, term string) ([]Tag, error) {
 		LEFT JOIN
 			note_tags nt ON t.tag_id = nt.tag_id
 		WHERE
-			t.name LIKE '%' || ? || '%'
+			1 ` + scopePredicate + `
+			AND t.name LIKE '%' || ? || '%'
 		GROUP BY
 			t.tag_id, t.name, t.parent_id, t.sort_order
 		ORDER BY 
@@ -153,7 +159,8 @@ func SearchTags(access auth.Access, term string) ([]Tag, error) {
 			note_count DESC
 	`
 
-	rows, err := sqlite.DB.Query(query, term, term)
+	queryArgs := append(append([]interface{}{}, scopeArgs...), term, term)
+	rows, err := sqlite.DB.Query(query, queryArgs...)
 	if err != nil {
 		err = fmt.Errorf("error retrieving tags: %w", err)
 		slog.Error(err.Error())
@@ -178,7 +185,7 @@ func SearchTags(access auth.Access, term string) ([]Tag, error) {
 		seen[t.TagID] = true
 	}
 
-	allTags, err := getAllTagsForSearch()
+	allTags, err := getAllTagsForSearch(access)
 	if err == nil {
 		for _, t := range allTags {
 			if seen[t.TagID] {
@@ -249,8 +256,9 @@ func statusJoin(statusCol string) string {
 	return "LEFT JOIN note_tags nt ON t.tag_id = nt.tag_id LEFT JOIN notes n ON nt.note_id = n.note_id AND n.deleted_at IS NULL AND n.archived_at IS NULL"
 }
 
-// parentHasNotesSubquery returns an EXISTS subquery that checks whether a tag
-// has at least one child tag with notes matching the given status.
+// parentHasNotesSubquery keeps ancestor tags visible in the sidebar when a
+// descendant has matching notes. It affects display only: selecting a tag still
+// matches that exact tag and never its descendants.
 func parentHasNotesSubquery(statusCol string) string {
 	var condition string
 	switch statusCol {
@@ -262,10 +270,15 @@ func parentHasNotesSubquery(statusCol string) string {
 		condition = "nc.deleted_at IS NULL AND nc.archived_at IS NULL"
 	}
 	return fmt.Sprintf(`EXISTS (
-		SELECT 1 FROM tags child
-		JOIN note_tags ntc ON child.tag_id = ntc.tag_id
+		WITH RECURSIVE descendants(id) AS (
+			SELECT tag_id FROM tags WHERE parent_id = t.tag_id
+			UNION ALL
+			SELECT child.tag_id FROM tags child
+			INNER JOIN descendants d ON child.parent_id = d.id
+		)
+		SELECT 1 FROM descendants d
+		JOIN note_tags ntc ON d.id = ntc.tag_id
 		JOIN notes nc ON ntc.note_id = nc.note_id AND %s
-		WHERE child.parent_id = t.tag_id
 	)`, condition)
 }
 
@@ -289,7 +302,8 @@ func GetFilteredTags(focusModeID int, isArchived, isDeleted bool, section string
 	var args []interface{}
 
 	if section == "templates" {
-		// Templates use template_tags, no archive/trash status
+		// Templates use template_tags, no archive/trash status. Ancestors are
+		// included only to preserve the display tree around matching tags.
 		q = `
 			SELECT
 				t.tag_id,
@@ -306,9 +320,14 @@ func GetFilteredTags(focusModeID int, isArchived, isDeleted bool, section string
 				t.tag_id, t.name, t.parent_id, t.sort_order
 			HAVING
 				COUNT(tt.template_id) > 0 OR EXISTS (
-					SELECT 1 FROM tags child
-					JOIN template_tags ttc ON child.tag_id = ttc.tag_id
-					WHERE child.parent_id = t.tag_id
+					WITH RECURSIVE descendants(id) AS (
+						SELECT tag_id FROM tags WHERE parent_id = t.tag_id
+						UNION ALL
+						SELECT child.tag_id FROM tags child
+						INNER JOIN descendants d ON child.parent_id = d.id
+					)
+					SELECT 1 FROM descendants d
+					JOIN template_tags ttc ON d.id = ttc.tag_id
 				)
 			ORDER BY
 				COALESCE(t.sort_order, 2147483647) ASC,
@@ -318,13 +337,15 @@ func GetFilteredTags(focusModeID int, isArchived, isDeleted bool, section string
 	} else {
 		// Notes section
 		if focusModeID != 0 {
-			// Focus mode: include selected tags AND all their descendants
+			// Focus mode remains an exact-tag filter. Include selected tags and
+			// their ancestors here solely so the sidebar can render their tree.
 			q = fmt.Sprintf(`
 				WITH RECURSIVE focus_tags(id) AS (
 					SELECT tag_id FROM focus_mode_tags WHERE focus_mode_id = ?
-					UNION ALL
-					SELECT t.tag_id FROM tags t
-					INNER JOIN focus_tags ft ON t.parent_id = ft.id
+					UNION
+					SELECT parent.tag_id FROM tags child
+					INNER JOIN focus_tags ft ON child.tag_id = ft.id
+					INNER JOIN tags parent ON parent.tag_id = child.parent_id
 				)
 				SELECT
 					t.tag_id,
@@ -390,49 +411,53 @@ func GetFilteredTags(focusModeID int, isArchived, isDeleted bool, section string
 	return tags, nil
 }
 
-// BuildTagTree converts a flat list of tags into a tree structure.
-// Root tags (parent_id == nil) are at the top level, children are nested.
+// BuildTagTree converts a flat list of tags into a display tree. The parent link
+// controls placement only; it does not imply inherited note membership.
 func BuildTagTree(tags []Tag) []Tag {
-	tagMap := make(map[int]*Tag)
+	byID := make(map[int]Tag, len(tags))
+	childrenByParent := make(map[int][]int)
+	roots := []int{}
 
-	// First pass: index all tags and reset children
-	for i := range tags {
-		tagMap[tags[i].TagID] = &tags[i]
-		tags[i].Children = nil
+	for _, tag := range tags {
+		tag.Children = nil
+		byID[tag.TagID] = tag
 	}
-
-	// Second pass: attach children to their parents (deepest first won't work,
-	// so we do it in order and then sync)
-	for i := range tags {
-		if tags[i].ParentID != nil {
-			if parent, ok := tagMap[*tags[i].ParentID]; ok {
-				parent.Children = append(parent.Children, tags[i])
-			}
+	for _, tag := range tags {
+		if tag.ParentID == nil {
+			roots = append(roots, tag.TagID)
+			continue
+		}
+		if _, exists := byID[*tag.ParentID]; exists {
+			childrenByParent[*tag.ParentID] = append(childrenByParent[*tag.ParentID], tag.TagID)
+		} else {
+			// Keep incomplete result sets usable: a missing ancestor promotes the
+			// tag to the root instead of silently losing it.
+			roots = append(roots, tag.TagID)
 		}
 	}
 
-	// Third pass: sync children from tagMap so nested children are included.
-	// After the second pass, tagMap entries have the latest Children, but
-	// the copies inside parent.Children may be stale. Re-read from tagMap.
-	for i := range tags {
-		if len(tagMap[tags[i].TagID].Children) > 0 {
-			var synced []Tag
-			for _, child := range tagMap[tags[i].TagID].Children {
-				synced = append(synced, *tagMap[child.TagID])
-			}
-			tagMap[tags[i].TagID].Children = synced
+	var build func(int, map[int]bool) Tag
+	build = func(tagID int, ancestors map[int]bool) Tag {
+		tag := byID[tagID]
+		if ancestors[tagID] {
+			return tag
 		}
+		nextAncestors := make(map[int]bool, len(ancestors)+1)
+		for id := range ancestors {
+			nextAncestors[id] = true
+		}
+		nextAncestors[tagID] = true
+		for _, childID := range childrenByParent[tagID] {
+			tag.Children = append(tag.Children, build(childID, nextAncestors))
+		}
+		return tag
 	}
 
-	// Fourth pass: collect root tags
-	roots := []Tag{}
-	for i := range tags {
-		if tags[i].ParentID == nil {
-			roots = append(roots, *tagMap[tags[i].TagID])
-		}
+	tree := make([]Tag, 0, len(roots))
+	for _, rootID := range roots {
+		tree = append(tree, build(rootID, map[int]bool{}))
 	}
-
-	return roots
+	return tree
 }
 
 // GetAllTagDescendantIDs returns all descendant tag IDs for a given tag (including the tag itself).
@@ -488,60 +513,30 @@ func GetOrCreateParentTag(name string, q querier) (int, error) {
 	return int(lastID), nil
 }
 
-// ParseAndCreateTagHierarchy handles tag names with '/' separators.
-// For input "work/meeting", it creates "work" parent and returns "meeting" with parent_id set.
+// ParseAndCreateTagHierarchy is retained for callers that create tags while
+// saving notes. A slash is part of a tag name, not an implicit hierarchy: parent
+// placement is managed explicitly from the tag manager.
 func ParseAndCreateTagHierarchy(name string, q querier) (int, string, error) {
-	parts := strings.Split(name, "/")
-	if len(parts) <= 1 {
-		// No hierarchy — find existing or create
-		var existingID int
-		err := q.QueryRow("SELECT tag_id FROM tags WHERE LOWER(name) = LOWER(?)", name).Scan(&existingID)
-		if err == nil {
-			return existingID, name, nil
-		}
-
-		// Not found, create
-		result, err := q.Exec("INSERT INTO tags (name) VALUES (?)", name)
-		if err != nil {
-			return 0, "", fmt.Errorf("error creating tag: %w", err)
-		}
-		lastID, err := result.LastInsertId()
-		if err != nil {
-			return 0, "", fmt.Errorf("error getting tag id: %w", err)
-		}
-		return int(lastID), name, nil
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return 0, "", fmt.Errorf("tag name cannot be empty")
 	}
 
-	// Create parent chain
-	currentParentID := 0
-	for i := 0; i < len(parts)-1; i++ {
-		parentName := strings.Join(parts[:i+1], "/")
-		var err error
-		currentParentID, err = GetOrCreateParentTag(parentName, q)
-		if err != nil {
-			return 0, "", fmt.Errorf("error creating parent tag '%s': %w", parentName, err)
-		}
-	}
-
-	// Create leaf tag with parent_id
-	leafName := strings.Join(parts, "/") // keep full path as name for display
-
-	// Check if leaf already exists (case-insensitive, regardless of parent)
 	var existingLeafID int
-	err := q.QueryRow("SELECT tag_id FROM tags WHERE LOWER(name) = LOWER(?)", leafName).Scan(&existingLeafID)
+	err := q.QueryRow("SELECT tag_id FROM tags WHERE LOWER(name) = LOWER(?)", name).Scan(&existingLeafID)
 	if err == nil {
-		return existingLeafID, leafName, nil
+		return existingLeafID, name, nil
 	}
 
-	result, err := q.Exec("INSERT INTO tags (name, parent_id) VALUES (?, ?)", leafName, currentParentID)
+	result, err := q.Exec("INSERT INTO tags (name) VALUES (?)", name)
 	if err != nil {
-		return 0, "", fmt.Errorf("error creating leaf tag: %w", err)
+		return 0, "", fmt.Errorf("error creating tag: %w", err)
 	}
 	lastID, err := result.LastInsertId()
 	if err != nil {
-		return 0, "", fmt.Errorf("error getting leaf tag id: %w", err)
+		return 0, "", fmt.Errorf("error getting tag id: %w", err)
 	}
-	return int(lastID), leafName, nil
+	return int(lastID), name, nil
 }
 
 func UpdateTag(tag Tag) error {

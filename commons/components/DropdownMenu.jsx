@@ -4,7 +4,7 @@ import { EllipsisIcon } from "../../commons/components/Icon.jsx";
 import "./DropdownMenu.css";
 import { t } from "../i18n/index.js";
 
-export default function DropdownMenu({ actions }) {
+export default function DropdownMenu({ actions, footer = null }) {
   if (actions.length === 0) {
     return null;
   }
@@ -32,11 +32,14 @@ export default function DropdownMenu({ actions }) {
 
   function handleItemClick(action) {
     setIsDropdownOpen(false);
+    if (typeof action?.onClick === "function") {
+      action.onClick();
+    }
   }
 
   const items = actions.map((action, index) => (
     <li key={index} className="dropdown-option" onClick={() => handleItemClick(action)}>
-      {action}
+      {action?.content || action?.component || action}
     </li>
   ));
 
@@ -46,6 +49,7 @@ export default function DropdownMenu({ actions }) {
       <Button variant="ghost" onClick={handleDropdownClick}><EllipsisIcon /></Button>
         <ul className="dropdown-menu">
           {items}
+          {footer && <li className="dropdown-footer">{footer}</li>}
         </ul>
       </div>
   );

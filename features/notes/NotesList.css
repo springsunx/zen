@@ -150,6 +150,10 @@
                 flex-shrink: 0;
             }
 
+            .notes-list-item-tag {
+                text-decoration: none;
+            }
+
             .notes-list-item-tags {
                 display: flex;
                 gap: 4px;
@@ -159,6 +163,10 @@
                 white-space: nowrap;
             }
         }
+    }
+
+    div.notes-list-item[role="link"] {
+        cursor: pointer;
     }
 
     .notes-list-item-wrapper {

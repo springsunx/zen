@@ -1,3 +1,5 @@
+import { getLang, t } from "../i18n/index.js";
+
 export default function formatDate(date) {
   const now = new Date();
   const diff = now - date;
@@ -9,21 +11,22 @@ export default function formatDate(date) {
   if (days > 30) {
     const currentYear = now.getFullYear();
     const dateYear = date.getFullYear();
+    const locale = getLang();
     if (currentYear === dateYear) {
-      return date.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
+      return date.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
     }
-    return date.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+    return date.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' });
   } else if (days > 7) {
-    return `${Math.floor(days / 7)}w`;
+    return t("date.relative.weeksAgo", { count: Math.floor(days / 7) });
   } else if (days > 1) {
-    return `${days}d`;
+    return t("date.relative.daysAgo", { count: days });
   } else if (days === 1) {
-    return '1d';
+    return t("date.relative.daysAgo", { count: 1 });
   } else if (hours > 0) {
-    return `${hours}h`;
+    return t("date.relative.hoursAgo", { count: hours });
   } else if (minutes > 0) {
-    return `${minutes}m`;
+    return t("date.relative.minutesAgo", { count: minutes });
   } else {
-    return 'now';
+    return t("date.relative.now");
   }
 }

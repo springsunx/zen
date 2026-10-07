@@ -7,7 +7,9 @@
     align-items: flex-end;
     gap: 4px;
     padding: 8px 4px;
-    z-index: var(--z-popover);
+    /* The outline is page chrome, not a popover. Keeping it at the base layer
+       lets every modal, including version history, cover it completely. */
+    z-index: var(--z-base);
     /* Only the marks are clickable; the rail must not swallow clicks aimed at the
        page-edge resize grips or the note underneath. */
     pointer-events: none;

@@ -2,6 +2,7 @@ import { h, useState, useRef, useEffect } from "../../assets/preact.esm.js"
 import Button from "../../commons/components/Button.jsx";
 import { EllipsisIcon, PinIcon, ArchiveIcon, TrashIcon, CopyIcon, ShareIcon, HistoryIcon } from "../../commons/components/Icon.jsx";
 import isMobile from "../../commons/utils/isMobile.js";
+import { t } from "../../commons/i18n/index.js";
 import "./NotesEditorMenu.css";
 
 export default function NotesEditorMenu({ note, isNewNote, isModal, onPinClick, onUnpinClick, onArchiveClick, onUnarchiveClick, onRestoreClick, onDeleteClick, onCopyClick, onShareClick, onVersionsClick }) {
@@ -113,8 +114,8 @@ export default function NotesEditorMenu({ note, isNewNote, isModal, onPinClick, 
     const updatedAtText = formatFullDate(note.updatedAt);
     footer = (
       <div className="notes-editor-menu-footer">
-        <div><span>Created</span><span>{createdAtText}</span></div>
-        <div><span>Modified</span><span>{updatedAtText}</span></div>
+        <div><span>{t("notes.metadata.createdAt")}</span><span>{createdAtText}</span></div>
+        <div><span>{t("notes.metadata.updatedAt")}</span><span>{updatedAtText}</span></div>
       </div>
     );
   }

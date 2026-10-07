@@ -94,17 +94,13 @@ func HandleImport(w http.ResponseWriter, r *http.Request) {
 		Tags:    noteTags,
 	}
 
-	if fm.createdAt != nil && fm.updatedAt != nil {
+	if fm.createdAt != nil {
 		note.CreatedAt = *fm.createdAt
-		note.UpdatedAt = *fm.updatedAt
-	} else if fm.createdAt != nil {
-		note.CreatedAt = *fm.createdAt
-		note.UpdatedAt = *fm.createdAt
-	} else if fm.updatedAt != nil {
-		note.CreatedAt = *fm.updatedAt
+	}
+	if fm.updatedAt != nil {
 		note.UpdatedAt = *fm.updatedAt
 	}
-	_, err = notes.CreateNote(auth.Unrestricted, note)
+	_, err = notes.CreateImportedNote(auth.Unrestricted, note)
 	if err != nil {
 		err = fmt.Errorf("error creating note: %w", err)
 		utils.SendErrorResponse(w, "NOTES_IMPORT_FAILED", "Error importing note", err, http.StatusInternalServerError)
@@ -191,7 +187,7 @@ func handleZipImport(w http.ResponseWriter, src io.Reader, filename string) {
 				Tags:    resolveTags(extractTagNamesFromPath(name)),
 			}
 
-			_, err = notes.CreateNote(auth.Unrestricted, note)
+			_, err = notes.CreateImportedNote(auth.Unrestricted, note)
 			if err != nil {
 				result.ErrorFiles = append(result.ErrorFiles, f.Name)
 				result.Errors++
@@ -350,21 +346,30 @@ func createNoteFromExport(en importNote, noteTags []tags.Tag) (int, error) {
 	}
 	defer tx.Rollback()
 
+	createdAt := en.CreatedAt
+	if createdAt.IsZero() {
+		createdAt = time.Now().UTC()
+	}
+	updatedAt := en.UpdatedAt
+	if updatedAt.IsZero() {
+		updatedAt = createdAt
+	}
+
 	var archivedAt interface{} = nil
 	if en.IsArchived {
-		archivedAt = en.CreatedAt
+		archivedAt = createdAt
 	}
 	var deletedAt interface{} = nil
 	if en.IsDeleted {
-		deletedAt = en.CreatedAt
+		deletedAt = createdAt
 	}
 	var pinnedAt interface{} = nil
 	if en.IsPinned {
-		pinnedAt = en.CreatedAt
+		pinnedAt = createdAt
 	}
 
 	var noteID int
-	var createdAt, updatedAt time.Time
+	var storedCreatedAt, storedUpdatedAt time.Time
 
 	query := `
 		INSERT INTO
@@ -374,7 +379,7 @@ func createNoteFromExport(en importNote, noteTags []tags.Tag) (int, error) {
 		RETURNING
 			note_id, created_at, updated_at
 	`
-	err = tx.QueryRow(query, en.Title, en.Content, en.CreatedAt, en.UpdatedAt, archivedAt, deletedAt, pinnedAt).Scan(&noteID, &createdAt, &updatedAt)
+	err = tx.QueryRow(query, en.Title, en.Content, createdAt, updatedAt, archivedAt, deletedAt, pinnedAt).Scan(&noteID, &storedCreatedAt, &storedUpdatedAt)
 	if err != nil {
 		return 0, fmt.Errorf("error creating note: %w", err)
 	}

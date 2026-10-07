@@ -142,6 +142,9 @@
         .right-toolbar .dropdown-menu {
             left: auto;
             right: 0;
+            /* Keep both creation and modification timestamps visible below the
+               note actions instead of clipping the second metadata row. */
+            max-height: 320px;
         }
 
         .left-toolbar {

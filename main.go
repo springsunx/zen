@@ -255,7 +255,7 @@ func newRouter() *http.ServeMux {
 
 	// Bundles cached by the service worker before the move to /api/v1/ still call /api/ on the first page load after an upgrade.
 	// Token clients never had the unversioned paths, so they are not forwarded.
-	for _, method := range []string{"GET", "POST", "PUT", "DELETE"} {
+	for _, method := range []string{"GET", "POST", "PUT", "PATCH", "DELETE"} {
 		mux.HandleFunc(method+" /api/", func(w http.ResponseWriter, r *http.Request) {
 			if strings.HasPrefix(r.URL.Path, "/api/v1/") || (r.Header.Get("Authorization") != "" && !auth.HasValidSession(r)) {
 				http.NotFound(w, r)

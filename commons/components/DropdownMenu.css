@@ -97,6 +97,34 @@
         }
     }
 
+    .dropdown-footer {
+        list-style: none;
+        padding: 8px 12px;
+        margin-top: 4px;
+        border-top: 1px solid var(--neutral-100);
+        font: var(--sm);
+        cursor: default;
+
+        .note-menu-metadata-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            white-space: nowrap;
+
+            & + .note-menu-metadata-row {
+                margin-top: 4px;
+            }
+
+            span:first-child {
+                color: var(--neutral-400);
+            }
+
+            span:last-child {
+                color: var(--neutral-500);
+            }
+        }
+    }
+
     &.is-open {
         .dropdown-menu {
             opacity: 1;

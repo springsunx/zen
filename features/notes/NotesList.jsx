@@ -84,12 +84,18 @@ function NotesListItem({ note, isMultiSelect, isSelected, onMultiSelectStart, on
   const updatedAtDate = new Date(note.updatedAt);
   const shortUpdatedAt = formatDate(updatedAtDate);
   const fullUpdatedAt = updatedAtDate.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+  function tagUrl(tagId) {
+    const p = new URLSearchParams(window.location.search);
+    p.set('tagId', tagId);
+    p.delete('isUntagged');
+    return `/notes/?${p.toString()}`;
+  }
   const tags = note.tags?.map(tag => {
     const tagColor = tag.color ? (TAG_COLORS.find(c => c.value === tag.color)?.hex || null) : null;
     const style = tagColor
       ? `background-color: ${tagColor}22; color: ${tagColor}; padding: 1px 8px; border-radius: 10px;`
       : `background-color: var(--neutral-100); padding: 1px 8px; border-radius: 10px;`;
-    return <div className="notes-list-item-tag" key={tag.tagId} style={style}>{tag.name}</div>;
+    return <Link className="notes-list-item-tag" key={tag.tagId} to={tagUrl(tag.tagId)} style={style}>{tag.name}</Link>;
   });
   const longPress = useLongPress(() => onMultiSelectStart(note.noteId));
   let title = <div className="notes-list-item-title">{note.title}</div>
@@ -197,11 +203,28 @@ function NotesListItem({ note, isMultiSelect, isSelected, onMultiSelectStart, on
     }
   }
 
+  function handleOpen() {
+    navigateTo(link, true);
+  }
+
+  function handleOpenKeyDown(e) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleOpen();
+    }
+  }
+
   const noteSize = formatNoteSize(new TextEncoder().encode(note.content || '').length);
 
   return (
     <div {...longPress} onClickCapture={handleCmdClick} className="notes-list-item-wrapper">
-      <Link to={link} className={`notes-list-item ${note.isPinned ? 'pinned' : ''}`} activeClassName="is-active" shouldPreserveSearchParams>
+      <div
+        className={`notes-list-item ${note.isPinned ? 'pinned' : ''}`}
+        role="link"
+        tabIndex="0"
+        onClick={handleOpen}
+        onKeyDown={handleOpenKeyDown}
+      >
         <div className="notes-list-item-header">
           {title}
           <PinIcon isPinned={note.isPinned} className="notes-list-item-pin" onClick={handlePin} />
@@ -224,7 +247,7 @@ function NotesListItem({ note, isMultiSelect, isSelected, onMultiSelectStart, on
             </div>
           </div>
         </div>
-      </Link>
+      </div>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import ApiClient from "../../commons/http/ApiClient.js";
-import { h, useEffect, useState } from "../../assets/preact.esm.js"
+import { h, useEffect, useMemo, useState } from "../../assets/preact.esm.js"
 import Link from "../../commons/components/Link.jsx"
-import { PencilIcon, ArrowUpIcon, ArrowDownIcon, ChevronRightIcon } from "../../commons/components/Icon.jsx";
+import { PencilIcon, ArrowUpIcon, ArrowDownIcon, ChevronRightIcon, CloseIcon, SearchIcon } from "../../commons/components/Icon.jsx";
 import TagDetailModal, { TAG_COLORS } from "./TagDetailModal.jsx";
 import { openModal } from "../../commons/components/Modal.jsx";
 import { useAppContext } from "../../commons/contexts/AppContext.jsx";
@@ -53,8 +53,44 @@ function buildUntaggedUrl() {
   return base + (p.toString() ? '?' + p.toString() : '');
 }
 
-function TagTreeNode({ tag, depth, onEditClick, onMove, dragState, onDragStart, onDragOver, onDrop, expandedTagIds, onToggle }) {
-  const isExpanded = expandedTagIds.has(tag.tagId);
+function findMatchingTagIds(nodes, query) {
+  const matchIds = new Set();
+  const normalizedQuery = query.trim().toLocaleLowerCase();
+  if (!normalizedQuery) return matchIds;
+
+  function visit(items) {
+    for (const tag of items) {
+      if (tag.name.toLocaleLowerCase().includes(normalizedQuery)) matchIds.add(tag.tagId);
+      if (tag.children) visit(tag.children);
+    }
+  }
+
+  visit(nodes);
+  return matchIds;
+}
+
+// Preserve the matching tag and its route through the hierarchy. Filtering never
+// mutates the original tree or gives a parent the notes of its children.
+function filterTagTree(nodes, matchIds) {
+  return nodes.reduce((filtered, tag) => {
+    const matchingChildren = tag.children ? filterTagTree(tag.children, matchIds) : [];
+    if (matchIds.has(tag.tagId) || matchingChildren.length > 0) {
+      filtered.push({ ...tag, children: matchingChildren });
+    }
+    return filtered;
+  }, []);
+}
+
+function matchesUntaggedFilter(query) {
+  const normalizedQuery = query.trim().toLocaleLowerCase();
+  if (!normalizedQuery) return true;
+
+  return [t('tags.untagged'), '无标签', 'wubiaoqian', 'wbq', 'untagged']
+    .some(name => name.toLocaleLowerCase().includes(normalizedQuery));
+}
+
+function TagTreeNode({ tag, depth, onEditClick, onMove, dragState, onDragStart, onDragOver, onDrop, expandedTagIds, onToggle, isFiltering }) {
+  const isExpanded = isFiltering || expandedTagIds.has(tag.tagId);
   const hasChildren = tag.children && tag.children.length > 0;
 
   function handleToggle(e) {
@@ -101,7 +137,9 @@ function TagTreeNode({ tag, depth, onEditClick, onMove, dragState, onDragStart, 
     onDrop(tag);
   }
 
-  const displayName = tag.name.includes('/') ? tag.name.split('/').pop() : tag.name;
+  // A tag's name is always its own label. Parent links arrange the sidebar tree
+  // but never rewrite or infer a path from the label text.
+  const displayName = tag.name;
   const indent = depth * 16;
   const isDragOver = dragState && dragState.overTagId === tag.tagId;
   const tagColor = tag.color ? (TAG_COLORS.find(c => c.value === tag.color)?.hex || null) : null;
@@ -113,7 +151,7 @@ function TagTreeNode({ tag, depth, onEditClick, onMove, dragState, onDragStart, 
     h('div', {
       className: `tag-tree-row ${isDragOver ? 'is-drag-over' : ''}`,
       style: `padding-left: ${indent}px`,
-      draggable: true,
+      draggable: !isFiltering,
       onDragStart: handleDragStart,
       onDragOver: handleDragOver,
       onDrop: handleDrop
@@ -139,11 +177,13 @@ function TagTreeNode({ tag, depth, onEditClick, onMove, dragState, onDragStart, 
                 : ` (${tag.noteCount})`
             )
           : null,
-        h('span', { className: 'tag-actions', style: 'display:flex; gap:6px; align-items:center; margin-left:auto; flex-shrink:0' },
-          h(ArrowUpIcon, { onClick: handleUp }),
-          h(ArrowDownIcon, { onClick: handleDown }),
-          h('span', { className: 'tag-edit', onClick: handleEdit, onMouseDown: e => { e.stopPropagation(); e.preventDefault(); } }, h(PencilIcon))
-        )
+        !isFiltering
+          ? h('span', { className: 'tag-actions', style: 'display:flex; gap:6px; align-items:center; margin-left:auto; flex-shrink:0' },
+              h(ArrowUpIcon, { onClick: handleUp }),
+              h(ArrowDownIcon, { onClick: handleDown }),
+              h('span', { className: 'tag-edit', onClick: handleEdit, onMouseDown: e => { e.stopPropagation(); e.preventDefault(); } }, h(PencilIcon))
+            )
+          : null
       )
     ),
     hasChildren && isExpanded
@@ -160,7 +200,8 @@ function TagTreeNode({ tag, depth, onEditClick, onMove, dragState, onDragStart, 
               onDragOver,
               onDrop,
               expandedTagIds,
-              onToggle
+              onToggle,
+              isFiltering
             })
           )
         )
@@ -176,6 +217,18 @@ export default function SidebarTagsList() {
   const [dragTag, setDragTag] = useState(null);
   const [dragOverTagId, setDragOverTagId] = useState(null);
   const [expandedTagIds, setExpandedTagIds] = useState(new Set());
+  const [tagQuery, setTagQuery] = useState("");
+  const [remoteMatchTagIds, setRemoteMatchTagIds] = useState(new Set());
+  const safeTags = Array.isArray(tags) ? tags : [];
+  const safeOrderedTags = Array.isArray(orderedTags) ? orderedTags : [];
+  const displayTags = safeOrderedTags.length > 0 ? safeOrderedTags : safeTags;
+  const searchQuery = tagQuery.trim();
+  const isFiltering = searchQuery.length > 0;
+  const showUntagged = !isFiltering || matchesUntaggedFilter(searchQuery);
+  const localMatchTagIds = useMemo(
+    () => findMatchingTagIds(displayTags, searchQuery),
+    [displayTags, searchQuery]
+  );
 
   useEffect(() => {
     setTitle(sectionTitle());
@@ -223,6 +276,35 @@ export default function SidebarTagsList() {
       setOrderedTags(tags);
     }
   }, [tags]);
+
+  useEffect(() => {
+    if (!searchQuery) {
+      setRemoteMatchTagIds(new Set());
+      return undefined;
+    }
+
+    let active = true;
+    const timer = window.setTimeout(() => {
+      ApiClient.searchTags(searchQuery)
+        .then(matches => {
+          if (active) setRemoteMatchTagIds(new Set(matches.map(tag => tag.tagId)));
+        })
+        .catch(() => {
+          if (active) setRemoteMatchTagIds(new Set());
+        });
+    }, 180);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [searchQuery]);
+
+  const visibleTags = useMemo(() => {
+    if (!isFiltering) return displayTags;
+    const matchIds = new Set([...localMatchTagIds, ...remoteMatchTagIds]);
+    return filterTagTree(displayTags, matchIds);
+  }, [displayTags, isFiltering, localMatchTagIds, remoteMatchTagIds]);
 
   function persistOrder(nodes) {
     // Flatten tree to get all tag IDs in display order
@@ -399,27 +481,11 @@ export default function SidebarTagsList() {
 
   if (isCanvas()) return null;
 
-  const safeTags = Array.isArray(tags) ? tags : [];
-  const safeOrderedTags = Array.isArray(orderedTags) ? orderedTags : [];
-
-  if (safeOrderedTags.length === 0 && safeTags.length === 0) {
-    return (
-      <div>
-          <div className="sidebar-section-title">{title}</div>
-          <Link
-            to={buildUntaggedUrl()}
-            className="sidebar-tag-link"
-            activeClassName="is-active"
-          >
-            {t('tags.untagged')}{untaggedCount > 0 ? ` (${untaggedCount})` : ""}
-      </Link>
-    </div>
-    );
+  function handleTagQueryChange(e) {
+    setTagQuery(e.target.value);
   }
 
-  const displayTags = safeOrderedTags.length > 0 ? safeOrderedTags : safeTags;
-
-  const treeItems = displayTags.map(tag =>
+  const treeItems = visibleTags.map(tag =>
     h(TagTreeNode, {
       key: tag.tagId,
       tag,
@@ -431,21 +497,52 @@ export default function SidebarTagsList() {
       onDragOver: handleDragOver,
       onDrop: handleDrop,
       expandedTagIds,
-      onToggle: handleToggle
+      onToggle: handleToggle,
+      isFiltering
     })
   );
 
   return (
     <div>
       <div className="sidebar-section-title">{title}</div>
-      <Link
-        to={buildUntaggedUrl()}
-        className="sidebar-tag-link"
-        activeClassName="is-active"
-      >
-        {t('tags.untagged')}{untaggedCount > 0 ? ` (${untaggedCount})` : ""}
-      </Link>
+      <div className="sidebar-tag-filter">
+        <SearchIcon />
+        <input
+          type="search"
+          value={tagQuery}
+          onInput={handleTagQueryChange}
+          placeholder={t('tags.filter.placeholder')}
+          aria-label={t('tags.filter.label')}
+        />
+        {tagQuery
+          ? h('button', {
+              type: 'button',
+              className: 'sidebar-tag-filter-clear',
+              onClick: () => setTagQuery(''),
+              'aria-label': t('tags.filter.clear')
+            }, h(CloseIcon))
+          : null}
+      </div>
+      {showUntagged
+        ? <div className="tag-tree-node">
+            <div className="tag-tree-row">
+              <span className="tag-tree-toggle-placeholder" aria-hidden="true" />
+              <Link
+                to={buildUntaggedUrl()}
+                className="sidebar-tag-link"
+                activeClassName="is-active"
+              >
+                <span className="tag-tree-name sidebar-untagged-name">
+                  {t('tags.untagged')}{untaggedCount > 0 ? ` (${untaggedCount})` : ""}
+                </span>
+              </Link>
+            </div>
+          </div>
+        : null}
       {treeItems}
+      {isFiltering && treeItems.length === 0 && !showUntagged
+        ? h('div', { className: 'sidebar-tag-filter-empty' }, t('tags.filter.empty'))
+        : null}
     </div>
   );
 }
