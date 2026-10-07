@@ -234,6 +234,7 @@
             display: flex;
             justify-content: space-between;
             width: 100%;
+            min-width: 0;
             padding: var(--spacing-1) 0;
             cursor: pointer;
             text-decoration: none;
@@ -286,8 +287,80 @@
 
     .tag-tree-node {
         .tag-tree-row {
+            position: relative;
             display: flex;
             align-items: center;
+            min-width: 0;
+        }
+
+        .tag-tree-name {
+            min-width: 0;
+            flex: 0 1 auto;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .tag-tree-count {
+            flex: 0 0 auto;
+            padding: 0 2px;
+            white-space: nowrap;
+        }
+
+        .tag-actions {
+            position: absolute;
+            top: 50%;
+            right: 0;
+            z-index: 1;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            padding: 2px;
+            border-radius: 5px;
+            background: var(--bg-secondary);
+            box-shadow: var(--shadow-1);
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(-50%) translateX(3px);
+            transition: opacity var(--transition-fast), transform var(--transition-fast);
+        }
+
+        /* The count is the compact hover target. Keeping the trigger on the
+           right avoids controls appearing while users simply browse labels. */
+        .tag-tree-row:has(.tag-tree-count:hover) .tag-actions,
+        .tag-tree-row:has(.tag-actions:hover) .tag-actions,
+        .tag-tree-row:has(.tag-actions:focus-within) .tag-actions {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateY(-50%);
+        }
+
+        .tag-action {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            height: 22px;
+            padding: 0;
+            border: 0;
+            border-radius: 3px;
+            color: var(--neutral-500);
+            background: transparent;
+            cursor: pointer;
+
+            &:hover,
+            &:focus-visible {
+                color: var(--neutral-800);
+                background: var(--neutral-100);
+                outline: 0;
+            }
+
+            svg.lucide {
+                width: 15px;
+                height: 15px;
+                padding: 0;
+            }
         }
 
         .tag-color-dot {

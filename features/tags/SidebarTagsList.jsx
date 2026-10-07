@@ -167,7 +167,7 @@ function TagTreeNode({ tag, depth, onEditClick, onMove, dragState, onDragStart, 
         className: 'sidebar-tag-link',
         activeClassName: 'is-active'
       },
-        h('span', { className: 'tag-tree-name', style: tagBgStyle || '' },
+        h('span', { className: 'tag-tree-name', style: tagBgStyle || '', title: displayName },
           displayName
         ),
         typeof tag.noteCount === 'number'
@@ -177,14 +177,14 @@ function TagTreeNode({ tag, depth, onEditClick, onMove, dragState, onDragStart, 
                 : ` (${tag.noteCount})`
             )
           : null,
-        !isFiltering
-          ? h('span', { className: 'tag-actions', style: 'display:flex; gap:6px; align-items:center; margin-left:auto; flex-shrink:0' },
-              h(ArrowUpIcon, { onClick: handleUp }),
-              h(ArrowDownIcon, { onClick: handleDown }),
-              h('span', { className: 'tag-edit', onClick: handleEdit, onMouseDown: e => { e.stopPropagation(); e.preventDefault(); } }, h(PencilIcon))
-            )
-          : null
-      )
+      ),
+      !isFiltering
+        ? h('span', { className: 'tag-actions' },
+            h('button', { type: 'button', className: 'tag-action', onClick: handleUp, 'aria-label': t('tags.actions.moveUp'), title: t('tags.actions.moveUp') }, h(ArrowUpIcon)),
+            h('button', { type: 'button', className: 'tag-action', onClick: handleDown, 'aria-label': t('tags.actions.moveDown'), title: t('tags.actions.moveDown') }, h(ArrowDownIcon)),
+            h('button', { type: 'button', className: 'tag-action', onClick: handleEdit, onMouseDown: e => { e.stopPropagation(); e.preventDefault(); }, 'aria-label': t('tags.actions.edit'), title: t('tags.actions.edit') }, h(PencilIcon))
+          )
+        : null
     ),
     hasChildren && isExpanded
       ? h('div', { className: 'tag-tree-children' },
