@@ -219,6 +219,11 @@ function NotesPageContent({ noteId }) {
     setSelectedIds([noteId]);
   }
 
+  function handleCloseShare() {
+    setShowShare(false);
+    try { localStorage.setItem('zen.showShare', 'false'); } catch {}
+  }
+
   function handleToggleSelect(noteId) {
     const isSelected = selectedIds.includes(noteId);
     if (isSelected === true) {
@@ -307,7 +312,7 @@ function NotesPageContent({ noteId }) {
           {editorContent}
         </div>
 
-      <SharePanel noteId={selectedNote?.noteId} showShare={showShare} />
+      <SharePanel noteId={selectedNote?.noteId} showShare={showShare} onClose={handleCloseShare} />
         <MobileNavbar />
         <div className="note-modal-root"></div>
         <div className="modal-root"></div>

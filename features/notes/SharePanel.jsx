@@ -2,6 +2,7 @@ import { h, useState, useEffect } from "../../assets/preact.esm.js";
 import { t } from "../../commons/i18n/index.js";
 import { showToast } from "../../commons/components/Toast.jsx";
 import ApiClient from "../../commons/http/ApiClient.js";
+import { CloseIcon } from "../../commons/components/Icon.jsx";
 import "./SharePanel.css";
 
 var EXPIRY_OPTIONS = [1, 24, 168, 720, 0];
@@ -22,7 +23,7 @@ function getShareUrl(token) {
   return window.location.origin + "/s/" + token;
 }
 
-export default function SharePanel({ noteId, showShare }) {
+export default function SharePanel({ noteId, showShare, onClose = () => {} }) {
   var sharesState = useState([]);
   var shares = sharesState[0];
   var setShares = sharesState[1];
@@ -120,6 +121,9 @@ export default function SharePanel({ noteId, showShare }) {
     <div className="share-panel-container">
       <div className="share-panel-header">
         <span className="share-panel-title">{t("notes.share.title")}</span>
+        <button type="button" className="share-panel-close" onClick={onClose} title={t("common.close")} aria-label={t("common.close")}>
+          <CloseIcon />
+        </button>
       </div>
       <div className="share-panel-create">
         <label className="share-panel-create-label">{t("notes.share.createLabel")}</label>

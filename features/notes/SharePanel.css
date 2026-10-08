@@ -13,6 +13,9 @@
 }
 
 .share-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   padding: 14px 16px;
   border-bottom: 1px solid var(--neutral-200);
   background: var(--neutral-100);
@@ -24,6 +27,31 @@
   font-weight: 600;
   color: var(--neutral-700);
   font-size: 14px;
+}
+
+.share-panel-close {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  margin: -4px -6px -4px 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  color: var(--neutral-500);
+  background: transparent;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--neutral-800);
+    background: var(--neutral-200);
+  }
+
+  svg.lucide {
+    width: 16px;
+    height: 16px;
+  }
 }
 
 .share-panel-content {
