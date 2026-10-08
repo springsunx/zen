@@ -104,7 +104,11 @@ export default function NotesList({ notes = [], total, isLoading, images = [], i
   }
 
   const isViewLoading = (view === "gallery" && isImagesLoading) || (view === "attachments" && isAttachmentsLoading) || (view !== "gallery" && view !== "attachments" && isLoading);
-  if (!isViewLoading) {
+  // Keep previously loaded content in place while a mutation or background
+  // refresh runs. Replacing it with a spinner makes every save, archive and
+  // tag change visually flash even though there is still useful content.
+  const shouldShowLoadingPlaceholder = isViewLoading && currentItems.length === 0;
+  if (!shouldShowLoadingPlaceholder) {
     content = (
       <div className={listClassName} style={view==="card" ? {"--card-min-width": `${cardSize}px`, "--card-height": `${Math.round(cardSize*1.75)}px`, } : null}>
         {items}
@@ -123,7 +127,7 @@ export default function NotesList({ notes = [], total, isLoading, images = [], i
 }
 
 function NotesListItem({ note, isMultiSelect, isSelected, onMultiSelectStart, onToggleSelect, isArchivesPage, isTrashPage }) {
-  const { removeNote } = useNotes();
+  const { removeNote, handlePinToggle } = useNotes();
   const link = `/notes/${note.noteId}`;
   const updatedAtDate = new Date(note.updatedAt);
   const shortUpdatedAt = formatDate(updatedAtDate);
@@ -155,10 +159,7 @@ function NotesListItem({ note, isMultiSelect, isSelected, onMultiSelectStart, on
   function handlePin(e) {
     e.preventDefault();
     e.stopPropagation();
-    const apiCall = note.isPinned ? ApiClient.unpinNote : ApiClient.pinNote;
-    apiCall(note.noteId)
-      .then(() => window.dispatchEvent(new CustomEvent('notes:refresh')))
-      .catch(err => console.error('Pin toggle failed:', err));
+    handlePinToggle(note.noteId, note.isPinned);
   }
 
   function handleArchive(e) {

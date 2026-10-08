@@ -93,15 +93,8 @@ function NotesPageContent({ noteId }) {
   let editorClassName = "notes-editor-container";
 
   useEffect(() => {
-    refreshNotes(selectedTagId, selectedFocusId, isArchivesPage, isTrashPage, 1, isUntaggedPage);
-    refreshImages(selectedTagId, selectedFocusId, 1, isArchivesPage);
-    refreshAttachments(1, selectedTagId, selectedFocusId);
-    refreshTags(selectedFocusId, isArchivesPage, isTrashPage);
-    refreshFocusModes();
-  }, [refreshNotes, refreshImages, refreshAttachments, refreshTags, refreshFocusModes, isArchivesPage]);
-
-  useEffect(() => {
-    // Reset to avoid showing incorrect notes
+    // Reset page counters but retain the previous content until replacement
+    // data arrives. This keeps filters and other list updates from flashing.
     resetPagination();
 
     refreshNotes(selectedTagId, selectedFocusId, isArchivesPage, isTrashPage, 1, isUntaggedPage);
@@ -115,14 +108,17 @@ function NotesPageContent({ noteId }) {
   }, [selectedTagId, selectedFocusId, isArchivesPage, isTrashPage, isUntaggedPage, resetPagination, refreshNotes, refreshImages, refreshAttachments, refreshTags]);
 
   useEffect(() => {
+    if (notesPageNumber === 1) return;
     refreshNotes(selectedTagId, selectedFocusId, isArchivesPage, isTrashPage, notesPageNumber, isUntaggedPage);
   }, [notesPageNumber, selectedTagId, selectedFocusId, isArchivesPage, isTrashPage, isUntaggedPage, refreshNotes]);
 
   useEffect(() => {
+    if (imagesPageNumber === 1) return;
     refreshImages(selectedTagId, selectedFocusId, imagesPageNumber, isArchivesPage);
   }, [imagesPageNumber, selectedTagId, selectedFocusId, isArchivesPage, refreshImages]);
 
   useEffect(() => {
+    if (attachmentsPageNumber === 1) return;
     refreshAttachments(attachmentsPageNumber, selectedTagId, selectedFocusId);
   }, [attachmentsPageNumber, selectedTagId, selectedFocusId, refreshAttachments]);
 

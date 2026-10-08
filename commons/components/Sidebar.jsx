@@ -91,11 +91,12 @@ export default function Sidebar() {
     const Icon = item.icon;
     const className = `sidebar-button ${item.id}${iconOnly ? ' sidebar-rail-button' : ''}`;
     const content = <><Icon />{iconOnly ? null : item.label}</>;
+    const tooltipProps = iconOnly ? { title: item.label } : {};
 
     if (item.to) {
-      return <Link key={item.id} className={className} activeClassName="is-active" to={item.to} title={item.label} aria-label={item.label}>{content}</Link>;
+      return <Link key={item.id} className={className} activeClassName="is-active" to={item.to} {...tooltipProps} aria-label={item.label}>{content}</Link>;
     }
-    return <button key={item.id} type="button" className={className} onClick={item.onClick} title={item.label} aria-label={item.label}>{content}</button>;
+    return <button key={item.id} type="button" className={className} onClick={item.onClick} {...tooltipProps} aria-label={item.label}>{content}</button>;
   }
 
   return (

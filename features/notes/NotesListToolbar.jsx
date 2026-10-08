@@ -18,7 +18,7 @@ export default function NotesListToolbar({ onViewChange, view, cardSize, onCardS
 
   const searchParams = useSearchParams();
   const { refreshNotes } = useNotes();
-  const { tags, focusModes } = useAppContext();
+  const { tags, focusModes, refreshTags } = useAppContext();
 
   const selectedTagId = searchParams.get("tagId");
   const selectedFocusId = searchParams.get("focusId");
@@ -48,6 +48,7 @@ export default function NotesListToolbar({ onViewChange, view, cardSize, onCardS
   function handleTrashCleared() {
     navigateTo("/notes/?isDeleted=true")
     refreshNotes(null, null, false, true);
+    refreshTags(selectedFocusId, isArchivesPage, isTrashPage);
   }
 
   function handleClearTrash() {

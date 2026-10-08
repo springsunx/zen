@@ -167,7 +167,7 @@ function TagTreeNode({ tag, depth, onEditClick, onMove, dragState, onDragStart, 
         className: 'sidebar-tag-link',
         activeClassName: 'is-active'
       },
-        h('span', { className: 'tag-tree-name', style: tagBgStyle || '', title: displayName },
+        h('span', { className: 'tag-tree-name', style: tagBgStyle || '' },
           displayName
         ),
         typeof tag.noteCount === 'number'

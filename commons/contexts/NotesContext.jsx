@@ -84,10 +84,25 @@ export function NotesProvider({ children }) {
 
     return apiCall
       .then(() => {
-        setNotes(prevNotes =>
-          prevNotes.map(note =>
-            note.noteId === noteId ? { ...note, isPinned: !isPinned } : note
-          )
+        setNotes(prevNotes => {
+          const target = prevNotes.find(note => note.noteId === noteId);
+          if (!target) return prevNotes;
+
+          const updatedNote = { ...target, isPinned: !isPinned };
+          const remainingNotes = prevNotes.filter(note => note.noteId !== noteId);
+          if (updatedNote.isPinned) {
+            // Pinning assigns the newest pin time on the server, so it belongs
+            // first. Do this locally to avoid a list reload and its flicker.
+            return [updatedNote, ...remainingNotes];
+          }
+
+          const pinnedNotes = remainingNotes.filter(note => note.isPinned);
+          const normalNotes = [...remainingNotes.filter(note => !note.isPinned), updatedNote];
+          normalNotes.sort((left, right) => new Date(right.updatedAt) - new Date(left.updatedAt));
+          return [...pinnedNotes, ...normalNotes];
+        });
+        setSelectedNote(prevNote =>
+          prevNote?.noteId === noteId ? { ...prevNote, isPinned: !isPinned } : prevNote
         );
       })
       .catch(error => {
@@ -142,11 +157,8 @@ export function NotesProvider({ children }) {
 
   const resetPagination = useCallback(() => {
     setNotesPageNumber(1);
-    setNotes([]);
     setImagesPageNumber(1);
-    setImages([]);
     setAttachmentsPageNumber(1);
-    setAttachments([]);
     setSelectedNote(null);
   }, []);
 

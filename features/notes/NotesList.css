@@ -109,7 +109,7 @@
             cursor: pointer;
             flex-shrink: 0;
 
-            &.pinned {
+            &.is-pinned {
                 opacity: 1;
                 margin-left: 4px;
                 transform: translateY(0);
@@ -119,8 +119,8 @@
                 rect,
                 path {
                     stroke-width: 2;
-                    stroke: var(--neutral-300);
-                    fill: var(--neutral-300);
+                    stroke: var(--primary-600, #2563eb);
+                    fill: var(--primary-600, #2563eb);
                 }
             }
         }
@@ -130,7 +130,7 @@
             transform: translateY(0);
         }
 
-        &:hover .notes-list-item-pin.pinned {
+        &:hover .notes-list-item-pin.is-pinned {
             opacity: 1;
         }
 
@@ -287,7 +287,7 @@
                 transform: translateY(-10px);
                 transition: opacity, transform 300ms;
 
-                &.pinned {
+                &.is-pinned {
                     opacity: 1;
                     margin-left: 4px;
                     flex-shrink: 0;
@@ -298,8 +298,8 @@
                     rect,
                     path {
                         stroke-width: 2;
-                        stroke: var(--neutral-300);
-                        fill: var(--neutral-300);
+                        stroke: var(--primary-600, #2563eb);
+                        fill: var(--primary-600, #2563eb);
                     }
                 }
             }

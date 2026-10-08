@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "../../assets/preact.esm.js";
 import { useAppContext } from "../../commons/contexts/AppContext.jsx";
+import { findCurrentTag } from "./newNoteTagUtils.js";
 
 export default function useNewNoteTag({ isNewNote, setTags }) {
   const { tags, focusModes } = useAppContext();
@@ -11,7 +12,7 @@ export default function useNewNoteTag({ isNewNote, setTags }) {
       return;
     }
 
-    const currentTag = findCurrentTag(tags, focusModes);
+    const currentTag = findCurrentTag(tags, focusModes, window.location.search);
     if (currentTag === null) {
       return;
     }
@@ -19,24 +20,4 @@ export default function useNewNoteTag({ isNewNote, setTags }) {
     hasSeededRef.current = true;
     setTags(prevTags => prevTags.length === 0 ? [currentTag] : prevTags);
   }, [isNewNote, tags, focusModes]);
-}
-
-function findCurrentTag(tags, focusModes) {
-  const searchParams = new URLSearchParams(window.location.search);
-  const tagId = searchParams.get("tagId");
-  const focusId = searchParams.get("focusId");
-
-  if (tagId !== null) {
-    return tags.find(tag => String(tag.tagId) === tagId) || null;
-  }
-
-  // A focus mode with several tags gives no way to know which one is meant.
-  if (focusId !== null) {
-    const focusMode = focusModes.find(mode => String(mode.focusId) === focusId);
-    if (focusMode && focusMode.tags.length === 1) {
-      return focusMode.tags[0];
-    }
-  }
-
-  return null;
 }
