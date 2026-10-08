@@ -33,6 +33,34 @@ function getShareUrl(token) {
   return window.location.origin + "/s/" + token;
 }
 
+function ShareTableColumns() {
+  return (
+    <colgroup>
+      <col className="shares-note-column" />
+      <col className="shares-link-column" />
+      <col className="shares-status-column" />
+      <col className="shares-expiry-column" />
+      <col className="shares-created-column" />
+      <col className="shares-actions-column" />
+    </colgroup>
+  );
+}
+
+function ShareTableHeader() {
+  return (
+    <thead>
+      <tr>
+        <th>{t("shares.column.note")}</th>
+        <th>{t("shares.column.link")}</th>
+        <th>{t("shares.column.status")}</th>
+        <th>{t("shares.column.expiry")}</th>
+        <th>{t("shares.column.created")}</th>
+        <th>{t("shares.column.actions")}</th>
+      </tr>
+    </thead>
+  );
+}
+
 export default function SharesPage() {
   const [shares, setShares] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -94,24 +122,8 @@ export default function SharesPage() {
     content = (
       <div className="shares-list">
         <table className="shares-table">
-          <colgroup>
-            <col className="shares-note-column" />
-            <col className="shares-link-column" />
-            <col className="shares-status-column" />
-            <col className="shares-expiry-column" />
-            <col className="shares-created-column" />
-            <col className="shares-actions-column" />
-          </colgroup>
-          <thead>
-            <tr>
-              <th>{t("shares.column.note")}</th>
-              <th>{t("shares.column.link")}</th>
-              <th>{t("shares.column.status")}</th>
-              <th>{t("shares.column.expiry")}</th>
-              <th>{t("shares.column.created")}</th>
-              <th>{t("shares.column.actions")}</th>
-            </tr>
-          </thead>
+          <ShareTableColumns />
+          <ShareTableHeader />
           <tbody>
             {visibleShares.map((share) => {
               const expired = isExpired(share);
@@ -140,21 +152,33 @@ export default function SharesPage() {
       <div className="page-container">
         <Sidebar />
         <main className="shares-page-content">
-          <header className="shares-header">
-            <h1>{t("shares.title")}</h1>
-            <p>{t("shares.desc")}</p>
-          </header>
-          <div className="shares-controls">
-            <input value={query} onInput={(event) => setQuery(event.target.value)} placeholder={t("shares.searchPlaceholder")} />
-            <div className="shares-filter" role="tablist" aria-label={t("shares.filter") }>
-              {["active", "expired", "all"].map((value) => (
-                <button type="button" key={value} className={filter === value ? "is-active" : ""} onClick={() => setFilter(value)}>
-                  {t("shares.filter." + value)}
-                </button>
-              ))}
+          <div className="shares-sticky-top">
+            <header className="shares-header">
+              <h1>{t("shares.title")}</h1>
+              <p>{t("shares.desc")}</p>
+            </header>
+            <div className="shares-controls">
+              <input value={query} onInput={(event) => setQuery(event.target.value)} placeholder={t("shares.searchPlaceholder")} />
+              <div className="shares-filter" role="tablist" aria-label={t("shares.filter") }>
+                {["active", "expired", "all"].map((value) => (
+                  <button type="button" key={value} className={filter === value ? "is-active" : ""} onClick={() => setFilter(value)}>
+                    {t("shares.filter." + value)}
+                  </button>
+                ))}
+              </div>
             </div>
+            {!isLoading && visibleShares.length > 0 && (
+              <div className="shares-fixed-table-header">
+                <div className="shares-list">
+                  <table className="shares-table">
+                    <ShareTableColumns />
+                    <ShareTableHeader />
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
-          {content}
+          <div className="shares-scroll-content">{content}</div>
         </main>
         <MobileNavbar />
         <div className="modal-root"></div>

@@ -7,7 +7,7 @@
     align-items: center;
     gap: 8px;
     padding: 10px 12px;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
     color: var(--neutral-400);
     text-transform: uppercase;
@@ -99,16 +99,16 @@
     flex-shrink: 0;
     text-align: center;
     color: var(--neutral-400);
-    font-size: 13px;
+    font-size: 14px;
 }
 
 .col-notes {
-    flex: 1.5;
+    flex: 2;
     min-width: 0;
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
-    font-size: 13px;
+    font-size: 14px;
     color: var(--neutral-400);
     text-align: center;
 }
@@ -143,11 +143,11 @@
     flex-shrink: 0;
     text-align: center;
     color: var(--neutral-400);
-    font-size: 13px;
+    font-size: 14px;
 }
 
 .col-tags {
-    flex: 1;
+    flex: .65;
     min-width: 0;
     display: flex;
     flex-wrap: wrap;
