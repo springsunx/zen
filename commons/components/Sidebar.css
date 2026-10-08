@@ -52,6 +52,15 @@
 
     .sidebar-navigation-main {
         min-width: 0;
+
+        /* Links naturally fill this column, while buttons can shrink to their
+           label. Make every primary navigation item share one full-row hit
+           target so Clipboard behaves exactly like the other destinations. */
+        > .sidebar-button {
+            box-sizing: border-box;
+            width: 100%;
+            text-align: left;
+        }
     }
 
     .sidebar-icon-rail {
