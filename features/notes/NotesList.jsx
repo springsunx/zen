@@ -1,4 +1,4 @@
-import { h, Fragment, useMemo } from "../../assets/preact.esm.js"
+import { h, Fragment, useEffect, useMemo, useState } from "../../assets/preact.esm.js"
 import NotesListToolbar from './NotesListToolbar.jsx';
 import Link from '../../commons/components/Link.jsx';
 import Spinner from '../../commons/components/Spinner.jsx';
@@ -27,6 +27,8 @@ import { TAG_COLORS } from "../tags/TagDetailModal.jsx";
 import useSearchParams from '../../commons/components/useSearchParams.jsx';
 
 export default function NotesList({ notes = [], total, isLoading, images = [], imagesTotal, isImagesLoading, attachments = [], attachmentsTotal, isAttachmentsLoading, view, onViewChange, onLoadMoreClick, onLoadMoreImagesClick, onLoadMoreAttachmentsClick, isMultiSelect, selectedIds, onMultiSelectStart, onToggleSelect, cardSize = 240, onCardSizeChange = () => {}, isGlobalView = false, onGlobalViewToggle = () => {} }) {
+  const [noteQuery, setNoteQuery] = useState("");
+  const [pinyinTitleMatchIds, setPinyinTitleMatchIds] = useState(new Set());
   const searchParams = useSearchParams();
   const isArchivesPage = searchParams.get("isArchived") === "true";
   const isTrashPage = searchParams.get("isDeleted") === "true";
@@ -36,11 +38,52 @@ export default function NotesList({ notes = [], total, isLoading, images = [], i
   let currentTotal = total;
   let currentItems = notes;
 
-  let items = notes.map(note => <NotesListItem note={note} key={note.noteId} isMultiSelect={isMultiSelect} isSelected={selectedIds.includes(note.noteId)} onMultiSelectStart={onMultiSelectStart} onToggleSelect={onToggleSelect} isArchivesPage={isArchivesPage} isTrashPage={isTrashPage} />);
+  const normalizedQuery = noteQuery.trim().toLocaleLowerCase();
+  const isNoteFiltering = normalizedQuery.length > 0;
+
+  useEffect(() => {
+    if (!isNoteFiltering) {
+      setPinyinTitleMatchIds(new Set());
+      return undefined;
+    }
+
+    let active = true;
+    const timer = window.setTimeout(() => {
+      ApiClient.searchNoteTitlesByPinyin(noteQuery)
+        .then(titleMatches => {
+          if (!active) return;
+          setPinyinTitleMatchIds(new Set(titleMatches));
+        })
+        .catch(() => {
+          if (active) setPinyinTitleMatchIds(new Set());
+        });
+    }, 180);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [isNoteFiltering, noteQuery]);
+
+  const visibleNotes = useMemo(() => {
+    if (!isNoteFiltering) return notes;
+
+    return notes.filter(note => {
+      const title = (note.title || "").toLocaleLowerCase();
+      return title.includes(normalizedQuery) || pinyinTitleMatchIds.has(note.noteId);
+    });
+  }, [notes, isNoteFiltering, normalizedQuery, pinyinTitleMatchIds]);
+
+  const shouldShowNoteFilter = view !== "gallery" && view !== "attachments";
+  let items = visibleNotes.map(note => <NotesListItem note={note} key={note.noteId} isMultiSelect={isMultiSelect} isSelected={selectedIds.includes(note.noteId)} onMultiSelectStart={onMultiSelectStart} onToggleSelect={onToggleSelect} isArchivesPage={isArchivesPage} isTrashPage={isTrashPage} />);
+  if (shouldShowNoteFilter) {
+    currentItems = visibleNotes;
+    currentTotal = isNoteFiltering ? visibleNotes.length : total;
+  }
 
   if (view === "card") {
     listClassName = "";
-    items = notes.map((note, index) => <NotesGridItem note={note} key={note.noteId} index={index} cardHeight={Math.round((cardSize||200)*1.41421356)} />);
+    items = visibleNotes.map((note, index) => <NotesGridItem note={note} key={note.noteId} index={index} cardHeight={Math.round((cardSize||200)*1.41421356)} />);
     items = (
       <div className="notes-grid" style={{ gridTemplateColumns: view==="card" ? `repeat(auto-fill, minmax(${cardSize}px, 1fr))` : undefined }} >
         {items}
@@ -66,20 +109,21 @@ export default function NotesList({ notes = [], total, isLoading, images = [], i
       <div className={listClassName} style={view==="card" ? {"--card-min-width": `${cardSize}px`, "--card-height": `${Math.round(cardSize*1.75)}px`, } : null}>
         {items}
         <LoadMoreButton items={currentItems} total={currentTotal} onLoadMoreClick={loadMoreHandler} />
-        <EmptyList items={currentItems} view={view} />
+        <EmptyList items={currentItems} view={view} isFiltering={shouldShowNoteFilter && isNoteFiltering} />
       </div>
     )
   }
 
   return (
     <>
-      <NotesListToolbar onViewChange={onViewChange} view={view} cardSize={cardSize} onCardSizeChange={onCardSizeChange} isGlobalView={isGlobalView} onGlobalViewToggle={onGlobalViewToggle} />
+      <NotesListToolbar onViewChange={onViewChange} view={view} cardSize={cardSize} onCardSizeChange={onCardSizeChange} isGlobalView={isGlobalView} onGlobalViewToggle={onGlobalViewToggle} showFilter={shouldShowNoteFilter} filterQuery={noteQuery} onFilterQueryChange={setNoteQuery} />
       {content}
     </>
   );
 }
 
 function NotesListItem({ note, isMultiSelect, isSelected, onMultiSelectStart, onToggleSelect, isArchivesPage, isTrashPage }) {
+  const { removeNote } = useNotes();
   const link = `/notes/${note.noteId}`;
   const updatedAtDate = new Date(note.updatedAt);
   const shortUpdatedAt = formatDate(updatedAtDate);
@@ -123,8 +167,11 @@ function NotesListItem({ note, isMultiSelect, isSelected, onMultiSelectStart, on
     const apiCall = isArchivesPage ? ApiClient.unarchiveNote : ApiClient.archiveNote;
     apiCall(note.noteId)
       .then(() => {
+        // Updating this list in place avoids replacing it with a loading state,
+        // which would reset the user's current scroll position.
+        removeNote(note.noteId);
         showToast(isArchivesPage ? t('notes.archive.unarchived') : t('notes.archive.archived'));
-        window.dispatchEvent(new CustomEvent('notes:refresh'));
+        window.dispatchEvent(new CustomEvent('notes:refresh', { detail: { listAlreadyUpdated: true } }));
       })
       .catch(err => console.error('Archive toggle failed:', err));
   }
@@ -330,9 +377,13 @@ function LoadMoreButton({ items, total, onLoadMoreClick }) {
   return <Button className="notes-list-load-more-button" onClick={onLoadMoreClick}>{t("common.loadMore")}</Button>
 }
 
-function EmptyList({ items, view }) {
+function EmptyList({ items, view, isFiltering = false }) {
   if (items.length > 0) {
     return null;
+  }
+
+  if (isFiltering) {
+    return <EmptyState icon={<NotesIcon />} title={t('notes.filter.empty.title')} description={t('notes.filter.empty.desc')} />;
   }
 
   if (view === "gallery") {

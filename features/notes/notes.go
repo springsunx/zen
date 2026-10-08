@@ -135,6 +135,16 @@ func HandleGetNotes(w http.ResponseWriter, r *http.Request) {
 	utils.SendJSON(w, http.StatusOK, response)
 }
 
+func HandlePinyinTitleMatches(w http.ResponseWriter, r *http.Request) {
+	matchedIDs, err := GetPinyinTitleMatchIDs(auth.GetAccess(r.Context()), r.URL.Query().Get("query"))
+	if err != nil {
+		utils.SendErrorResponse(w, "NOTES_READ_FAILED", "Error matching note titles.", err, http.StatusInternalServerError)
+		return
+	}
+
+	utils.SendJSON(w, http.StatusOK, matchedIDs)
+}
+
 func HandleGetNote(w http.ResponseWriter, r *http.Request) {
 	noteIDStr := r.PathValue("noteId")
 	noteID, err := strconv.Atoi(noteIDStr)

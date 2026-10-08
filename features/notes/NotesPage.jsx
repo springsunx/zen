@@ -128,8 +128,10 @@ function NotesPageContent({ noteId }) {
 
   // Listen for notes:refresh events (e.g., after tag rename in TagDetailModal)
   useEffect(() => {
-    function handleRefresh() {
-      handleNoteChange();
+    function handleRefresh(event) {
+      if (!event.detail?.listAlreadyUpdated) {
+        handleNoteChange();
+      }
       refreshTags(selectedFocusId, isArchivesPage, isTrashPage);
       refreshFocusModes();
     }

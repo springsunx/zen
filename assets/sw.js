@@ -1,4 +1,4 @@
-const CACHE_NAME = 'zen-v3';
+const CACHE_NAME = 'zen-v4';
 const STATIC_ASSETS = [
   '/',
   '/assets/index.html',

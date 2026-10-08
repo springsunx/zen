@@ -74,9 +74,10 @@ func GetAllTags(access auth.Access) ([]Tag, error) {
 	return tags, nil
 }
 
-// matchesPinyin checks if a tag name matches the search query via pinyin.
-// Supports full pinyin ("gongzuo" matches "工作") and initials ("gz" matches "工作").
-func matchesPinyin(name, query string) bool {
+// MatchesPinyin checks whether text matches the search query through pinyin.
+// It supports full pinyin ("gongzuo" matches "工作") and initials
+// ("gz" matches "工作"), and is also used by note-title quick filtering.
+func MatchesPinyin(text, query string) bool {
 	query = strings.ToLower(strings.TrimSpace(query))
 	if query == "" {
 		return false
@@ -86,7 +87,7 @@ func matchesPinyin(name, query string) bool {
 	var fullPinyin strings.Builder
 	var initials strings.Builder
 
-	for _, r := range name {
+	for _, r := range text {
 		if unicode.Is(unicode.Han, r) {
 			pys := pinyin.Pinyin(string(r), args)
 			if len(pys) > 0 && len(pys[0]) > 0 {
@@ -191,7 +192,7 @@ func SearchTags(access auth.Access, term string) ([]Tag, error) {
 			if seen[t.TagID] {
 				continue
 			}
-			if matchesPinyin(t.Name, term) {
+			if MatchesPinyin(t.Name, term) {
 				sqlTags = append(sqlTags, t)
 				seen[t.TagID] = true
 			}

@@ -134,6 +134,12 @@ export function NotesProvider({ children }) {
     );
   }, []);
 
+  const removeNote = useCallback((noteId) => {
+    setNotes(prevNotes => prevNotes.filter(note => note.noteId !== noteId));
+    setNotesTotal(prevTotal => Math.max(0, prevTotal - 1));
+    setSelectedNote(prevNote => prevNote?.noteId === noteId ? null : prevNote);
+  }, []);
+
   const resetPagination = useCallback(() => {
     setNotesPageNumber(1);
     setNotes([]);
@@ -178,6 +184,7 @@ export function NotesProvider({ children }) {
       handleLoadMoreImages,
       handleLoadMoreAttachments,
       patchNote,
+      removeNote,
       resetPagination
     }}>
       {children}

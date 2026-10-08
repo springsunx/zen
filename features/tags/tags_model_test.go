@@ -98,13 +98,13 @@ func TestCreatingTagWithSlashDoesNotInferHierarchy(t *testing.T) {
 
 func TestMatchesPinyin(t *testing.T) {
 	for _, query := range []string{"gongzuo", "gz"} {
-		if !matchesPinyin("工作", query) {
-			t.Fatalf("matchesPinyin(工作, %q) = false, want true", query)
+		if !MatchesPinyin("工作", query) {
+			t.Fatalf("MatchesPinyin(工作, %q) = false, want true", query)
 		}
 	}
 
-	if matchesPinyin("工作", "hy") {
-		t.Fatal("matchesPinyin(工作, hy) = true, want false")
+	if MatchesPinyin("工作", "hy") {
+		t.Fatal("MatchesPinyin(工作, hy) = true, want false")
 	}
 }
 

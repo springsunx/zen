@@ -4,10 +4,48 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"strings"
 	"zen/commons/auth"
 	"zen/commons/sqlite"
 	"zen/features/tags"
 )
+
+// GetPinyinTitleMatchIDs returns readable note IDs whose titles match either
+// full pinyin or pinyin initials. The browser intersects these IDs with the
+// already loaded list, so this endpoint never changes the current list scope.
+func GetPinyinTitleMatchIDs(access auth.Access, term string) ([]int, error) {
+	term = strings.TrimSpace(term)
+	matchedIDs := []int{}
+	if term == "" {
+		return matchedIDs, nil
+	}
+
+	scopePredicate, scopeArgs := buildReadableNotesPredicate(access)
+	rows, err := sqlite.DB.Query(`
+		SELECT n.note_id, n.title
+		FROM notes n
+		WHERE 1 `+scopePredicate, scopeArgs...)
+	if err != nil {
+		return matchedIDs, fmt.Errorf("error reading note titles for pinyin search: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var noteID int
+		var title string
+		if err := rows.Scan(&noteID, &title); err != nil {
+			return matchedIDs, fmt.Errorf("error reading note title for pinyin search: %w", err)
+		}
+		if tags.MatchesPinyin(title, term) {
+			matchedIDs = append(matchedIDs, noteID)
+		}
+	}
+
+	if err := rows.Err(); err != nil {
+		return matchedIDs, fmt.Errorf("error iterating note titles for pinyin search: %w", err)
+	}
+	return matchedIDs, nil
+}
 
 func SearchNotes(access auth.Access, term string, limit int, sort string) ([]Note, error) {
 	notes := []Note{}

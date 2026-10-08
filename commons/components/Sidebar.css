@@ -143,9 +143,10 @@
 
     .sidebar-section {
         cursor: pointer;
-        padding: 0 8px;
+        /* Keep the tag panel visually centered in the sidebar. */
+        padding: 0 12px;
         margin-top: var(--spacing-6);
-        margin-left: 8px;
+        margin-left: 0;
 
         .sidebar-section-title {
             font: var(--sm);

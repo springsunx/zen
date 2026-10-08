@@ -1,5 +1,5 @@
 import { h } from "../../assets/preact.esm.js"
-import { ListViewIcon, CardViewIcon, BrushCleaningIcon, MinusIcon, PlusIcon } from "../../commons/components/Icon.jsx";
+import { ListViewIcon, CardViewIcon, BrushCleaningIcon, MinusIcon, PlusIcon, SearchIcon, CloseIcon } from "../../commons/components/Icon.jsx";
 import useSearchParams from "../../commons/components/useSearchParams.jsx";
 import { openModal } from "../../commons/components/Modal.jsx";
 import { AppProvider, useAppContext } from '../../commons/contexts/AppContext.jsx';
@@ -14,7 +14,7 @@ import { t } from "../../commons/i18n/index.js";
 import { useLayout } from "../../commons/contexts/LayoutContext.jsx";
 
 
-export default function NotesListToolbar({ onViewChange, view, cardSize, onCardSizeChange, isGlobalView, onGlobalViewToggle }) {
+export default function NotesListToolbar({ onViewChange, view, cardSize, onCardSizeChange, isGlobalView, onGlobalViewToggle, showFilter = false, filterQuery = "", onFilterQueryChange = () => {} }) {
 
   const searchParams = useSearchParams();
   const { refreshNotes } = useNotes();
@@ -86,11 +86,11 @@ export default function NotesListToolbar({ onViewChange, view, cardSize, onCardS
   }
 
     return (
-    <Toolbar actions={actions} listName={listName} className="notes-list-toolbar" view={view} cardSize={cardSize} onCardSizeChange={onCardSizeChange} isGlobalView={isGlobalView} onGlobalViewToggle={onGlobalViewToggle} />
+    <Toolbar actions={actions} listName={listName} className="notes-list-toolbar" view={view} cardSize={cardSize} onCardSizeChange={onCardSizeChange} isGlobalView={isGlobalView} onGlobalViewToggle={onGlobalViewToggle} showFilter={showFilter} filterQuery={filterQuery} onFilterQueryChange={onFilterQueryChange} />
   );
 }
 
-function Toolbar({ actions, listName, className, view, cardSize = 240, onCardSizeChange = () => {}, isGlobalView = false, onGlobalViewToggle = () => {} }) {
+function Toolbar({ actions, listName, className, view, cardSize = 240, onCardSizeChange = () => {}, isGlobalView = false, onGlobalViewToggle = () => {}, showFilter, filterQuery, onFilterQueryChange }) {
   const { toggleSidebar } = useLayout();
   const buttons = actions.map(action => (
     <div key={action.title} {...action}>
@@ -99,7 +99,7 @@ function Toolbar({ actions, listName, className, view, cardSize = 240, onCardSiz
   ));
 
   let title = null;
-  if (isMobile() === true) {
+  if (isMobile() === true && !showFilter) {
     title = <div className="notes-list-toolbar-name">{listName}</div>;
   }
 
@@ -114,36 +114,45 @@ function Toolbar({ actions, listName, className, view, cardSize = 240, onCardSiz
 
     return (
     <div className={className}>
-      <ButtonGroup isMobile={true}>
-        <div onClick={toggleSidebar} title={t('notes.sidebar.toggle')}>
-          <HamburgerIcon />
-        </div>
-      </ButtonGroup>
-      {title}
-      <ButtonGroup>
-        {buttons}
-        {actions.length > 1 && (
-          <div className={`view-mode-toggle ${isGlobalView ? 'is-on' : ''}`} onClick={onGlobalViewToggle}>
-            {t('notes.view.global')}
-            <span className="view-mode-toggle-track"></span>
+      <div className="notes-list-toolbar-main">
+        <ButtonGroup isMobile={true}>
+          <div onClick={toggleSidebar} title={t('notes.sidebar.toggle')}>
+            <HamburgerIcon />
+          </div>
+        </ButtonGroup>
+        {title}
+        <ButtonGroup>
+          {buttons}
+          {actions.length > 1 && (
+            <div className={`view-mode-toggle ${isGlobalView ? 'is-on' : ''}`} onClick={onGlobalViewToggle}>
+              {t('notes.view.global')}
+              <span className="view-mode-toggle-track"></span>
+            </div>
+          )}
+        </ButtonGroup>
+        {(view === 'card' && isMobile() !== true) && (
+          <div className="card-size-control">
+            <span className="card-size-icon" role="button" title={t('notes.cardSize.decrease')} aria-label={t('notes.cardSize.decrease')} data-tooltip={t('notes.cardSize.decrease')} onClick={dec}><MinusIcon /></span>
+            <input
+              type="range"
+              min="200"
+              max="360"
+              step="1"
+              value={cardSize}
+              onInput={e => onCardSizeChange(parseInt(e.target.value, 10))}
+              title={t('notes.cardSize.tooltip')}
+              aria-label={t('notes.cardSize.tooltip')}
+              data-tooltip={t('notes.cardSize.tooltip')}
+            />
+            <span className="card-size-icon" role="button" title={t('notes.cardSize.increase')} aria-label={t('notes.cardSize.increase')} data-tooltip={t('notes.cardSize.increase')} onClick={inc}><PlusIcon /></span>
           </div>
         )}
-      </ButtonGroup>
-      {(view === 'card' && isMobile() !== true) && (
-        <div className="card-size-control">
-          <span className="card-size-icon" role="button" title={t('notes.cardSize.decrease')} aria-label={t('notes.cardSize.decrease')} data-tooltip={t('notes.cardSize.decrease')} onClick={dec}><MinusIcon /></span>
-          <input
-            type="range"
-            min="200"
-            max="360"
-            step="1"
-            value={cardSize}
-            onInput={e => onCardSizeChange(parseInt(e.target.value, 10))}
-            title={t('notes.cardSize.tooltip')}
-            aria-label={t('notes.cardSize.tooltip')}
-            data-tooltip={t('notes.cardSize.tooltip')}
-          />
-          <span className="card-size-icon" role="button" title={t('notes.cardSize.increase')} aria-label={t('notes.cardSize.increase')} data-tooltip={t('notes.cardSize.increase')} onClick={inc}><PlusIcon /></span>
+      </div>
+      {showFilter && (
+        <div className="notes-list-filter">
+          <SearchIcon />
+          <input type="search" value={filterQuery} onInput={(event) => onFilterQueryChange(event.target.value)} placeholder={t('notes.filter.placeholder')} aria-label={t('notes.filter.label')} />
+          {filterQuery && <button type="button" onClick={() => onFilterQueryChange("")} aria-label={t('notes.filter.clear')}><CloseIcon /></button>}
         </div>
       )}
     </div>

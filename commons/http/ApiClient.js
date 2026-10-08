@@ -184,6 +184,11 @@ async function getNotes(tagId, focusId, isArchived, isDeleted, page, isUntagged)
   return resp;
 }
 
+async function searchNoteTitlesByPinyin(query) {
+  const resp = await request('GET', `/api/notes/search/pinyin/?query=${encodeURIComponent(query)}`);
+  return Array.isArray(resp) ? resp : [];
+}
+
 async function getNoteById(noteId) {
   // Circuit-breaker: if recent failures and cache exists, skip network
   try {
@@ -604,6 +609,7 @@ export default {
   updateFocusMode,
   deleteFocusMode,
   getNotes,
+  searchNoteTitlesByPinyin,
   getNoteById,
   createNote,
   updateNote,

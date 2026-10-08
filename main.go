@@ -48,7 +48,11 @@ var version = getEnv("ZEN_VERSION", "dev")
 func main() {
 	// ─── CLI Flags ───
 	port := flag.String("port", getEnv("PORT", "8080"), "server port")
-	dataFolder := flag.String("data", getEnv("DATA_FOLDER", "."), "database directory")
+	defaultDataFolder := getEnv("DATA_FOLDER", ".")
+	if os.Getenv("DEV_MODE") == "true" && os.Getenv("DATA_FOLDER") == "" {
+		defaultDataFolder = "test-data"
+	}
+	dataFolder := flag.String("data", defaultDataFolder, "database directory")
 	imagesFolder := flag.String("images", getEnv("IMAGES_FOLDER", "./images"), "image storage directory")
 	attachmentsFolder := flag.String("attachments", getEnv("ATTACHMENTS_FOLDER", "./attachments"), "attachment storage directory")
 	showVersion := flag.Bool("version", false, "print version and exit")
@@ -127,6 +131,7 @@ func newRouter() *http.ServeMux {
 
 	// ─── Notes ───
 	addAuthenticatedRoute(mux, "GET /api/v1/notes/", notes.HandleGetNotes)
+	addAuthenticatedRoute(mux, "GET /api/v1/notes/search/pinyin/", notes.HandlePinyinTitleMatches)
 	addAuthenticatedRoute(mux, "GET /api/v1/notes/{noteId}/", notes.HandleGetNote)
 	addAuthenticatedRoute(mux, "GET /api/v1/notes/{noteId}", notes.HandleGetNote)
 	addSessionRoute(mux, "GET /api/v1/notes/{noteId}/related/", notes.HandleGetRelatedNotes)
