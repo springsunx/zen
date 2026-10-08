@@ -61,7 +61,7 @@ English | [中文](./readme-cn.md)
 * Copy markdown button next to TOC toggle
 * Auto-hide empty tags, auto-cleanup unused tags, parent tag includes child notes
 * Dynamic tag counts and section titles
-* MCP tools: create_note, image upload
+* MCP tools with tag-scoped read/write access, conflict-safe note updates, and one-step image upload + insertion
 * Save without exiting editor
 * NotesEditor refactoring with improved edit flow
 
@@ -69,7 +69,7 @@ English | [中文](./readme-cn.md)
 * Canvas for spatial organization of notes and images (stored as [JSON Canvas](https://jsoncanvas.org/docs/apps/))
 * Semantic search for notes and images (via [Zen Intelligence](https://github.com/sheshbabu/zen-intelligence))
 * Similar images (via [Zen Intelligence](https://github.com/sheshbabu/zen-intelligence))
-* MCP for searching, listing and reading notes
+* MCP server for searching, listing, reading, creating, safely updating, and inserting images in notes
 
 ### Installation
 Build from source

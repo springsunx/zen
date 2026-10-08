@@ -3,6 +3,7 @@ package notes
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"regexp"
@@ -16,6 +17,10 @@ import (
 
 var imageRefRegex = regexp.MustCompile(`!\[.*?\]\(/images/([^)]+)\)`)
 var attachmentRefRegex = regexp.MustCompile(`\[.*?\]\(/attachments/([^)]+)\)`)
+
+// ErrNoteConflict means the note changed after a caller read its updated_at value.
+// MCP uses this to avoid allowing an older AI response to overwrite newer content.
+var ErrNoteConflict = errors.New("note changed since it was read")
 
 // syncNoteFileLinks updates note_images and note_attachments tables
 // based on the current note content. Must be called within a transaction.
@@ -440,6 +445,17 @@ func createNote(access auth.Access, note Note, preserveTimestamps bool) (Note, e
 }
 
 func UpdateNote(access auth.Access, note Note) (Note, error) {
+	return updateNote(access, note, nil)
+}
+
+// UpdateNoteIfUnchanged updates a note only when its updated_at timestamp still
+// matches the value returned to the caller. Existing callers can continue using
+// UpdateNote; integrations that read-then-write should use this guard.
+func UpdateNoteIfUnchanged(access auth.Access, note Note, expectedUpdatedAt time.Time) (Note, error) {
+	return updateNote(access, note, &expectedUpdatedAt)
+}
+
+func updateNote(access auth.Access, note Note, expectedUpdatedAt *time.Time) (Note, error) {
 	if err := ensureNoteWritable(access, note.NoteID); err != nil {
 		return note, err
 	}
@@ -492,7 +508,14 @@ func UpdateNote(access auth.Access, note Note) (Note, error) {
 			content = ?,
 			updated_at = CURRENT_TIMESTAMP
 		WHERE
-			note_id = ?
+			note_id = ?`
+	queryArgs := []interface{}{note.Title, note.Content, note.NoteID}
+	if expectedUpdatedAt != nil {
+		// SQLite's CURRENT_TIMESTAMP is stored in UTC to second precision.
+		query += " AND updated_at = ?"
+		queryArgs = append(queryArgs, expectedUpdatedAt.UTC().Format("2006-01-02 15:04:05"))
+	}
+	query += `
 		RETURNING
 			note_id,
 			title,
@@ -501,8 +524,11 @@ func UpdateNote(access auth.Access, note Note) (Note, error) {
 			updated_at
 	`
 
-	row := tx.QueryRow(query, note.Title, note.Content, note.NoteID)
+	row := tx.QueryRow(query, queryArgs...)
 	err = row.Scan(&note.NoteID, &note.Title, &note.Content, &note.Snippet, &note.UpdatedAt)
+	if errors.Is(err, sql.ErrNoRows) && expectedUpdatedAt != nil {
+		return note, ErrNoteConflict
+	}
 	if err != nil {
 		err = fmt.Errorf("error updating note: %w", err)
 		slog.Error(err.Error())

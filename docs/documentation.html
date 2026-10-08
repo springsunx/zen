@@ -770,6 +770,21 @@ docker compose restart
                     and manage your notes directly from supported applications.
                 </p>
 
+                <p>
+                    Tool descriptions are generated from the token's current tag permissions. For a
+                    scoped token, create notes only with one or more existing writable tag names;
+                    the server resolves and validates those names without requiring a separate tag-list
+                    call. Before updating a note or adding an image, read the note and pass back its
+                    <code>updatedAt</code> value. This prevents a stale AI response from overwriting a
+                    newer version.
+                </p>
+
+                <p>
+                    Use <code>upload_image</code> to upload an image and insert it into a writable
+                    note in one operation. The tool returns and writes the canonical Markdown itself;
+                    do not construct <code>/images/...</code> links with a separate note update.
+                </p>
+
                 <h3 id="mcp-generate-token">Generate Token</h3>
                 <p>
                     Before you can use MCP integration, you need to generate an access token:
@@ -801,7 +816,9 @@ docker compose restart
                     <li>Search through your notes</li>
                     <li>Read specific notes by ID</li>
                     <li>List all your notes</li>
-                    <li>Access notes from your development workflow</li>
+                    <li>Create notes with the existing tag names permitted by the token</li>
+                    <li>Update notes with conflict protection based on <code>updatedAt</code></li>
+                    <li>Upload and insert images with a single <code>upload_image</code> call</li>
                 </ul>
 
                 <h3 id="mcp-lm-studio">LM Studio</h3>
