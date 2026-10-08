@@ -596,8 +596,8 @@
 
 /* Editor settings pane, ported from upstream */
 .settings-toggle-option {
-    display: flex;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 42px 52px;
     align-items: center;
     gap: var(--spacing-4);
     margin-top: var(--spacing-4);
@@ -615,4 +615,15 @@
             color: var(--text-secondary);
         }
     }
+}
+
+.settings-sidebar-options-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 42px 52px;
+    align-items: center;
+    gap: var(--spacing-4);
+    margin-top: var(--spacing-5);
+    color: var(--text-secondary);
+    font: var(--xs);
+    text-align: center;
 }

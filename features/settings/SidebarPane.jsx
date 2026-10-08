@@ -1,6 +1,6 @@
 import { h, useState } from "../../assets/preact.esm.js";
 import Toggle from "../../commons/components/Toggle.jsx";
-import SidebarPreferences, { SIDEBAR_ITEMS } from "../../commons/preferences/SidebarPreferences.js";
+import SidebarPreferences, { SIDEBAR_ITEMS, SIDEBAR_POSITIONS } from "../../commons/preferences/SidebarPreferences.js";
 import { t } from "../../commons/i18n/index.js";
 
 const itemKeys = {
@@ -14,24 +14,40 @@ const itemKeys = {
 };
 
 export default function SidebarPane() {
-  const [visibility, setVisibility] = useState(() => SidebarPreferences.getVisibility());
+  const [preferences, setPreferences] = useState(() => SidebarPreferences.getPreferences());
+  const { visibility, positions } = preferences;
 
-  function handleChange(item, isVisible) {
-    const next = { ...visibility, [item]: isVisible };
-    setVisibility(next);
-    SidebarPreferences.setVisible(item, isVisible);
+  function handlePlacementChange(item, position, isEnabled) {
+    const next = {
+      ...preferences,
+      visibility: { ...visibility, [item]: isEnabled },
+      positions: { ...positions, [item]: position },
+    };
+    setPreferences(next);
+    if (isEnabled) {
+      SidebarPreferences.setPosition(item, position);
+      SidebarPreferences.setVisible(item, true);
+    } else {
+      SidebarPreferences.setVisible(item, false);
+    }
   }
 
   return (
     <div className="settings-tab-content">
       <h3>{t("settings.sidebar.title")}</h3>
       <p>{t("settings.sidebar.desc")}</p>
+      <div className="settings-sidebar-options-header" aria-hidden="true">
+        <span />
+        <span>{t("settings.sidebar.left")}</span>
+        <span>{t("settings.sidebar.right")}</span>
+      </div>
       {SIDEBAR_ITEMS.map((item) => (
         <div className="settings-toggle-option" key={item}>
           <div className="settings-toggle-info">
             <div className="settings-toggle-label">{t(itemKeys[item])}</div>
           </div>
-          <Toggle isEnabled={visibility[item] === true} onChange={(value) => handleChange(item, value)} />
+          <Toggle isEnabled={visibility[item] === true && positions[item] === SIDEBAR_POSITIONS.PRIMARY} onChange={(value) => handlePlacementChange(item, SIDEBAR_POSITIONS.PRIMARY, value)} />
+          <Toggle isEnabled={visibility[item] === true && positions[item] === SIDEBAR_POSITIONS.RAIL} onChange={(value) => handlePlacementChange(item, SIDEBAR_POSITIONS.RAIL, value)} />
         </div>
       ))}
     </div>
