@@ -11,3 +11,4 @@
 .gallery-lightbox-prev svg,.gallery-lightbox-next svg{pointer-events:none}
 
 .gallery-lightbox-image{ -webkit-user-drag:none; user-select:none }
+.gallery-lightbox-video{max-width:min(92vw,1200px);max-height:88vh;outline:none;pointer-events:auto}

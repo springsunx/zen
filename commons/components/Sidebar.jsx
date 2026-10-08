@@ -5,7 +5,7 @@ import FocusSwitcher from "../../features/focus/FocusSwitcher.jsx";
 import SearchMenu from "../../features/search/SearchMenu.jsx";
 import SettingsModal from "../../features/settings/SettingsModal.jsx";
 import { openModal } from "./Modal.jsx";
-import { NotesIcon, SearchIcon, NewIcon, ArchiveIcon, TrashIcon, BoardIcon, SettingsIcon, TemplatesIcon, ClipboardIcon, ShareIcon } from "./Icon.jsx";
+import { NotesIcon, SearchIcon, NewIcon, ArchiveIcon, TrashIcon, BoardIcon, SettingsIcon, TemplatesIcon, ClipboardIcon, ShareIcon, AttachmentsIcon } from "./Icon.jsx";
 import { useAppContext } from "../../commons/contexts/AppContext.jsx";
 import { useLayout } from "../../commons/contexts/LayoutContext.jsx";
 import { t } from "../../commons/i18n/index.js";
@@ -111,6 +111,10 @@ export default function Sidebar() {
             <ClipboardIcon />
             {t("nav.clipboard")}
           </div>}
+          {visibility.files && <Link className="sidebar-button files" activeClassName="is-active" to="/files/">
+            <AttachmentsIcon />
+            {t("nav.files")}
+          </Link>}
           {visibility.archives && <Link className="sidebar-button archives" activeClassName="is-active" to={archiveLink}>
             <ArchiveIcon />
             {t("nav.archives")}
@@ -125,7 +129,7 @@ export default function Sidebar() {
           </Link>}
         </div>
 
-        {!window.location.pathname.includes('/clipboard/') && (
+        {!window.location.pathname.includes('/clipboard/') && !window.location.pathname.includes('/files/') && (
           <div className="sidebar-scrollable">
             <div className="sidebar-section">
               <SidebarTagsList tags={tags} />

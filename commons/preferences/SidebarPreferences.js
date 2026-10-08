@@ -1,11 +1,12 @@
 const STORAGE_KEY = "zen.sidebar.visibleItems";
 
-export const SIDEBAR_ITEMS = ["canvas", "templates", "clipboard", "archives", "trash", "shares"];
+export const SIDEBAR_ITEMS = ["canvas", "templates", "clipboard", "files", "archives", "trash", "shares"];
 
 const DEFAULT_VISIBILITY = {
   canvas: true,
   templates: true,
   clipboard: true,
+  files: true,
   archives: false,
   trash: false,
   shares: false,

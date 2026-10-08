@@ -18,6 +18,10 @@ import { AppProvider } from "../../commons/contexts/AppContext.jsx";
 import { openModal } from "../../commons/components/Modal.jsx";
 import { t } from "../../commons/i18n/index.js";
 
+function normalizeNotesView(view) {
+  return view === "gallery" || view === "attachments" ? "list" : view;
+}
+
 export default function NotesPage({ noteId }) {
   return (
     <NotesProvider>
@@ -72,7 +76,7 @@ function NotesPageContent({ noteId }) {
   const isUntaggedPage = searchParams.get("isUntagged") === "true";
 
   const [selectedView, setSelectedView] = useState(() => {
-    return ViewPreferences.getPreference(selectedFocusId, selectedTagId, isArchivesPage, isTrashPage);
+    return normalizeNotesView(ViewPreferences.getPreference(selectedFocusId, selectedTagId, isArchivesPage, isTrashPage));
   });
 
   const [isGlobalView, setIsGlobalView] = useState(() => ViewPreferences.isGlobalMode());
@@ -106,7 +110,7 @@ function NotesPageContent({ noteId }) {
     refreshTags(selectedFocusId, isArchivesPage, isTrashPage);
 
     // Reload preference
-    const savedView = ViewPreferences.getPreference(selectedFocusId, selectedTagId, isArchivesPage, isTrashPage);
+    const savedView = normalizeNotesView(ViewPreferences.getPreference(selectedFocusId, selectedTagId, isArchivesPage, isTrashPage));
     setSelectedView(savedView);
   }, [selectedTagId, selectedFocusId, isArchivesPage, isTrashPage, isUntaggedPage, resetPagination, refreshNotes, refreshImages, refreshAttachments, refreshTags]);
 

@@ -1,10 +1,12 @@
 package images
 
 import (
+	"database/sql"
 	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"zen/commons/sqlite"
 	"zen/features/storage"
 )
@@ -12,7 +14,11 @@ import (
 func GetAllImages(filter ImagesFilter) ([]Image, int, error) {
 	images := []Image{}
 	total := 0
-	offset := (filter.page - 1) * IMAGES_LIMIT
+	limit := filter.limit
+	if limit <= 0 {
+		limit = IMAGES_LIMIT
+	}
+	offset := (filter.page - 1) * limit
 
 	var query string
 	var queryArgs []interface{}
@@ -47,7 +53,7 @@ func GetAllImages(filter ImagesFilter) ([]Image, int, error) {
 				ORDER BY i.created_at DESC LIMIT ? OFFSET ?
 			`
 		}
-		queryArgs = []interface{}{filter.tagID, IMAGES_LIMIT, offset}
+		queryArgs = []interface{}{filter.tagID, limit, offset}
 	} else if filter.focusModeID != 0 {
 		if filter.isArchived {
 			query = `
@@ -80,7 +86,7 @@ func GetAllImages(filter ImagesFilter) ([]Image, int, error) {
 				ORDER BY i.created_at DESC LIMIT ? OFFSET ?
 			`
 		}
-		queryArgs = []interface{}{filter.focusModeID, IMAGES_LIMIT, offset}
+		queryArgs = []interface{}{filter.focusModeID, limit, offset}
 	} else {
 		if filter.isArchived {
 			query = `
@@ -107,7 +113,7 @@ func GetAllImages(filter ImagesFilter) ([]Image, int, error) {
 				ORDER BY i.created_at DESC LIMIT ? OFFSET ?
 			`
 		}
-		queryArgs = []interface{}{IMAGES_LIMIT, offset}
+		queryArgs = []interface{}{limit, offset}
 	}
 
 	rows, err := sqlite.DB.Query(query, queryArgs...)
@@ -137,14 +143,84 @@ func GetAllImages(filter ImagesFilter) ([]Image, int, error) {
 		images = append(images, image)
 	}
 
-	// Populate URL, Storage, and LinkedNotes fields
+	// Populate URL and storage metadata locally, then load all linked notes and
+	// tags in one query. The previous per-image query pattern became very slow
+	// for the file-management page.
 	for i := range images {
 		images[i].URL = storage.GetImageURL(images[i].Filename)
 		images[i].Storage = detectStorage("images", images[i].Filename)
-		images[i].LinkedNotes = getImageLinkedNotes(images[i].Filename)
+	}
+	if err := populateImageLinkedNotes(images); err != nil {
+		return images, total, err
 	}
 
 	return images, total, nil
+}
+
+func populateImageLinkedNotes(images []Image) error {
+	if len(images) == 0 {
+		return nil
+	}
+
+	filenames := make([]interface{}, 0, len(images))
+	placeholders := make([]string, 0, len(images))
+	for _, image := range images {
+		filenames = append(filenames, image.Filename)
+		placeholders = append(placeholders, "?")
+	}
+
+	rows, err := sqlite.DB.Query(`
+		SELECT ni.filename, n.note_id, n.title, t.tag_id, t.name, t.color
+		FROM note_images ni
+		JOIN notes n ON ni.note_id = n.note_id
+		LEFT JOIN note_tags nt ON n.note_id = nt.note_id
+		LEFT JOIN tags t ON nt.tag_id = t.tag_id
+		WHERE ni.filename IN (`+strings.Join(placeholders, ",")+`)
+		ORDER BY ni.filename, n.updated_at DESC, t.name ASC
+	`, filenames...)
+	if err != nil {
+		return fmt.Errorf("load linked notes for images: %w", err)
+	}
+	defer rows.Close()
+
+	linkedByFilename := make(map[string][]ImageLinkedNote, len(images))
+	notePositions := make(map[string]map[int]int, len(images))
+	for rows.Next() {
+		var filename, title string
+		var noteID int
+		var tagID sql.NullInt64
+		var tagName, tagColor sql.NullString
+		if err := rows.Scan(&filename, &noteID, &title, &tagID, &tagName, &tagColor); err != nil {
+			return fmt.Errorf("scan linked image note: %w", err)
+		}
+
+		positions := notePositions[filename]
+		if positions == nil {
+			positions = make(map[int]int)
+			notePositions[filename] = positions
+		}
+		position, exists := positions[noteID]
+		if !exists {
+			position = len(linkedByFilename[filename])
+			positions[noteID] = position
+			linkedByFilename[filename] = append(linkedByFilename[filename], ImageLinkedNote{
+				ImageNoteRef: ImageNoteRef{NoteID: noteID, Title: title},
+			})
+		}
+		if tagID.Valid {
+			linkedByFilename[filename][position].Tags = append(linkedByFilename[filename][position].Tags, ImageTagBrief{
+				TagID: int(tagID.Int64), Name: tagName.String, Color: tagColor.String,
+			})
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("iterate linked image notes: %w", err)
+	}
+
+	for i := range images {
+		images[i].LinkedNotes = linkedByFilename[images[i].Filename]
+	}
+	return nil
 }
 
 func CreateImage(imageRecord ImageRecord) (Image, error) {
@@ -396,16 +472,15 @@ func GetImagesCount() (int, error) {
 	return count, nil
 }
 
-
 // DeleteImageLinks removes any note_images links for the given filename.
 func DeleteImageLinks(filename string) error {
-    query := "DELETE FROM note_images WHERE filename = ?"
-    if _, err := sqlite.DB.Exec(query, filename); err != nil {
-        err = fmt.Errorf("error deleting note_images links: %w", err)
-        slog.Error(err.Error())
-        return err
-    }
-    return nil
+	query := "DELETE FROM note_images WHERE filename = ?"
+	if _, err := sqlite.DB.Exec(query, filename); err != nil {
+		err = fmt.Errorf("error deleting note_images links: %w", err)
+		slog.Error(err.Error())
+		return err
+	}
+	return nil
 }
 
 func detectStorage(dir, filename string) string {

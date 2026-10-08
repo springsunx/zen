@@ -57,17 +57,17 @@ type ImageLinkedNote struct {
 }
 
 type Image struct {
-	Filename    string           `json:"filename"`
-	URL         string           `json:"url"`
-	Width       int              `json:"width"`
-	Height      int              `json:"height"`
-	Format      string           `json:"format"`
-	AspectRatio float64          `json:"aspectRatio"`
-	FileSize    int64            `json:"fileSize"`
-	Caption     *string          `json:"caption"`
-	Storage     string           `json:"storage"`
+	Filename    string            `json:"filename"`
+	URL         string            `json:"url"`
+	Width       int               `json:"width"`
+	Height      int               `json:"height"`
+	Format      string            `json:"format"`
+	AspectRatio float64           `json:"aspectRatio"`
+	FileSize    int64             `json:"fileSize"`
+	Caption     *string           `json:"caption"`
+	Storage     string            `json:"storage"`
 	LinkedNotes []ImageLinkedNote `json:"linkedNotes"`
-	CreatedAt   time.Time        `json:"createdAt"`
+	CreatedAt   time.Time         `json:"createdAt"`
 }
 
 type ImageRecord struct {
@@ -89,6 +89,7 @@ type ImageInfo struct {
 
 type ImagesFilter struct {
 	page        int
+	limit       int
 	tagID       int
 	focusModeID int
 	isArchived  bool
@@ -101,6 +102,7 @@ func NewImagesFilter(page, tagID, focusModeID int, isArchived ...bool) ImagesFil
 	}
 	return ImagesFilter{
 		page:        page,
+		limit:       IMAGES_LIMIT,
 		tagID:       tagID,
 		focusModeID: focusModeID,
 		isArchived:  archived,
@@ -118,6 +120,7 @@ func HandleGetImages(w http.ResponseWriter, r *http.Request) {
 	isArchivedStr := r.URL.Query().Get("isArchived")
 
 	page := 1
+	limit := IMAGES_LIMIT
 	tagID := 0
 	focusModeID := 0
 	isArchived := isArchivedStr == "true"
@@ -128,6 +131,14 @@ func HandleGetImages(w http.ResponseWriter, r *http.Request) {
 			utils.SendErrorResponse(w, "INVALID_PAGE_NUMBER", "Invalid page number", err, http.StatusBadRequest)
 			return
 		}
+	}
+	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
+		parsedLimit, parseErr := strconv.Atoi(limitStr)
+		if parseErr != nil || parsedLimit < 1 || parsedLimit > IMAGES_LIMIT {
+			utils.SendErrorResponse(w, "INVALID_PAGE_LIMIT", "Invalid image page limit", parseErr, http.StatusBadRequest)
+			return
+		}
+		limit = parsedLimit
 	}
 
 	if tagIDStr != "" {
@@ -148,6 +159,7 @@ func HandleGetImages(w http.ResponseWriter, r *http.Request) {
 
 	filter := ImagesFilter{
 		page:        page,
+		limit:       limit,
 		tagID:       tagID,
 		focusModeID: focusModeID,
 		isArchived:  isArchived,
@@ -258,58 +270,57 @@ func getImageInfo(file io.Reader) (*ImageInfo, error) {
 	return info, nil
 }
 
-
 // HandleDeleteImage deletes an image file and its DB record.
 // URL format: DELETE /api/images/{filename}/
 func HandleDeleteImage(w http.ResponseWriter, r *http.Request) {
-    path := r.URL.Path
-    idx := strings.Index(path, "/api/images/")
-    if idx == -1 {
-        utils.SendErrorResponse(w, "INVALID_PATH", "Invalid image delete path", fmt.Errorf("invalid path"), http.StatusBadRequest)
-        return
-    }
-    rel := path[idx+len("/api/images/"):]
-    rel = strings.TrimSuffix(rel, "/")
-    if rel == "" {
-        utils.SendErrorResponse(w, "INVALID_FILENAME", "Missing image filename", fmt.Errorf("missing filename"), http.StatusBadRequest)
-        return
-    }
+	path := r.URL.Path
+	idx := strings.Index(path, "/api/images/")
+	if idx == -1 {
+		utils.SendErrorResponse(w, "INVALID_PATH", "Invalid image delete path", fmt.Errorf("invalid path"), http.StatusBadRequest)
+		return
+	}
+	rel := path[idx+len("/api/images/"):]
+	rel = strings.TrimSuffix(rel, "/")
+	if rel == "" {
+		utils.SendErrorResponse(w, "INVALID_FILENAME", "Missing image filename", fmt.Errorf("missing filename"), http.StatusBadRequest)
+		return
+	}
 
-    filename := rel
+	filename := rel
 
-    // pre-check references unless force=true
-    force := r.URL.Query().Get("force") == "true"
-    if !force {
-        if linked, err := GetLinkedNotesByImage(filename); err == nil && len(linked) > 0 {
-            w.Header().Set("Content-Type", "application/json")
-            w.WriteHeader(http.StatusConflict)
-            json.NewEncoder(w).Encode(map[string]any{"code": "IMAGE_IN_USE", "message": "Image is referenced by notes", "referencedBy": linked})
-            return
-        }
-    }
+	// pre-check references unless force=true
+	force := r.URL.Query().Get("force") == "true"
+	if !force {
+		if linked, err := GetLinkedNotesByImage(filename); err == nil && len(linked) > 0 {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusConflict)
+			json.NewEncoder(w).Encode(map[string]any{"code": "IMAGE_IN_USE", "message": "Image is referenced by notes", "referencedBy": linked})
+			return
+		}
+	}
 
-    // Remove note_images links first (avoid FK or logic inconsistencies)
-    if err := DeleteImageLinks(filename); err != nil {
-        utils.SendErrorResponse(w, "IMAGE_DELETE_FAILED", "Error deleting image links", err, http.StatusInternalServerError)
-        return
-    }
+	// Remove note_images links first (avoid FK or logic inconsistencies)
+	if err := DeleteImageLinks(filename); err != nil {
+		utils.SendErrorResponse(w, "IMAGE_DELETE_FAILED", "Error deleting image links", err, http.StatusInternalServerError)
+		return
+	}
 
-    // Delete physical file
-    provider := storage.GetProvider()
-    if err := provider.Delete(filename); err != nil {
-        utils.SendErrorResponse(w, "IMAGE_DELETE_FAILED", "Error deleting image file", err, http.StatusInternalServerError)
-        return
-    }
+	// Delete physical file
+	provider := storage.GetProvider()
+	if err := provider.Delete(filename); err != nil {
+		utils.SendErrorResponse(w, "IMAGE_DELETE_FAILED", "Error deleting image file", err, http.StatusInternalServerError)
+		return
+	}
 
-    // Delete DB record
-    if err := DeleteImage(filename); err != nil {
-        utils.SendErrorResponse(w, "IMAGE_DELETE_FAILED", "Error deleting image record", err, http.StatusInternalServerError)
-        return
-    }
+	// Delete DB record
+	if err := DeleteImage(filename); err != nil {
+		utils.SendErrorResponse(w, "IMAGE_DELETE_FAILED", "Error deleting image record", err, http.StatusInternalServerError)
+		return
+	}
+	_ = DeleteThumbnail(filename)
 
-    w.WriteHeader(http.StatusNoContent)
+	w.WriteHeader(http.StatusNoContent)
 }
-
 
 // HandleCleanupImages cleans up image records and files.
 // Local mode: registers disk files, removes missing/orphaned files.

@@ -270,6 +270,7 @@ func newRouter() *http.ServeMux {
 	}
 
 	addPublicRoute(mux, "GET /assets/", handleStaticAssets)
+	addPublicRoute(mux, "GET /images/thumb/{filename}", images.HandleGetThumbnail)
 	addPublicRoute(mux, "GET /images/", handleUploadedImages)
 	addPublicRoute(mux, "GET /attachments/", handleUploadedAttachments)
 	addPublicRoute(mux, "GET /sw.js", handleServiceWorker)

@@ -118,7 +118,15 @@ export default function ImageTable({ images = [] }) {
         return (
           <div className="image-row" key={img.filename}>
             <div className="col-thumb" onClick={() => setOpenIndex(images.indexOf(img))}>
-              <img src={img.url} className="image-thumb" loading="lazy" alt="" />
+              <img
+                src={`/images/thumb/${encodeURIComponent(img.filename)}`}
+                className="image-thumb"
+                loading="lazy"
+                decoding="async"
+                width="48"
+                height="48"
+                alt=""
+              />
             </div>
             <div className="col-filename">
               <a href={img.url} target="_blank" rel="noopener" title={img.filename}>

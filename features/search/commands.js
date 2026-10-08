@@ -153,7 +153,8 @@ export function getStaticCommands() {
       keywords: ["view", "gallery", "视图", "图库", "shitu", "tuku", "st", "tk"],
       category: "view",
       action() {
-        changeViewAndClose("gallery");
+        closeModal();
+        navigateTo("/files/?tab=media");
       },
     },
 

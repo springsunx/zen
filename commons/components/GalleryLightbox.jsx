@@ -5,7 +5,8 @@ import { CloseIcon } from "./Icon.jsx";
 import "./GalleryLightbox.css";
 
 export default function GalleryLightbox({ images = [], startIndex = 0, onClose = () => {} }) {
-  const [index, setIndex] = useState(() => Math.max(0, Math.min(images.length - 1, startIndex || 0)));
+  const media = images.map((item) => typeof item === "string" ? { type: "image", url: item } : item).filter((item) => item?.url);
+  const [index, setIndex] = useState(() => Math.max(0, Math.min(media.length - 1, startIndex || 0)));
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [natural, setNatural] = useState({ w: 0, h: 0 });
@@ -14,7 +15,8 @@ export default function GalleryLightbox({ images = [], startIndex = 0, onClose =
   const offsetStart = useRef({ x: 0, y: 0 });
 
   const hasPrev = index > 0;
-  const hasNext = index < images.length - 1;
+  const hasNext = index < media.length - 1;
+  const activeItem = media[index];
 
   // Reset zoom/pan when image index changes
   useEffect(() => { setScale(1); setOffset({ x: 0, y: 0 }); setPanning(false); }, [index]);
@@ -42,9 +44,9 @@ export default function GalleryLightbox({ images = [], startIndex = 0, onClose =
   // Preload neighbors
   useEffect(() => {
     const prev = index - 1; const next = index + 1;
-    if (prev >= 0) { const img = new Image(); img.src = images[prev]; }
-    if (next < images.length) { const img = new Image(); img.src = images[next]; }
-  }, [index, images]);
+    if (prev >= 0 && media[prev]?.type !== "video") { const img = new Image(); img.src = media[prev].url; }
+    if (next < media.length && media[next]?.type !== "video") { const img = new Image(); img.src = media[next].url; }
+  }, [index, media]);
 
   function onImageLoad(e) {
     const img = e.target;
@@ -93,19 +95,23 @@ export default function GalleryLightbox({ images = [], startIndex = 0, onClose =
   }
   function onMouseUp() { setPanning(false); }
 
-  if (!images || images.length === 0) return null;
+  if (media.length === 0) return null;
 
   const overlayProps = {
     className: "gallery-lightbox-overlay" , role: "dialog", "aria-modal": "true",
-    onWheel, onMouseMove, onMouseUp, onMouseLeave: onMouseUp
+    onWheel: activeItem?.type === "video" ? undefined : onWheel, onMouseMove, onMouseUp, onMouseLeave: onMouseUp
   };
 
   return (
     <div {...overlayProps}>
-      <div className={"gallery-lightbox-content" + (panning ? ' is-panning' : '')} onMouseDown={onMouseDown}>
-        <img className="gallery-lightbox-image" src={images[index]} alt="preview" onLoad={onImageLoad}
-          draggable={false} onDragStart={onImageDragStart}
-          style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`, transformOrigin: 'center center', cursor: scale>1 ? (panning? 'grabbing':'grab') : 'default' }} />
+      <div className={"gallery-lightbox-content" + (panning ? ' is-panning' : '')} onMouseDown={activeItem?.type === "video" ? undefined : onMouseDown}>
+        {activeItem?.type === "video" ? (
+          <video className="gallery-lightbox-video" src={activeItem.url} controls autoPlay preload="metadata" />
+        ) : (
+          <img className="gallery-lightbox-image" src={activeItem?.url} alt="preview" onLoad={onImageLoad}
+            draggable={false} onDragStart={onImageDragStart}
+            style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`, transformOrigin: 'center center', cursor: scale>1 ? (panning? 'grabbing':'grab') : 'default' }} />
+        )}
       </div>
       <button className="gallery-lightbox-close" aria-label="关闭预览" onClick={onClose}>
         <CloseIcon />

@@ -7,6 +7,7 @@ const itemKeys = {
   canvas: "settings.sidebar.items.canvas",
   templates: "settings.sidebar.items.templates",
   clipboard: "settings.sidebar.items.clipboard",
+  files: "settings.sidebar.items.files",
   archives: "settings.sidebar.items.archives",
   trash: "settings.sidebar.items.trash",
   shares: "settings.sidebar.items.shares",
