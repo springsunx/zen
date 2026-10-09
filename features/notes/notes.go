@@ -59,6 +59,7 @@ type NotesFilter struct {
 	isDeleted   bool
 	isArchived  bool
 	isUntagged  bool
+	titleQuery  string
 }
 
 func NewNotesFilter(page, tagID, focusModeID int, isDeleted, isArchived bool) NotesFilter {
@@ -118,6 +119,7 @@ func HandleGetNotes(w http.ResponseWriter, r *http.Request) {
 		isDeleted:   isDeleted == "true",
 		isArchived:  isArchived == "true",
 		isUntagged:  isUntagged == "true",
+		titleQuery:  r.URL.Query().Get("query"),
 	}
 
 	allNotes, total, err = GetAllNotes(auth.GetAccess(r.Context()), filter)

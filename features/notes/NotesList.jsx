@@ -1,4 +1,4 @@
-import { h, Fragment, useEffect, useMemo, useState } from "../../assets/preact.esm.js"
+import { h, Fragment, useMemo } from "../../assets/preact.esm.js"
 import NotesListToolbar from './NotesListToolbar.jsx';
 import Link from '../../commons/components/Link.jsx';
 import Spinner from '../../commons/components/Spinner.jsx';
@@ -26,9 +26,7 @@ import { t } from "../../commons/i18n/index.js";
 import { TAG_COLORS } from "../tags/TagDetailModal.jsx";
 import useSearchParams from '../../commons/components/useSearchParams.jsx';
 
-export default function NotesList({ notes = [], total, isLoading, images = [], imagesTotal, isImagesLoading, attachments = [], attachmentsTotal, isAttachmentsLoading, view, onViewChange, onLoadMoreClick, onLoadMoreImagesClick, onLoadMoreAttachmentsClick, isMultiSelect, selectedIds, onMultiSelectStart, onToggleSelect, cardSize = 240, onCardSizeChange = () => {}, isGlobalView = false, onGlobalViewToggle = () => {} }) {
-  const [noteQuery, setNoteQuery] = useState("");
-  const [pinyinTitleMatchIds, setPinyinTitleMatchIds] = useState(new Set());
+export default function NotesList({ notes = [], total, isLoading, images = [], imagesTotal, isImagesLoading, attachments = [], attachmentsTotal, isAttachmentsLoading, view, onViewChange, onLoadMoreClick, onLoadMoreImagesClick, onLoadMoreAttachmentsClick, isMultiSelect, selectedIds, onMultiSelectStart, onToggleSelect, cardSize = 240, onCardSizeChange = () => {}, isGlobalView = false, onGlobalViewToggle = () => {}, noteQuery = "", onNoteQueryChange = () => {} }) {
   const searchParams = useSearchParams();
   const isArchivesPage = searchParams.get("isArchived") === "true";
   const isTrashPage = searchParams.get("isDeleted") === "true";
@@ -38,52 +36,18 @@ export default function NotesList({ notes = [], total, isLoading, images = [], i
   let currentTotal = total;
   let currentItems = notes;
 
-  const normalizedQuery = noteQuery.trim().toLocaleLowerCase();
-  const isNoteFiltering = normalizedQuery.length > 0;
-
-  useEffect(() => {
-    if (!isNoteFiltering) {
-      setPinyinTitleMatchIds(new Set());
-      return undefined;
-    }
-
-    let active = true;
-    const timer = window.setTimeout(() => {
-      ApiClient.searchNoteTitlesByPinyin(noteQuery)
-        .then(titleMatches => {
-          if (!active) return;
-          setPinyinTitleMatchIds(new Set(titleMatches));
-        })
-        .catch(() => {
-          if (active) setPinyinTitleMatchIds(new Set());
-        });
-    }, 180);
-
-    return () => {
-      active = false;
-      window.clearTimeout(timer);
-    };
-  }, [isNoteFiltering, noteQuery]);
-
-  const visibleNotes = useMemo(() => {
-    if (!isNoteFiltering) return notes;
-
-    return notes.filter(note => {
-      const title = (note.title || "").toLocaleLowerCase();
-      return title.includes(normalizedQuery) || pinyinTitleMatchIds.has(note.noteId);
-    });
-  }, [notes, isNoteFiltering, normalizedQuery, pinyinTitleMatchIds]);
+  const isNoteFiltering = noteQuery.trim().length > 0;
 
   const shouldShowNoteFilter = view !== "gallery" && view !== "attachments";
-  let items = visibleNotes.map(note => <NotesListItem note={note} key={note.noteId} isMultiSelect={isMultiSelect} isSelected={selectedIds.includes(note.noteId)} onMultiSelectStart={onMultiSelectStart} onToggleSelect={onToggleSelect} isArchivesPage={isArchivesPage} isTrashPage={isTrashPage} />);
+  let items = notes.map(note => <NotesListItem note={note} key={note.noteId} isMultiSelect={isMultiSelect} isSelected={selectedIds.includes(note.noteId)} onMultiSelectStart={onMultiSelectStart} onToggleSelect={onToggleSelect} isArchivesPage={isArchivesPage} isTrashPage={isTrashPage} />);
   if (shouldShowNoteFilter) {
-    currentItems = visibleNotes;
-    currentTotal = isNoteFiltering ? visibleNotes.length : total;
+    currentItems = notes;
+    currentTotal = total;
   }
 
   if (view === "card") {
     listClassName = "";
-    items = visibleNotes.map((note, index) => <NotesGridItem note={note} key={note.noteId} index={index} cardHeight={Math.round((cardSize||200)*1.41421356)} />);
+    items = notes.map((note, index) => <NotesGridItem note={note} key={note.noteId} index={index} cardHeight={Math.round((cardSize||200)*1.41421356)} />);
     items = (
       <div className="notes-grid" style={{ gridTemplateColumns: view==="card" ? `repeat(auto-fill, minmax(${cardSize}px, 1fr))` : undefined }} >
         {items}
@@ -120,7 +84,7 @@ export default function NotesList({ notes = [], total, isLoading, images = [], i
 
   return (
     <>
-      <NotesListToolbar onViewChange={onViewChange} view={view} cardSize={cardSize} onCardSizeChange={onCardSizeChange} isGlobalView={isGlobalView} onGlobalViewToggle={onGlobalViewToggle} showFilter={shouldShowNoteFilter} filterQuery={noteQuery} onFilterQueryChange={setNoteQuery} />
+      <NotesListToolbar onViewChange={onViewChange} view={view} cardSize={cardSize} onCardSizeChange={onCardSizeChange} isGlobalView={isGlobalView} onGlobalViewToggle={onGlobalViewToggle} showFilter={shouldShowNoteFilter} filterQuery={noteQuery} onFilterQueryChange={onNoteQueryChange} />
       {content}
     </>
   );

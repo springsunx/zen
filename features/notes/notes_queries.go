@@ -11,8 +11,8 @@ import (
 )
 
 // GetPinyinTitleMatchIDs returns readable note IDs whose titles match either
-// full pinyin or pinyin initials. The browser intersects these IDs with the
-// already loaded list, so this endpoint never changes the current list scope.
+// full pinyin or pinyin initials. It is retained for backwards compatibility;
+// the note list itself now filters before pagination in GetAllNotes.
 func GetPinyinTitleMatchIDs(access auth.Access, term string) ([]int, error) {
 	term = strings.TrimSpace(term)
 	matchedIDs := []int{}
@@ -44,6 +44,77 @@ func GetPinyinTitleMatchIDs(access auth.Access, term string) ([]int, error) {
 	if err := rows.Err(); err != nil {
 		return matchedIDs, fmt.Errorf("error iterating note titles for pinyin search: %w", err)
 	}
+	return matchedIDs, nil
+}
+
+// getTitleMatchIDs returns title matches within the current list scope before
+// pagination is applied. A title query intentionally never searches content or
+// tag names.
+func getTitleMatchIDs(access auth.Access, filter NotesFilter) ([]int, error) {
+	term := strings.TrimSpace(filter.titleQuery)
+	matchedIDs := []int{}
+	if term == "" {
+		return matchedIDs, nil
+	}
+
+	scopePredicate, scopeArgs := buildReadableNotesPredicate(access)
+	statusCond := statusCondition(filter) + " " + scopePredicate
+	var query string
+	queryArgs := append([]interface{}{}, scopeArgs...)
+
+	switch {
+	case filter.tagID != 0:
+		query = `
+			SELECT n.note_id, n.title
+			FROM notes n
+			INNER JOIN note_tags nt ON n.note_id = nt.note_id
+			WHERE nt.tag_id = ? AND ` + statusCond + `
+			GROUP BY n.note_id`
+		queryArgs = append([]interface{}{filter.tagID}, queryArgs...)
+	case filter.isUntagged:
+		query = `
+			SELECT n.note_id, n.title
+			FROM notes n
+			WHERE ` + statusCond + `
+			AND NOT EXISTS (SELECT 1 FROM note_tags nt WHERE nt.note_id = n.note_id)`
+	case filter.focusModeID != 0:
+		untaggedClause := ""
+		if filter.isDeleted || filter.isArchived {
+			untaggedClause = "OR NOT EXISTS (SELECT 1 FROM note_tags nt2 WHERE nt2.note_id = n.note_id)"
+		}
+		query = `
+			SELECT n.note_id, n.title
+			FROM notes n
+			LEFT JOIN note_tags nt ON n.note_id = nt.note_id
+			LEFT JOIN focus_mode_tags fmt ON nt.tag_id = fmt.tag_id AND fmt.focus_mode_id = ?
+			WHERE ` + statusCond + `
+			AND (fmt.focus_mode_id = ? ` + untaggedClause + `)
+			GROUP BY n.note_id`
+		queryArgs = append([]interface{}{filter.focusModeID, filter.focusModeID}, queryArgs...)
+	default:
+		query = `SELECT n.note_id, n.title FROM notes n WHERE ` + statusCond
+	}
+
+	rows, err := sqlite.DB.Query(query, queryArgs...)
+	if err != nil {
+		return matchedIDs, fmt.Errorf("error reading note titles for list filter: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var noteID int
+		var title string
+		if err := rows.Scan(&noteID, &title); err != nil {
+			return matchedIDs, fmt.Errorf("error scanning note title for list filter: %w", err)
+		}
+		if tags.MatchesPinyin(title, term) {
+			matchedIDs = append(matchedIDs, noteID)
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return matchedIDs, fmt.Errorf("error iterating note titles for list filter: %w", err)
+	}
+
 	return matchedIDs, nil
 }
 

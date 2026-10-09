@@ -80,6 +80,8 @@ function NotesPageContent({ noteId }) {
   });
 
   const [isGlobalView, setIsGlobalView] = useState(() => ViewPreferences.isGlobalMode());
+  const [noteQuery, setNoteQuery] = useState("");
+  const [appliedNoteQuery, setAppliedNoteQuery] = useState("");
 
   const [cardSize, setCardSize] = useState(() => {
     try {
@@ -93,11 +95,18 @@ function NotesPageContent({ noteId }) {
   let editorClassName = "notes-editor-container";
 
   useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setAppliedNoteQuery(noteQuery.trim());
+    }, 180);
+    return () => window.clearTimeout(timer);
+  }, [noteQuery]);
+
+  useEffect(() => {
     // Reset page counters but retain the previous content until replacement
     // data arrives. This keeps filters and other list updates from flashing.
     resetPagination();
 
-    refreshNotes(selectedTagId, selectedFocusId, isArchivesPage, isTrashPage, 1, isUntaggedPage);
+    refreshNotes(selectedTagId, selectedFocusId, isArchivesPage, isTrashPage, 1, isUntaggedPage, appliedNoteQuery);
     refreshImages(selectedTagId, selectedFocusId, 1, isArchivesPage);
     refreshAttachments(1, selectedTagId, selectedFocusId);
     refreshTags(selectedFocusId, isArchivesPage, isTrashPage);
@@ -105,12 +114,12 @@ function NotesPageContent({ noteId }) {
     // Reload preference
     const savedView = normalizeNotesView(ViewPreferences.getPreference(selectedFocusId, selectedTagId, isArchivesPage, isTrashPage));
     setSelectedView(savedView);
-  }, [selectedTagId, selectedFocusId, isArchivesPage, isTrashPage, isUntaggedPage, resetPagination, refreshNotes, refreshImages, refreshAttachments, refreshTags]);
+  }, [selectedTagId, selectedFocusId, isArchivesPage, isTrashPage, isUntaggedPage, appliedNoteQuery, resetPagination, refreshNotes, refreshImages, refreshAttachments, refreshTags]);
 
   useEffect(() => {
     if (notesPageNumber === 1) return;
-    refreshNotes(selectedTagId, selectedFocusId, isArchivesPage, isTrashPage, notesPageNumber, isUntaggedPage);
-  }, [notesPageNumber, selectedTagId, selectedFocusId, isArchivesPage, isTrashPage, isUntaggedPage, refreshNotes]);
+    refreshNotes(selectedTagId, selectedFocusId, isArchivesPage, isTrashPage, notesPageNumber, isUntaggedPage, appliedNoteQuery);
+  }, [notesPageNumber, selectedTagId, selectedFocusId, isArchivesPage, isTrashPage, isUntaggedPage, appliedNoteQuery, refreshNotes]);
 
   useEffect(() => {
     if (imagesPageNumber === 1) return;
@@ -126,14 +135,14 @@ function NotesPageContent({ noteId }) {
   useEffect(() => {
     function handleRefresh(event) {
       if (!event.detail?.listAlreadyUpdated) {
-        handleNoteChange();
+        handleNoteChange(appliedNoteQuery);
       }
       refreshTags(selectedFocusId, isArchivesPage, isTrashPage);
       refreshFocusModes();
     }
     window.addEventListener('notes:refresh', handleRefresh);
     return () => window.removeEventListener('notes:refresh', handleRefresh);
-  }, [handleNoteChange, refreshTags, refreshFocusModes, selectedFocusId, isArchivesPage, isTrashPage]);
+  }, [handleNoteChange, refreshTags, refreshFocusModes, selectedFocusId, isArchivesPage, isTrashPage, appliedNoteQuery]);
 
   // Listen for attachment refresh events (e.g., after deleting an attachment)
   useEffect(() => {
@@ -301,6 +310,8 @@ function NotesPageContent({ noteId }) {
             selectedIds={selectedIds}
             onMultiSelectStart={handleMultiSelectStart}
             onToggleSelect={handleToggleSelect}
+            noteQuery={noteQuery}
+            onNoteQueryChange={setNoteQuery}
           />
         </div>
 

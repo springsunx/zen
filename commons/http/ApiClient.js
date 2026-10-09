@@ -165,7 +165,7 @@ async function deleteFocusMode(focusId) {
 
 // ─── Notes ───
 
-async function getNotes(tagId, focusId, isArchived, isDeleted, page, isUntagged) {
+async function getNotes(tagId, focusId, isArchived, isDeleted, page, isUntagged, titleQuery) {
   let url = "/api/notes/";
   const params = new URLSearchParams();
   if (tagId) params.append('tagId', tagId);
@@ -174,6 +174,7 @@ async function getNotes(tagId, focusId, isArchived, isDeleted, page, isUntagged)
   if (page) params.append('page', page);
   if (isArchived) params.append('isArchived', "true");
   else if (isDeleted) params.append('isDeleted', "true");
+  if (titleQuery?.trim()) params.append('query', titleQuery.trim());
   if (params.toString()) url += '?' + params.toString();
 
   const resp = await request('GET', url);
