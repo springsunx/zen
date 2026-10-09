@@ -1,11 +1,15 @@
 .search-preview-wrapper {
     position: relative;
     min-width: 0;
+    min-height: 0;
+    height: 100%;
 
     .search-preview {
+        box-sizing: border-box;
         min-width: 0;
-        min-height: 400px;
-        max-height: 400px;
+        min-height: 0;
+        height: 100%;
+        max-height: none;
         overflow-y: auto;
         padding: var(--spacing-4);
         border-radius: var(--radius-1);
@@ -18,10 +22,13 @@
         }
 
         .search-preview-content {
+            min-width: 0;
+
             .search-preview-title {
                 font: var(--h4);
                 color: var(--text-primary);
                 margin-bottom: var(--spacing-4);
+                overflow-wrap: anywhere;
             }
         }
 

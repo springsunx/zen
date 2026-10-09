@@ -101,6 +101,7 @@ export default function SearchMenu({ initialMode }) {
     }
 
     if (value.trim() === "") {
+      RecentSearchQuery.set("");
       setResults({ lexicalNotes: [], semanticNotes: [], semanticImages: [], tags: [] });
       const cmdItems = wrapCommandsAsItems(visibleCmds);
       setSelectedItem(searchHistory.length > 0 ? searchHistory[0] : (cmdItems.length > 0 ? cmdItems[0] : null));
@@ -426,7 +427,7 @@ export default function SearchMenu({ initialMode }) {
   }
 
   return (
-    <ModalBackdrop onClose={handleCloseModal} isCentered={false}>
+    <ModalBackdrop onClose={handleCloseModal}>
       <ModalContainer className="search-modal">
         <div className="search-input-container">
           <SearchIcon />

@@ -6,13 +6,14 @@ import {
   PinIcon,
   ListViewIcon,
   CardViewIcon,
-  GalleryViewIcon,
   ThemeIcon,
   NotesIcon,
   TemplatesIcon,
   BoardIcon,
   ShareIcon,
   SettingsIcon,
+  ClipboardIcon,
+  AttachmentsIcon,
 } from "../../commons/components/Icon.jsx";
 import navigateTo from "../../commons/utils/navigateTo.js";
 import ThemePreferences from "../../commons/preferences/ThemePreferences.js";
@@ -23,9 +24,17 @@ import FocusDetailsModal from "../focus/FocusDetailsModal.jsx";
 import { AppProvider, useAppContext } from "../../commons/contexts/AppContext.jsx";
 import { t, setLang, getLang } from "../../commons/i18n/index.js";
 
-function getCurrentNoteId() {
-  const match = window.location.pathname.match(/^\/notes\/(\d+)/);
-  return match ? parseInt(match[1], 10) : null;
+function getCurrentFocusId() {
+  return new URLSearchParams(window.location.search).get("focusId");
+}
+
+function withCurrentFocus(path) {
+  const focusId = getCurrentFocusId();
+  if (!focusId) {
+    return path;
+  }
+  const separator = path.includes("?") ? "&" : "?";
+  return `${path}${separator}focusId=${encodeURIComponent(focusId)}`;
 }
 
 export function getStaticCommands() {
@@ -40,7 +49,7 @@ export function getStaticCommands() {
       category: "actions",
       action() {
         closeModal();
-        navigateTo("/notes/new");
+        navigateTo(withCurrentFocus("/notes/new"));
       },
     },
     {
@@ -50,14 +59,10 @@ export function getStaticCommands() {
       keywords: ["pin", "置顶", "zhiding", "zd"],
       shortcut: "Alt+T",
       category: "actions",
+      isAvailable: () => window.location.pathname.startsWith("/notes/"),
       action() {
-        const noteId = getCurrentNoteId();
-        if (noteId) {
-          ApiClient.pinNote(noteId).then(() => {
-            closeModal();
-            window.dispatchEvent(new CustomEvent("notes:refresh"));
-          });
-        }
+        closeModal();
+        window.dispatchEvent(new CustomEvent("notes:command", { detail: { action: "pin" } }));
       },
     },
     {
@@ -66,14 +71,10 @@ export function getStaticCommands() {
       icon: ArchiveIcon,
       keywords: ["archive", "归档", "guidang", "gd"],
       category: "actions",
+      isAvailable: () => window.location.pathname.startsWith("/notes/"),
       action() {
-        const noteId = getCurrentNoteId();
-        if (noteId) {
-          ApiClient.archiveNote(noteId).then(() => {
-            closeModal();
-            window.dispatchEvent(new CustomEvent("notes:refresh"));
-          });
-        }
+        closeModal();
+        window.dispatchEvent(new CustomEvent("notes:command", { detail: { action: "archive" } }));
       },
     },
     {
@@ -82,14 +83,10 @@ export function getStaticCommands() {
       icon: TrashIcon,
       keywords: ["delete", "trash", "删除", "回收", "shanchu", "huishou", "sc"],
       category: "actions",
+      isAvailable: () => window.location.pathname.startsWith("/notes/"),
       action() {
-        const noteId = getCurrentNoteId();
-        if (noteId) {
-          ApiClient.deleteNote(noteId).then(() => {
-            closeModal();
-            window.dispatchEvent(new CustomEvent("notes:refresh"));
-          });
-        }
+        closeModal();
+        window.dispatchEvent(new CustomEvent("notes:command", { detail: { action: "delete" } }));
       },
     },
 
@@ -132,6 +129,7 @@ export function getStaticCommands() {
       icon: ListViewIcon,
       keywords: ["view", "list", "视图", "列表", "shitu", "liebiao", "st", "lb"],
       category: "view",
+      isAvailable: () => window.location.pathname.startsWith("/notes/"),
       action() {
         changeViewAndClose("list");
       },
@@ -142,19 +140,9 @@ export function getStaticCommands() {
       icon: CardViewIcon,
       keywords: ["view", "card", "视图", "卡片", "shitu", "kapian", "st", "kp"],
       category: "view",
+      isAvailable: () => window.location.pathname.startsWith("/notes/"),
       action() {
         changeViewAndClose("card");
-      },
-    },
-    {
-      id: "view-gallery",
-      label: () => t("command.view.gallery"),
-      icon: GalleryViewIcon,
-      keywords: ["view", "gallery", "视图", "图库", "shitu", "tuku", "st", "tk"],
-      category: "view",
-      action() {
-        closeModal();
-        navigateTo("/files/?tab=media");
       },
     },
 
@@ -167,7 +155,7 @@ export function getStaticCommands() {
       category: "navigation",
       action() {
         closeModal();
-        navigateTo("/notes/");
+        navigateTo(withCurrentFocus("/notes/"));
       },
     },
     {
@@ -178,7 +166,7 @@ export function getStaticCommands() {
       category: "navigation",
       action() {
         closeModal();
-        navigateTo("/canvases/");
+        navigateTo(withCurrentFocus("/canvases/"));
       },
     },
     {
@@ -189,7 +177,7 @@ export function getStaticCommands() {
       category: "navigation",
       action() {
         closeModal();
-        navigateTo("/templates/");
+        navigateTo(withCurrentFocus("/templates/"));
       },
     },
     {
@@ -200,7 +188,7 @@ export function getStaticCommands() {
       category: "navigation",
       action() {
         closeModal();
-        navigateTo("/notes/?isArchived=true");
+        navigateTo(withCurrentFocus("/notes/?isArchived=true"));
       },
     },
     {
@@ -211,7 +199,7 @@ export function getStaticCommands() {
       category: "navigation",
       action() {
         closeModal();
-        navigateTo("/notes/?isDeleted=true");
+        navigateTo(withCurrentFocus("/notes/?isDeleted=true"));
       },
     },
     {
@@ -223,6 +211,28 @@ export function getStaticCommands() {
       action() {
         closeModal();
         navigateTo("/shares/");
+      },
+    },
+    {
+      id: "go-clipboard",
+      label: () => t("command.goClipboard"),
+      icon: ClipboardIcon,
+      keywords: ["clipboard", "剪贴板", "jiantieban", "jtb"],
+      category: "navigation",
+      action() {
+        closeModal();
+        navigateTo("/clipboard/");
+      },
+    },
+    {
+      id: "go-files",
+      label: () => t("command.goFiles"),
+      icon: AttachmentsIcon,
+      keywords: ["files", "attachments", "文件", "附件", "wenjian", "fujian", "wj", "fj"],
+      category: "navigation",
+      action() {
+        closeModal();
+        navigateTo("/files/");
       },
     },
     {

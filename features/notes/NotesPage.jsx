@@ -165,6 +165,38 @@ function NotesPageContent({ noteId }) {
     return () => window.removeEventListener('command:changeView', handleViewChangeCommand);
   }, [selectedFocusId, selectedTagId, isArchivesPage, isTrashPage]);
 
+  // Search commands operate on the note currently shown in the editor. This is
+  // also present in list and card views, where the note ID is not in the URL.
+  useEffect(() => {
+    function handleNoteCommand(event) {
+      const note = selectedNote;
+      if (!note?.noteId) return;
+
+      if (event.detail?.action === "pin") {
+        handlePinToggle(note.noteId, note.isPinned);
+        return;
+      }
+
+      const apiCall = event.detail?.action === "archive"
+        ? ApiClient.archiveNote(note.noteId)
+        : event.detail?.action === "delete"
+          ? ApiClient.deleteNote(note.noteId)
+          : null;
+
+      if (apiCall) {
+        apiCall
+          .then(() => {
+            setSelectedNote(null);
+            handleNoteChange(appliedNoteQuery);
+          })
+          .catch(error => console.error("Error applying note command:", error));
+      }
+    }
+
+    window.addEventListener("notes:command", handleNoteCommand);
+    return () => window.removeEventListener("notes:command", handleNoteCommand);
+  }, [selectedNote, handlePinToggle, setSelectedNote, handleNoteChange, appliedNoteQuery]);
+
   // TODO: Move this to NotesEditor
   useEffect(() => {
     if (noteId === "new") {
