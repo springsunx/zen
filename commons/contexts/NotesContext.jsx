@@ -1,4 +1,4 @@
-import { h, createContext, useContext, useState, useCallback, useEffect } from '../../assets/preact.esm.js';
+import { h, createContext, useContext, useState, useCallback, useEffect, useRef } from '../../assets/preact.esm.js';
 import ApiClient from '../../commons/http/ApiClient.js';
 import useSearchParams from "../../commons/components/useSearchParams.jsx";
 import { t } from "../i18n/index.js";
@@ -19,14 +19,19 @@ export function NotesProvider({ children }) {
   const [attachmentsTotal, setAttachmentsTotal] = useState(0);
   const [attachmentsPageNumber, setAttachmentsPageNumber] = useState(1);
   const [isAttachmentsLoading, setIsAttachmentsLoading] = useState(false);
+  const notesRequestVersion = useRef(0);
 
   const searchParams = useSearchParams();
 
-  const refreshNotes = useCallback((tagId, focusId, isArchived, isDeleted, pageNumber = 1, isUntagged = false) => {
+  const refreshNotes = useCallback((tagId, focusId, isArchived, isDeleted, pageNumber = 1, isUntagged = false, titleQuery = "") => {
+    const requestVersion = ++notesRequestVersion.current;
     setIsNotesLoading(true);
 
-    return ApiClient.getNotes(tagId, focusId, isArchived, isDeleted, pageNumber, isUntagged)
+    return ApiClient.getNotes(tagId, focusId, isArchived, isDeleted, pageNumber, isUntagged, titleQuery)
       .then(res => {
+        // A delayed response for an earlier query must not replace the newer
+        // filtered list while the user is still typing.
+        if (requestVersion !== notesRequestVersion.current) return;
         if (pageNumber > 1) {
           setNotes(prevNotes => [...prevNotes, ...res.notes]);
         } else {
@@ -44,7 +49,9 @@ export function NotesProvider({ children }) {
         console.error('Error loading notes:', error);
       })
       .finally(() => {
-        setIsNotesLoading(false);
+        if (requestVersion === notesRequestVersion.current) {
+          setIsNotesLoading(false);
+        }
       });
   }, []);
 
@@ -68,14 +75,14 @@ export function NotesProvider({ children }) {
       });
   }, []);
 
-  const handleNoteChange = useCallback(() => {
+  const handleNoteChange = useCallback((titleQuery = "") => {
     const selectedTagId = searchParams.get("tagId");
     const selectedFocusId = searchParams.get("focusId");
     const isArchivesPage = searchParams.get("isArchived") === "true";
     const isTrashPage = searchParams.get("isDeleted") === "true";
     const isUntagged = searchParams.get("isUntagged") === "true";
 
-    refreshNotes(selectedTagId, selectedFocusId, isArchivesPage, isTrashPage, 1, isUntagged);
+    refreshNotes(selectedTagId, selectedFocusId, isArchivesPage, isTrashPage, 1, isUntagged, titleQuery);
     refreshImages(selectedTagId, selectedFocusId, 1, isArchivesPage);
   }, [searchParams, refreshNotes, refreshImages]);
 

@@ -89,3 +89,70 @@ func TestGetPinyinTitleMatchIDs(t *testing.T) {
 		}
 	}
 }
+
+func TestGetAllNotesFiltersTitlesBeforePagination(t *testing.T) {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		t.Fatalf("open test database: %v", err)
+	}
+	defer db.Close()
+
+	previousDB := sqlite.DB
+	sqlite.DB = db
+	t.Cleanup(func() { sqlite.DB = previousDB })
+
+	for _, statement := range []string{
+		`CREATE TABLE notes (
+			note_id INTEGER PRIMARY KEY,
+			title TEXT NOT NULL,
+			content TEXT NOT NULL,
+			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			deleted_at TIMESTAMP,
+			archived_at TIMESTAMP,
+			pinned_at TIMESTAMP
+		)`,
+		`CREATE TABLE tags (tag_id INTEGER PRIMARY KEY, name TEXT NOT NULL, color TEXT)`,
+		`CREATE TABLE note_tags (note_id INTEGER NOT NULL, tag_id INTEGER NOT NULL)`,
+		`CREATE TABLE focus_mode_tags (focus_mode_id INTEGER NOT NULL, tag_id INTEGER NOT NULL)`,
+	} {
+		if _, err := db.Exec(statement); err != nil {
+			t.Fatalf("create test schema: %v", err)
+		}
+	}
+
+	if _, err := db.Exec(`
+		INSERT INTO notes (note_id, title, content) VALUES
+			(1, 'Windows 管理共享拒绝访问', ''),
+			(2, '工作周报', ''),
+			(3, '无关笔记', '')
+	`); err != nil {
+		t.Fatalf("insert notes: %v", err)
+	}
+	if _, err := db.Exec(`INSERT INTO tags (tag_id, name, color) VALUES (10, 'Windows', NULL)`); err != nil {
+		t.Fatalf("insert tag: %v", err)
+	}
+	if _, err := db.Exec(`INSERT INTO note_tags (note_id, tag_id) VALUES (1, 10), (2, 10)`); err != nil {
+		t.Fatalf("tag notes: %v", err)
+	}
+
+	filter := NewNotesFilter(1, 10, 0, false, false)
+	filter.titleQuery = "wi"
+	matched, total, err := GetAllNotes(auth.Unrestricted, filter)
+	if err != nil {
+		t.Fatalf("GetAllNotes title filter: %v", err)
+	}
+	if total != 1 || len(matched) != 1 || matched[0].NoteID != 1 {
+		t.Fatalf("GetAllNotes title filter = notes %#v, total %d; want only Windows note", matched, total)
+	}
+
+	filter = NewNotesFilter(1, 10, 0, false, false)
+	filter.titleQuery = "gz"
+	matched, total, err = GetAllNotes(auth.Unrestricted, filter)
+	if err != nil {
+		t.Fatalf("GetAllNotes pinyin filter: %v", err)
+	}
+	if total != 1 || len(matched) != 1 || matched[0].NoteID != 2 {
+		t.Fatalf("GetAllNotes pinyin filter = notes %#v, total %d; want only 工作周报", matched, total)
+	}
+}

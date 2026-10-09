@@ -43,11 +43,29 @@ func GetAllNotes(access auth.Access, filter NotesFilter) ([]Note, int, error) {
 	offset := (filter.page - 1) * NOTES_LIMIT
 
 	scopePredicate, scopeArgs := buildReadableNotesPredicate(access)
+	titleMatchPredicate := ""
+	titleMatchArgs := []interface{}{}
+	if strings.TrimSpace(filter.titleQuery) != "" {
+		matchedIDs, err := getTitleMatchIDs(access, filter)
+		if err != nil {
+			return notes, total, err
+		}
+		if len(matchedIDs) == 0 {
+			return notes, total, nil
+		}
+
+		placeholders := make([]string, len(matchedIDs))
+		for i, noteID := range matchedIDs {
+			placeholders[i] = "?"
+			titleMatchArgs = append(titleMatchArgs, noteID)
+		}
+		titleMatchPredicate = " AND n.note_id IN (" + strings.Join(placeholders, ",") + ")"
+	}
 
 	var query string
 	var queryArgs []interface{}
 
-	statusCond := statusCondition(filter) + " " + scopePredicate
+	statusCond := statusCondition(filter) + " " + scopePredicate + titleMatchPredicate
 
 	if filter.tagID != 0 {
 		// Tag hierarchy is for sidebar organisation only. Selecting a tag always
@@ -92,6 +110,7 @@ func GetAllNotes(access auth.Access, filter NotesFilter) ([]Note, int, error) {
 		`, statusCond)
 		queryArgs = []interface{}{filter.tagID}
 		queryArgs = append(queryArgs, scopeArgs...)
+		queryArgs = append(queryArgs, titleMatchArgs...)
 		queryArgs = append(queryArgs, NOTES_LIMIT, offset)
 	} else if filter.isUntagged {
 		query = fmt.Sprintf(`
@@ -126,6 +145,7 @@ func GetAllNotes(access auth.Access, filter NotesFilter) ([]Note, int, error) {
 				?
 		`, statusCond)
 		queryArgs = append([]interface{}{}, scopeArgs...)
+		queryArgs = append(queryArgs, titleMatchArgs...)
 		queryArgs = append(queryArgs, NOTES_LIMIT, offset)
 	} else if filter.focusModeID != 0 {
 		untaggedClause := ""
@@ -171,6 +191,7 @@ func GetAllNotes(access auth.Access, filter NotesFilter) ([]Note, int, error) {
 		`, statusCond, untaggedClause)
 		queryArgs = []interface{}{filter.focusModeID, filter.focusModeID}
 		queryArgs = append(queryArgs, scopeArgs...)
+		queryArgs = append(queryArgs, titleMatchArgs...)
 		queryArgs = append(queryArgs, NOTES_LIMIT, offset)
 	} else {
 		query = fmt.Sprintf(`
@@ -208,6 +229,7 @@ func GetAllNotes(access auth.Access, filter NotesFilter) ([]Note, int, error) {
 				?
 		`, statusCond)
 		queryArgs = append([]interface{}{}, scopeArgs...)
+		queryArgs = append(queryArgs, titleMatchArgs...)
 		queryArgs = append(queryArgs, NOTES_LIMIT, offset)
 	}
 
