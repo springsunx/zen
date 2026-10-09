@@ -584,3 +584,9 @@ func requeueNote(noteID int, queueName string, action string) {
 		slog.Error(err.Error())
 	}
 }
+
+// QueueNoteProcessing schedules background work after a trusted integration
+// writes a note directly through the model layer rather than an HTTP handler.
+func QueueNoteProcessing(noteID int) {
+	requeueNote(noteID, queue.QUEUE_NOTE_PROCESS, "process")
+}

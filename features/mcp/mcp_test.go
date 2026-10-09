@@ -113,6 +113,22 @@ func TestCreateNoteRejectsUnknownScopedTag(t *testing.T) {
 	}
 }
 
+func TestCreateNoteRejectsDeletedScopedTag(t *testing.T) {
+	db := openMCPTestDB(t)
+	createMCPNoteTables(t, db)
+	mustExecMCPTest(t, db, `INSERT INTO tags (tag_id, name, deleted_at) VALUES (7, '旧标签', CURRENT_TIMESTAMP)`)
+
+	result := handleCreateNote(map[string]interface{}{
+		"title":   "审核记录",
+		"content": "正文",
+		"tags":    []interface{}{"旧标签"},
+	}, auth.Access{WriteTagIDs: []int{7}})
+	data := toolResultData(t, result)
+	if !result.IsError || data["code"] != "TAG_NOT_FOUND" {
+		t.Fatalf("result = %#v, want TAG_NOT_FOUND", data)
+	}
+}
+
 func TestToolsListIncludesTokenWritableTagNames(t *testing.T) {
 	db := openMCPTestDB(t)
 	mustExecMCPTest(t, db, `CREATE TABLE tags (tag_id INTEGER PRIMARY KEY, name TEXT NOT NULL)`)

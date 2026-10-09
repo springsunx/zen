@@ -521,7 +521,7 @@ func resolveExistingTags(rawTags interface{}) ([]tags.Tag, ToolCallResult, bool)
 		}
 
 		var tag tags.Tag
-		err := sqlite.DB.QueryRow(`SELECT tag_id, name FROM tags WHERE LOWER(name) = LOWER(?)`, name).Scan(&tag.TagID, &tag.Name)
+		err := sqlite.DB.QueryRow(`SELECT tag_id, name FROM tags WHERE LOWER(name) = LOWER(?) AND deleted_at IS NULL`, name).Scan(&tag.TagID, &tag.Name)
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, toolFailure("TAG_NOT_FOUND", "The tag does not exist: "+name, "Use an existing writable tag name. This tool never creates tags.", map[string]interface{}{"tagName": name}), false
 		}
@@ -656,6 +656,7 @@ func handleCreateNote(args map[string]interface{}, access auth.Access) ToolCallR
 		}
 		return toolFailure("NOTE_CREATE_FAILED", "Unable to create the note.", "Try the request again later.", nil)
 	}
+	notes.QueueNoteProcessing(createdNote.NoteID)
 	return toolSuccess(map[string]interface{}{"success": true, "note": noteData(createdNote, true)})
 }
 
@@ -708,6 +709,7 @@ func handleUpdateNote(args map[string]interface{}, access auth.Access) ToolCallR
 		}
 		return toolFailure("NOTE_UPDATE_FAILED", "Unable to update the note.", "Try the request again later.", map[string]interface{}{"noteId": noteID})
 	}
+	notes.QueueNoteProcessing(updatedNote.NoteID)
 	return toolSuccess(map[string]interface{}{"success": true, "note": noteData(updatedNote, true)})
 }
 
@@ -881,6 +883,7 @@ func handleUploadImage(args map[string]interface{}, access auth.Access) ToolCall
 		}
 		return toolFailure("IMAGE_INSERT_FAILED", "The image was not inserted into the note.", "Try the request again later.", map[string]interface{}{"noteId": noteID})
 	}
+	notes.QueueNoteProcessing(updatedNote.NoteID)
 
 	return toolSuccess(map[string]interface{}{
 		"success":  true,
