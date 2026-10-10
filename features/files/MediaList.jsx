@@ -58,6 +58,16 @@ function MediaTags({ linkedNotes }) {
   });
 }
 
+function NoteLocations({ linkedNotes }) {
+  const notes = linkedNotes || [];
+  const locations = [];
+  if (notes.some((note) => !note.isDeleted && !note.isArchived)) locations.push("notes");
+  if (notes.some((note) => !note.isDeleted && note.isArchived)) locations.push("archive");
+  if (notes.some((note) => note.isDeleted)) locations.push("trash");
+  if (locations.length === 0) return <span className="media-empty-value">—</span>;
+  return <div className="media-note-locations">{locations.map((location) => <span key={location} className={`media-note-location is-${location}`}>{t(`files.location.${location}`)}</span>)}</div>;
+}
+
 export default function MediaList({ images = [], videos = [] }) {
   const [openIndex, setOpenIndex] = useState(null);
   const media = useMemo(() => buildMediaItems(images, videos), [images, videos]);
@@ -101,6 +111,7 @@ export default function MediaList({ images = [], videos = [] }) {
           <div className="col-media-dimensions">{t("images.list.dimensions")}</div>
           <div className="col-media-size">{t("images.list.size")}</div>
           <div className="col-media-notes">{t("images.list.linkedNotes")}</div>
+          <div className="col-media-location">{t("files.location.label")}</div>
           <div className="col-media-tags">{t("images.list.tags")}</div>
           <div className="col-media-storage">{t("images.list.storage")}</div>
           <div className="col-media-date">{t("images.list.date")}</div>
@@ -116,6 +127,7 @@ export default function MediaList({ images = [], videos = [] }) {
             <div className="col-media-dimensions">{item.type === "image" ? `${item.width} × ${item.height}` : "—"}</div>
             <div className="col-media-size">{formatFileSize(item.fileSize)}</div>
             <div className="col-media-notes">{item.linkedNotes?.length ? item.linkedNotes.map((note, noteIndex) => <span key={note.noteId}>{noteIndex > 0 && ", "}<NoteLink noteId={note.noteId} title={note.title} /></span>) : <span className="media-empty-value">—</span>}</div>
+            <div className="col-media-location"><NoteLocations linkedNotes={item.linkedNotes} /></div>
             <div className="col-media-tags"><MediaTags linkedNotes={item.linkedNotes} /></div>
             <div className="col-media-storage"><span className={`media-storage-badge ${item.storage === "s3" ? "is-s3" : "is-local"}`}>{item.storage === "s3" ? "S3" : t("images.list.storageLocal")}</span></div>
             <div className="col-media-date">{formatDate(item.createdAt)}</div>

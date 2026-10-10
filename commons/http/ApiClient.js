@@ -376,7 +376,7 @@ async function fetchAIModels(baseUrl, apiKey, skipTlsVerify) {
 
 // ─── Images ───
 
-async function getImages(tagId, focusId, page, isArchived, limit) {
+async function getImages(tagId, focusId, page, isArchived, limit, includeArchived = false, includeDeleted = false) {
   let url = "/api/images/";
   const params = new URLSearchParams();
   if (tagId) params.append('tagId', tagId);
@@ -384,6 +384,8 @@ async function getImages(tagId, focusId, page, isArchived, limit) {
   if (page) params.append('page', page);
   if (limit) params.append('limit', limit);
   if (isArchived === true) params.append('isArchived', 'true');
+  if (includeArchived === true) params.append('includeArchived', 'true');
+  if (includeDeleted === true) params.append('includeDeleted', 'true');
   if (params.toString()) url += '?' + params.toString();
 
   const resp = await request('GET', url);
@@ -406,14 +408,16 @@ async function forceDeleteImage(filename) {
   return await request('DELETE', `/api/images/${encodeURIComponent(filename)}/?force=true`);
 }
 
-async function cleanupImages() {
-  return await request('POST', '/api/images/cleanup');
+async function cleanupImages(dryRun = false) {
+  const suffix = dryRun === true ? '?dryRun=true' : '';
+  return await request('POST', `/api/images/cleanup${suffix}`);
 }
 
-async function getAttachments(page = 1, tagId = null, focusId = null) {
+async function getAttachments(page = 1, tagId = null, focusId = null, includeDeleted = false) {
   let url = `/api/attachments/?page=${page}`;
   if (tagId) url += `&tagId=${tagId}`;
   if (focusId) url += `&focusId=${focusId}`;
+  if (includeDeleted === true) url += '&includeDeleted=true';
   return await request('GET', url);
 }
 

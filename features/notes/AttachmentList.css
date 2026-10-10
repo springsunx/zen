@@ -113,6 +113,12 @@
     text-align: center;
 }
 
+.col-attachment-location {
+    width: 82px;
+    flex-shrink: 0;
+    text-align: center;
+}
+
 .attachment-note-link {
     color: var(--neutral-500);
     cursor: pointer;
@@ -120,6 +126,34 @@
     &:hover {
         color: var(--neutral-700);
         text-decoration: underline;
+    }
+}
+
+.attachment-note-locations {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 4px;
+}
+
+.attachment-note-location {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 10px;
+    color: var(--neutral-500);
+    background: var(--neutral-100);
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+
+    &.is-archive {
+        color: #b7791f;
+        background: #fef3c7;
+    }
+
+    &.is-trash {
+        color: var(--neutral-500);
+        background: var(--neutral-200);
     }
 }
 

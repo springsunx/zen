@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -41,8 +42,10 @@ type ImagesResponseEnvelope struct {
 }
 
 type ImageNoteRef struct {
-	NoteID int    `json:"noteId"`
-	Title  string `json:"title"`
+	NoteID     int    `json:"noteId"`
+	Title      string `json:"title"`
+	IsArchived bool   `json:"isArchived"`
+	IsDeleted  bool   `json:"isDeleted"`
 }
 
 type ImageTagBrief struct {
@@ -88,11 +91,13 @@ type ImageInfo struct {
 }
 
 type ImagesFilter struct {
-	page        int
-	limit       int
-	tagID       int
-	focusModeID int
-	isArchived  bool
+	page            int
+	limit           int
+	tagID           int
+	focusModeID     int
+	isArchived      bool
+	includeArchived bool
+	includeDeleted  bool
 }
 
 func NewImagesFilter(page, tagID, focusModeID int, isArchived ...bool) ImagesFilter {
@@ -118,6 +123,8 @@ func HandleGetImages(w http.ResponseWriter, r *http.Request) {
 	tagIDStr := r.URL.Query().Get("tagId")
 	focusModeIDStr := r.URL.Query().Get("focusId")
 	isArchivedStr := r.URL.Query().Get("isArchived")
+	includeArchivedStr := r.URL.Query().Get("includeArchived")
+	includeDeletedStr := r.URL.Query().Get("includeDeleted")
 
 	page := 1
 	limit := IMAGES_LIMIT
@@ -158,11 +165,13 @@ func HandleGetImages(w http.ResponseWriter, r *http.Request) {
 	}
 
 	filter := ImagesFilter{
-		page:        page,
-		limit:       limit,
-		tagID:       tagID,
-		focusModeID: focusModeID,
-		isArchived:  isArchived,
+		page:            page,
+		limit:           limit,
+		tagID:           tagID,
+		focusModeID:     focusModeID,
+		isArchived:      isArchived,
+		includeArchived: includeArchivedStr == "true",
+		includeDeleted:  includeDeletedStr == "true",
 	}
 
 	allImages, total, err = GetAllImages(filter)
@@ -337,6 +346,7 @@ func HandleCleanupImages(w http.ResponseWriter, r *http.Request) {
 		RegisteredFiles []string `json:"registeredFiles"`
 	}
 	res := result{}
+	dryRun := r.URL.Query().Get("dryRun") == "true"
 	isS3 := storage.IsS3Enabled()
 
 	// ── Collect DB filenames ──
@@ -348,6 +358,40 @@ func HandleCleanupImages(w http.ResponseWriter, r *http.Request) {
 
 	// ── Collect note image references ──
 	referencedInContent := collectNoteImageRefs()
+
+	if dryRun {
+		if isS3 {
+			forEachAllImages(func(im Image) error {
+				if len(referencedInContent[im.Filename]) == 0 {
+					res.OrphanFiles = append(res.OrphanFiles, im.Filename)
+				}
+				return nil
+			})
+		} else {
+			imagesDir := os.Getenv("IMAGES_FOLDER")
+			if imagesDir == "" {
+				imagesDir = "./images"
+			}
+			forEachAllImages(func(im Image) error {
+				if _, err := os.Stat(filepath.Join(imagesDir, im.Filename)); err != nil {
+					res.MissingFiles = append(res.MissingFiles, im.Filename)
+				}
+				return nil
+			})
+			if orphans, err := GetOrphanedImages(); err == nil {
+				for _, im := range orphans {
+					if len(referencedInContent[im.Filename]) == 0 {
+						res.OrphanFiles = append(res.OrphanFiles, im.Filename)
+					}
+				}
+			}
+		}
+		sort.Strings(res.MissingFiles)
+		sort.Strings(res.OrphanFiles)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(res)
+		return
+	}
 
 	if isS3 {
 		// ── S3: Register note-referenced images missing from DB ──
@@ -455,6 +499,7 @@ func HandleCleanupImages(w http.ResponseWriter, r *http.Request) {
 					continue
 				}
 				_ = os.Remove(filepath.Join(imagesDir, im.Filename))
+				_ = DeleteThumbnail(im.Filename)
 				_ = DeleteImageLinks(im.Filename)
 				_ = DeleteImage(im.Filename)
 				res.RemovedOrphans++
@@ -483,16 +528,20 @@ func HandleCleanupImages(w http.ResponseWriter, r *http.Request) {
 var imageRefRegex = regexp.MustCompile(`!\[.*?\]\(/images/([^)]+)\)`)
 
 func forEachAllImages(fn func(Image) error) {
-	for page := 1; ; page++ {
-		imgs, _, err := GetAllImages(NewImagesFilter(page, 0, 0))
-		if err != nil || len(imgs) == 0 {
-			return
-		}
-		for _, im := range imgs {
-			_ = fn(im)
-		}
-		if len(imgs) < IMAGES_LIMIT {
-			return
+	rows, err := sqlite.DB.Query(`
+		SELECT filename, width, height, format, aspect_ratio, file_size, caption, created_at
+		FROM images
+	`)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var image Image
+		if rows.Scan(&image.Filename, &image.Width, &image.Height, &image.Format, &image.AspectRatio, &image.FileSize, &image.Caption, &image.CreatedAt) == nil {
+			if fn(image) != nil {
+				return
+			}
 		}
 	}
 }

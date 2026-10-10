@@ -11,6 +11,19 @@ import (
 	"zen/features/storage"
 )
 
+func noteVisibilityCondition(filter ImagesFilter) string {
+	if filter.isArchived {
+		return "n.archived_at IS NOT NULL"
+	}
+	if filter.includeDeleted {
+		return "1 = 1"
+	}
+	if filter.includeArchived {
+		return "n.deleted_at IS NULL"
+	}
+	return "n.deleted_at IS NULL AND n.archived_at IS NULL"
+}
+
 func GetAllImages(filter ImagesFilter) ([]Image, int, error) {
 	images := []Image{}
 	total := 0
@@ -22,10 +35,10 @@ func GetAllImages(filter ImagesFilter) ([]Image, int, error) {
 
 	var query string
 	var queryArgs []interface{}
+	noteCondition := noteVisibilityCondition(filter)
 
 	if filter.tagID != 0 {
-		if filter.isArchived {
-			query = `
+		query = `
 				SELECT
 					i.filename, i.width, i.height, i.format, i.aspect_ratio,
 					i.file_size, i.caption, i.created_at,
@@ -34,29 +47,13 @@ func GetAllImages(filter ImagesFilter) ([]Image, int, error) {
 				INNER JOIN note_images ni ON i.filename = ni.filename
 				INNER JOIN note_tags nt ON ni.note_id = nt.note_id
 				INNER JOIN notes n ON ni.note_id = n.note_id
-				WHERE nt.tag_id = ? AND n.archived_at IS NOT NULL
+				WHERE nt.tag_id = ? AND ` + noteCondition + `
 				GROUP BY i.filename
 				ORDER BY i.created_at DESC LIMIT ? OFFSET ?
 			`
-		} else {
-			query = `
-				SELECT
-					i.filename, i.width, i.height, i.format, i.aspect_ratio,
-					i.file_size, i.caption, i.created_at,
-					COUNT(*) OVER() as total_count
-				FROM images i
-				INNER JOIN note_images ni ON i.filename = ni.filename
-				INNER JOIN note_tags nt ON ni.note_id = nt.note_id
-				INNER JOIN notes n ON ni.note_id = n.note_id
-				WHERE nt.tag_id = ? AND n.deleted_at IS NULL AND n.archived_at IS NULL
-				GROUP BY i.filename
-				ORDER BY i.created_at DESC LIMIT ? OFFSET ?
-			`
-		}
 		queryArgs = []interface{}{filter.tagID, limit, offset}
 	} else if filter.focusModeID != 0 {
-		if filter.isArchived {
-			query = `
+		query = `
 				SELECT
 					i.filename, i.width, i.height, i.format, i.aspect_ratio,
 					i.file_size, i.caption, i.created_at,
@@ -66,30 +63,13 @@ func GetAllImages(filter ImagesFilter) ([]Image, int, error) {
 				JOIN note_images ni ON nt.note_id = ni.note_id
 				JOIN images i ON ni.filename = i.filename
 				JOIN notes n ON ni.note_id = n.note_id
-				WHERE fmt.focus_mode_id = ? AND n.archived_at IS NOT NULL
+				WHERE fmt.focus_mode_id = ? AND ` + noteCondition + `
 				GROUP BY i.filename
 				ORDER BY i.created_at DESC LIMIT ? OFFSET ?
 			`
-		} else {
-			query = `
-				SELECT
-					i.filename, i.width, i.height, i.format, i.aspect_ratio,
-					i.file_size, i.caption, i.created_at,
-					COUNT(*) OVER() as total_count
-				FROM focus_mode_tags fmt
-				JOIN note_tags nt ON fmt.tag_id = nt.tag_id
-				JOIN note_images ni ON nt.note_id = ni.note_id
-				JOIN images i ON ni.filename = i.filename
-				JOIN notes n ON ni.note_id = n.note_id
-				WHERE fmt.focus_mode_id = ? AND n.deleted_at IS NULL AND n.archived_at IS NULL
-				GROUP BY i.filename
-				ORDER BY i.created_at DESC LIMIT ? OFFSET ?
-			`
-		}
 		queryArgs = []interface{}{filter.focusModeID, limit, offset}
 	} else {
-		if filter.isArchived {
-			query = `
+		query = `
 				SELECT DISTINCT
 					i.filename, i.width, i.height, i.format, i.aspect_ratio,
 					i.file_size, i.caption, i.created_at,
@@ -97,22 +77,9 @@ func GetAllImages(filter ImagesFilter) ([]Image, int, error) {
 				FROM images i
 				INNER JOIN note_images ni ON i.filename = ni.filename
 				INNER JOIN notes n ON ni.note_id = n.note_id
-				WHERE n.archived_at IS NOT NULL
+				WHERE ` + noteCondition + `
 				ORDER BY i.created_at DESC LIMIT ? OFFSET ?
 			`
-		} else {
-			query = `
-				SELECT DISTINCT
-					i.filename, i.width, i.height, i.format, i.aspect_ratio,
-					i.file_size, i.caption, i.created_at,
-					COUNT(*) OVER() as total_count
-				FROM images i
-				INNER JOIN note_images ni ON i.filename = ni.filename
-				INNER JOIN notes n ON ni.note_id = n.note_id
-				WHERE n.deleted_at IS NULL AND n.archived_at IS NULL
-				ORDER BY i.created_at DESC LIMIT ? OFFSET ?
-			`
-		}
 		queryArgs = []interface{}{limit, offset}
 	}
 
@@ -170,7 +137,7 @@ func populateImageLinkedNotes(images []Image) error {
 	}
 
 	rows, err := sqlite.DB.Query(`
-		SELECT ni.filename, n.note_id, n.title, t.tag_id, t.name, t.color
+		SELECT ni.filename, n.note_id, n.title, n.archived_at IS NOT NULL, n.deleted_at IS NOT NULL, t.tag_id, t.name, t.color
 		FROM note_images ni
 		JOIN notes n ON ni.note_id = n.note_id
 		LEFT JOIN note_tags nt ON n.note_id = nt.note_id
@@ -188,9 +155,10 @@ func populateImageLinkedNotes(images []Image) error {
 	for rows.Next() {
 		var filename, title string
 		var noteID int
+		var isArchived, isDeleted bool
 		var tagID sql.NullInt64
 		var tagName, tagColor sql.NullString
-		if err := rows.Scan(&filename, &noteID, &title, &tagID, &tagName, &tagColor); err != nil {
+		if err := rows.Scan(&filename, &noteID, &title, &isArchived, &isDeleted, &tagID, &tagName, &tagColor); err != nil {
 			return fmt.Errorf("scan linked image note: %w", err)
 		}
 
@@ -204,7 +172,7 @@ func populateImageLinkedNotes(images []Image) error {
 			position = len(linkedByFilename[filename])
 			positions[noteID] = position
 			linkedByFilename[filename] = append(linkedByFilename[filename], ImageLinkedNote{
-				ImageNoteRef: ImageNoteRef{NoteID: noteID, Title: title},
+				ImageNoteRef: ImageNoteRef{NoteID: noteID, Title: title, IsArchived: isArchived, IsDeleted: isDeleted},
 			})
 		}
 		if tagID.Valid {
@@ -443,7 +411,7 @@ type NoteContent struct {
 
 func GetAllNoteContents() ([]NoteContent, error) {
 	var notes []NoteContent
-	query := "SELECT note_id, content FROM notes WHERE deleted_at IS NULL"
+	query := "SELECT note_id, content FROM notes"
 	rows, err := sqlite.DB.Query(query)
 	if err != nil {
 		return nil, fmt.Errorf("error querying note contents: %w", err)

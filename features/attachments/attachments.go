@@ -112,8 +112,9 @@ func HandleGetAttachments(w http.ResponseWriter, r *http.Request) {
 	if f := r.URL.Query().Get("focusId"); f != "" {
 		fmt.Sscanf(f, "%d", &focusID)
 	}
+	includeDeleted := r.URL.Query().Get("includeDeleted") == "true"
 
-	attachments, total, err := GetAllAttachmentsPaginated(page, tagID, focusID)
+	attachments, total, err := GetAllAttachmentsPaginated(page, tagID, focusID, includeDeleted)
 	if err != nil {
 		utils.SendErrorResponse(w, "ATTACHMENTS_FETCH_FAILED", "Error fetching attachments.", err, http.StatusInternalServerError)
 		return
@@ -129,7 +130,6 @@ func HandleGetAttachments(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
 }
-
 
 func HandleCleanupAttachments(w http.ResponseWriter, r *http.Request) {
 	type result struct {
@@ -150,7 +150,9 @@ func HandleCleanupAttachments(w http.ResponseWriter, r *http.Request) {
 		Content string
 	}
 	var allNotes []noteContent
-	rows, err := sqlite.DB.Query("SELECT note_id, content FROM notes WHERE deleted_at IS NULL")
+	// Files belonging to notes in the recycle bin remain recoverable until the
+	// note is permanently deleted, so their references must survive a cleanup.
+	rows, err := sqlite.DB.Query("SELECT note_id, content FROM notes")
 	if err == nil {
 		defer rows.Close()
 		for rows.Next() {

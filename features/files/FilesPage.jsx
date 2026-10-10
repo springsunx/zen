@@ -4,6 +4,7 @@ import MobileNavbar from "../../commons/components/MobileNavbar.jsx";
 import EmptyState from "../../commons/components/EmptyState.jsx";
 import Spinner from "../../commons/components/Spinner.jsx";
 import Button from "../../commons/components/Button.jsx";
+import { ModalBackdrop, ModalContainer, ModalContent, ModalFooter, ModalHeader } from "../../commons/components/Modal.jsx";
 import { AttachmentsIcon, GalleryViewIcon, ImagesIcon, ListViewIcon } from "../../commons/components/Icon.jsx";
 import { LayoutProvider } from "../../commons/contexts/LayoutContext.jsx";
 import { NotesProvider } from "../../commons/contexts/NotesContext.jsx";
@@ -60,6 +61,39 @@ function FileSection({ hasMore, onLoadMore, isLoadingMore, children }) {
   );
 }
 
+function ImageCleanupConfirmModal({ plan, onConfirm, onClose }) {
+  const orphanFiles = Array.isArray(plan?.orphanFiles) ? plan.orphanFiles : [];
+  const missingFiles = Array.isArray(plan?.missingFiles) ? plan.missingFiles : [];
+  const count = orphanFiles.length + missingFiles.length;
+
+  return (
+    <ModalBackdrop onClose={onClose}>
+      <ModalContainer className="image-cleanup-modal">
+        <ModalHeader title={t("images.cleanup.preview.title")} onClose={onClose} />
+        <ModalContent>
+          <p className="modal-description">{t("images.cleanup.preview.desc")}</p>
+          {orphanFiles.length > 0 && (
+            <section className="image-cleanup-list">
+              <h4>{t("images.cleanup.preview.orphans")}</h4>
+              <ul>{orphanFiles.map((filename) => <li key={filename}>{filename}</li>)}</ul>
+            </section>
+          )}
+          {missingFiles.length > 0 && (
+            <section className="image-cleanup-list">
+              <h4>{t("images.cleanup.preview.missing")}</h4>
+              <ul>{missingFiles.map((filename) => <li key={filename}>{filename}</li>)}</ul>
+            </section>
+          )}
+        </ModalContent>
+        <ModalFooter isRightAligned>
+          <Button variant="secondary" onClick={onClose}>{t("common.cancel")}</Button>
+          <Button variant="danger" onClick={onConfirm}>{t("images.cleanup.preview.confirm", { count })}</Button>
+        </ModalFooter>
+      </ModalContainer>
+    </ModalBackdrop>
+  );
+}
+
 export default function FilesPage() {
   return (
     <NotesProvider>
@@ -88,17 +122,19 @@ function FilesPageContent() {
   const isLoadingMoreImagesRef = useRef(false);
   const isLoadingMoreAttachmentsRef = useRef(false);
   const scrollContentRef = useRef(null);
+  const [scrollbarWidth, setScrollbarWidth] = useState(0);
   const [isCleaning, setIsCleaning] = useState(false);
+  const [imageCleanupPlan, setImageCleanupPlan] = useState(null);
 
   async function loadImages(page = 1) {
-    const response = await ApiClient.getImages(null, null, page, false, IMAGE_PAGE_SIZE);
+    const response = await ApiClient.getImages(null, null, page, false, IMAGE_PAGE_SIZE, true, true);
     const nextItems = getItems(response, "images");
     setImages((current) => page > 1 ? [...current, ...nextItems] : nextItems);
     setImagesTotal(Number(response?.total) || 0);
   }
 
   async function loadAttachments(page = 1) {
-    const response = await ApiClient.getAttachments(page);
+    const response = await ApiClient.getAttachments(page, null, null, true);
     const nextItems = getItems(response, "attachments");
     setAttachments((current) => page > 1 ? [...current, ...nextItems] : nextItems);
     setAttachmentsTotal(Number(response?.total) || 0);
@@ -150,6 +186,30 @@ function FilesPageContent() {
     };
   }, [tab]);
 
+  useEffect(() => {
+    const scrollContent = scrollContentRef.current;
+    if (!scrollContent) return undefined;
+
+    let animationFrame;
+    const syncScrollbarWidth = () => {
+      cancelAnimationFrame(animationFrame);
+      animationFrame = requestAnimationFrame(() => {
+        setScrollbarWidth(scrollContent.offsetWidth - scrollContent.clientWidth);
+      });
+    };
+
+    const observer = new ResizeObserver(syncScrollbarWidth);
+    observer.observe(scrollContent);
+    window.addEventListener("resize", syncScrollbarWidth);
+    syncScrollbarWidth();
+
+    return () => {
+      cancelAnimationFrame(animationFrame);
+      observer.disconnect();
+      window.removeEventListener("resize", syncScrollbarWidth);
+    };
+  }, [tab, mediaView, images.length, attachments.length, isLoading]);
+
   const normalizedQuery = query.trim().toLocaleLowerCase();
   const visibleImages = useMemo(
     () => images.filter((image) => !normalizedQuery || image.filename.toLocaleLowerCase().includes(normalizedQuery)),
@@ -168,27 +228,61 @@ function FilesPageContent() {
 
   async function handleCleanup(kind) {
     if (isCleaning) return;
+
+    if (kind === "images") {
+      await previewImageCleanup();
+      return;
+    }
+
     setIsCleaning(true);
     try {
-      if (kind === "images") {
-        const result = await ApiClient.cleanupImages();
-        showToast(t("images.cleanup.toast", {
-          missing: result?.RemovedMissing || 0,
-          orphans: result?.RemovedOrphans || 0,
-          registered: result?.Registered || 0,
-          linksRebuilt: result?.LinksRebuilt || 0,
-        }));
-      } else {
-        const result = await ApiClient.cleanupAttachments();
-        showToast(t("attachments.cleanup.toast", {
-          orphans: result?.removedOrphans || 0,
-          linksRebuilt: result?.linksRebuilt || 0,
-        }));
-      }
-      await refreshFiles(kind === "images" ? "images" : "attachments");
+      const result = await ApiClient.cleanupAttachments();
+      showToast(t("attachments.cleanup.toast", {
+        orphans: result?.removedOrphans || 0,
+        linksRebuilt: result?.linksRebuilt || 0,
+      }));
+      await refreshFiles("attachments");
     } catch (error) {
       console.error("File cleanup failed:", error);
       showToast(t(kind === "images" ? "images.cleanup.fail" : "attachments.cleanup.fail"));
+    } finally {
+      setIsCleaning(false);
+    }
+  }
+
+  async function previewImageCleanup() {
+    setIsCleaning(true);
+    try {
+      const plan = await ApiClient.cleanupImages(true);
+      const count = (plan?.orphanFiles?.length || 0) + (plan?.missingFiles?.length || 0);
+      if (count === 0) {
+        await runImageCleanup();
+      } else {
+        setImageCleanupPlan(plan);
+      }
+    } catch (error) {
+      console.error("Failed to scan image cleanup candidates:", error);
+      showToast(t("images.cleanup.fail"));
+    } finally {
+      setIsCleaning(false);
+    }
+  }
+
+  async function runImageCleanup() {
+    setIsCleaning(true);
+    try {
+      const result = await ApiClient.cleanupImages();
+      setImageCleanupPlan(null);
+      showToast(t("images.cleanup.toast", {
+        missing: result?.RemovedMissing || 0,
+        orphans: result?.RemovedOrphans || 0,
+        registered: result?.Registered || 0,
+        linksRebuilt: result?.LinksRebuilt || 0,
+      }));
+      await refreshFiles("images");
+    } catch (error) {
+      console.error("Failed to clean up images:", error);
+      showToast(t("images.cleanup.fail"));
     } finally {
       setIsCleaning(false);
     }
@@ -276,7 +370,7 @@ function FilesPageContent() {
     <div className="page-container">
       <Sidebar />
       <main className="files-page-content">
-        <div className="files-sticky-top">
+        <div className="files-sticky-top" style={{ "--files-scrollbar-width": `${scrollbarWidth}px` }}>
           <header className="files-header">
           <div>
             <h1>{t("files.title")}</h1>
@@ -314,11 +408,11 @@ function FilesPageContent() {
           <div className="files-fixed-table-header">
             {tab === "media" && mediaView === "list" ? (
               <div className="media-table-header">
-                <div className="col-media-thumb">{t("images.list.thumb")}</div><div className="col-media-name">{t("images.list.filename")}</div><div className="col-media-type">{t("files.media.type")}</div><div className="col-media-dimensions">{t("images.list.dimensions")}</div><div className="col-media-size">{t("images.list.size")}</div><div className="col-media-notes">{t("images.list.linkedNotes")}</div><div className="col-media-tags">{t("images.list.tags")}</div><div className="col-media-storage">{t("images.list.storage")}</div><div className="col-media-date">{t("images.list.date")}</div><div className="col-media-actions">{t("images.list.actions")}</div>
+                <div className="col-media-thumb">{t("images.list.thumb")}</div><div className="col-media-name">{t("images.list.filename")}</div><div className="col-media-type">{t("files.media.type")}</div><div className="col-media-dimensions">{t("images.list.dimensions")}</div><div className="col-media-size">{t("images.list.size")}</div><div className="col-media-notes">{t("images.list.linkedNotes")}</div><div className="col-media-location">{t("files.location.label")}</div><div className="col-media-tags">{t("images.list.tags")}</div><div className="col-media-storage">{t("images.list.storage")}</div><div className="col-media-date">{t("images.list.date")}</div><div className="col-media-actions">{t("images.list.actions")}</div>
               </div>
             ) : tab === "attachments" ? (
               <div className="attachment-table-header">
-                <div className="col-name">{t("attachments.list.name")}</div><div className="col-type">{t("attachments.list.type")}</div><div className="col-size">{t("attachments.list.size")}</div><div className="col-notes">{t("attachments.list.linkedNotes")}</div><div className="col-tags">{t("attachments.list.tags")}</div><div className="col-storage">{t("attachments.list.storage")}</div><div className="col-date">{t("attachments.list.date")}</div><div className="col-actions">{t("attachments.list.actions")}</div>
+                <div className="col-name">{t("attachments.list.name")}</div><div className="col-type">{t("attachments.list.type")}</div><div className="col-size">{t("attachments.list.size")}</div><div className="col-notes">{t("attachments.list.linkedNotes")}</div><div className="col-attachment-location">{t("files.location.label")}</div><div className="col-tags">{t("attachments.list.tags")}</div><div className="col-storage">{t("attachments.list.storage")}</div><div className="col-date">{t("attachments.list.date")}</div><div className="col-actions">{t("attachments.list.actions")}</div>
               </div>
             ) : null}
           </div>
@@ -328,6 +422,7 @@ function FilesPageContent() {
         </div>
       </main>
       <MobileNavbar />
+      {imageCleanupPlan && <ImageCleanupConfirmModal plan={imageCleanupPlan} onConfirm={runImageCleanup} onClose={() => setImageCleanupPlan(null)} />}
       <div className="modal-root"></div>
       <div className="note-modal-root"></div>
       <div className="toast-root"></div>

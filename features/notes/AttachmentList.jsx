@@ -90,6 +90,16 @@ function collectTags(linkedNotes) {
   return result;
 }
 
+function NoteLocations({ linkedNotes }) {
+  const notes = linkedNotes || [];
+  const locations = [];
+  if (notes.some((note) => !note.isDeleted && !note.isArchived)) locations.push('notes');
+  if (notes.some((note) => !note.isDeleted && note.isArchived)) locations.push('archive');
+  if (notes.some((note) => note.isDeleted)) locations.push('trash');
+  if (locations.length === 0) return <span className="attachment-no-notes">—</span>;
+  return <div className="attachment-note-locations">{locations.map((location) => <span key={location} className={`attachment-note-location is-${location}`}>{t(`files.location.${location}`)}</span>)}</div>;
+}
+
 export default function AttachmentList({ attachments = [] }) {
   async function handleDelete(e, filename) {
     e.stopPropagation();
@@ -115,6 +125,7 @@ export default function AttachmentList({ attachments = [] }) {
         <div className="col-type">{t('attachments.list.type')}</div>
         <div className="col-size">{t('attachments.list.size')}</div>
         <div className="col-notes">{t('attachments.list.linkedNotes')}</div>
+        <div className="col-attachment-location">{t('files.location.label')}</div>
         <div className="col-tags">{t('attachments.list.tags')}</div>
         <div className="col-storage">{t('attachments.list.storage')}</div>
         <div className="col-date">{t('attachments.list.date')}</div>
@@ -143,6 +154,7 @@ export default function AttachmentList({ attachments = [] }) {
               : <span className="attachment-no-notes">—</span>
             }
           </div>
+          <div className="col-attachment-location"><NoteLocations linkedNotes={att.linkedNotes} /></div>
           <div className="col-tags">
             {(() => {
               const tags = collectTags(att.linkedNotes);

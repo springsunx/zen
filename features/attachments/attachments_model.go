@@ -10,20 +10,22 @@ import (
 )
 
 type Attachment struct {
-	Filename     string     `json:"filename"`
-	OriginalName string     `json:"originalName"`
-	ContentType  string     `json:"contentType"`
-	FileSize     int64      `json:"fileSize"`
-	URL          string     `json:"url"`
-	Storage      string     `json:"storage"`
-	LinkedNotes  []NoteRef  `json:"linkedNotes"`
-	CreatedAt    string     `json:"createdAt"`
+	Filename     string    `json:"filename"`
+	OriginalName string    `json:"originalName"`
+	ContentType  string    `json:"contentType"`
+	FileSize     int64     `json:"fileSize"`
+	URL          string    `json:"url"`
+	Storage      string    `json:"storage"`
+	LinkedNotes  []NoteRef `json:"linkedNotes"`
+	CreatedAt    string    `json:"createdAt"`
 }
 
 type NoteRef struct {
-	NoteID int        `json:"noteId"`
-	Title  string     `json:"title"`
-	Tags   []TagBrief `json:"tags"`
+	NoteID     int        `json:"noteId"`
+	Title      string     `json:"title"`
+	IsArchived bool       `json:"isArchived"`
+	IsDeleted  bool       `json:"isDeleted"`
+	Tags       []TagBrief `json:"tags"`
 }
 
 type TagBrief struct {
@@ -171,7 +173,7 @@ func DeleteAttachmentLinks(filename string) error {
 	return nil
 }
 
-func GetAllAttachmentsPaginated(page int, tagID int, focusID int) ([]Attachment, int, error) {
+func GetAllAttachmentsPaginated(page int, tagID int, focusID int, includeDeleted bool) ([]Attachment, int, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -179,6 +181,10 @@ func GetAllAttachmentsPaginated(page int, tagID int, focusID int) ([]Attachment,
 
 	var total int
 	var attachments []Attachment
+	noteCondition := "n.deleted_at IS NULL"
+	if includeDeleted {
+		noteCondition = "1 = 1"
+	}
 
 	if tagID != 0 {
 		// Filter by tag: join note_attachments + note_tags
@@ -186,8 +192,9 @@ func GetAllAttachmentsPaginated(page int, tagID int, focusID int) ([]Attachment,
 			SELECT COUNT(DISTINCT a.filename)
 			FROM attachments a
 			JOIN note_attachments na ON a.filename = na.filename
+			JOIN notes n ON na.note_id = n.note_id
 			JOIN note_tags nt ON na.note_id = nt.note_id
-			WHERE nt.tag_id = ?
+			WHERE nt.tag_id = ? AND `+noteCondition+`
 		`, tagID).Scan(&total)
 		if err != nil {
 			return nil, 0, fmt.Errorf("error counting attachments by tag: %w", err)
@@ -197,8 +204,9 @@ func GetAllAttachmentsPaginated(page int, tagID int, focusID int) ([]Attachment,
 			SELECT DISTINCT a.filename, a.original_name, a.content_type, a.file_size, a.created_at
 			FROM attachments a
 			JOIN note_attachments na ON a.filename = na.filename
+			JOIN notes n ON na.note_id = n.note_id
 			JOIN note_tags nt ON na.note_id = nt.note_id
-			WHERE nt.tag_id = ?
+			WHERE nt.tag_id = ? AND `+noteCondition+`
 			ORDER BY a.created_at DESC
 			LIMIT ? OFFSET ?
 		`, tagID, ATTACHMENTS_LIMIT, offset)
@@ -224,9 +232,10 @@ func GetAllAttachmentsPaginated(page int, tagID int, focusID int) ([]Attachment,
 			SELECT COUNT(DISTINCT a.filename)
 			FROM attachments a
 			JOIN note_attachments na ON a.filename = na.filename
+			JOIN notes n ON na.note_id = n.note_id
 			JOIN note_tags nt ON na.note_id = nt.note_id
 			JOIN focus_mode_tags fmt ON nt.tag_id = fmt.tag_id
-			WHERE fmt.focus_mode_id = ?
+			WHERE fmt.focus_mode_id = ? AND `+noteCondition+`
 		`, focusID).Scan(&total)
 		if err != nil {
 			return nil, 0, fmt.Errorf("error counting attachments by focus: %w", err)
@@ -236,9 +245,10 @@ func GetAllAttachmentsPaginated(page int, tagID int, focusID int) ([]Attachment,
 			SELECT DISTINCT a.filename, a.original_name, a.content_type, a.file_size, a.created_at
 			FROM attachments a
 			JOIN note_attachments na ON a.filename = na.filename
+			JOIN notes n ON na.note_id = n.note_id
 			JOIN note_tags nt ON na.note_id = nt.note_id
 			JOIN focus_mode_tags fmt ON nt.tag_id = fmt.tag_id
-			WHERE fmt.focus_mode_id = ?
+			WHERE fmt.focus_mode_id = ? AND `+noteCondition+`
 			ORDER BY a.created_at DESC
 			LIMIT ? OFFSET ?
 		`, focusID, ATTACHMENTS_LIMIT, offset)
@@ -259,15 +269,33 @@ func GetAllAttachmentsPaginated(page int, tagID int, focusID int) ([]Attachment,
 			attachments = append(attachments, a)
 		}
 	} else {
-		// No filter: all attachments
-		err := sqlite.DB.QueryRow("SELECT COUNT(*) FROM attachments").Scan(&total)
+		// Keep files referenced by normal or archived notes. Standalone files remain
+		// visible as potential cleanup candidates, while files used only by notes in
+		// the recycle bin stay out of the default file-management view.
+		visibilityCondition := `
+			NOT EXISTS (SELECT 1 FROM note_attachments na WHERE na.filename = a.filename)
+			OR EXISTS (
+				SELECT 1 FROM note_attachments na
+				JOIN notes n ON na.note_id = n.note_id
+				WHERE na.filename = a.filename AND n.deleted_at IS NULL
+			)
+			OR EXISTS (
+				SELECT 1 FROM notes n
+				WHERE n.deleted_at IS NULL AND n.content LIKE '%/attachments/' || a.filename || '%'
+			)
+		`
+		if includeDeleted {
+			visibilityCondition = "1 = 1"
+		}
+		err := sqlite.DB.QueryRow("SELECT COUNT(*) FROM attachments a WHERE " + visibilityCondition).Scan(&total)
 		if err != nil {
 			return nil, 0, fmt.Errorf("error counting attachments: %w", err)
 		}
 
 		rows, err := sqlite.DB.Query(`
-			SELECT filename, original_name, content_type, file_size, created_at
-			FROM attachments ORDER BY created_at DESC
+			SELECT a.filename, a.original_name, a.content_type, a.file_size, a.created_at
+			FROM attachments a WHERE `+visibilityCondition+`
+			ORDER BY a.created_at DESC
 			LIMIT ? OFFSET ?
 		`, ATTACHMENTS_LIMIT, offset)
 		if err != nil {
@@ -296,7 +324,7 @@ func getLinkedNotes(filename string) []NoteRef {
 
 	// 1. From note_attachments table
 	rows, err := sqlite.DB.Query(`
-		SELECT n.note_id, n.title
+		SELECT n.note_id, n.title, n.archived_at IS NOT NULL, n.deleted_at IS NOT NULL
 		FROM note_attachments na
 		JOIN notes n ON na.note_id = n.note_id
 		WHERE na.filename = ?
@@ -306,7 +334,7 @@ func getLinkedNotes(filename string) []NoteRef {
 		defer rows.Close()
 		for rows.Next() {
 			var ref NoteRef
-			if err := rows.Scan(&ref.NoteID, &ref.Title); err != nil {
+			if err := rows.Scan(&ref.NoteID, &ref.Title, &ref.IsArchived, &ref.IsDeleted); err != nil {
 				continue
 			}
 			if !seen[ref.NoteID] {
@@ -320,14 +348,14 @@ func getLinkedNotes(filename string) []NoteRef {
 	// 2. From note content (scan for /attachments/filename references)
 	pattern := "/attachments/" + filename
 	contentRows, err := sqlite.DB.Query(`
-		SELECT note_id, title FROM notes
-		WHERE deleted_at IS NULL AND content LIKE ?
+		SELECT note_id, title, archived_at IS NOT NULL, deleted_at IS NOT NULL FROM notes
+		WHERE content LIKE ?
 	`, "%"+pattern+"%")
 	if err == nil {
 		defer contentRows.Close()
 		for contentRows.Next() {
 			var ref NoteRef
-			if err := contentRows.Scan(&ref.NoteID, &ref.Title); err != nil {
+			if err := contentRows.Scan(&ref.NoteID, &ref.Title, &ref.IsArchived, &ref.IsDeleted); err != nil {
 				continue
 			}
 			if !seen[ref.NoteID] {
