@@ -377,7 +377,7 @@
   "bulk.toast.tagsUpdated": "已更新 {count} 条笔记的标签",
   "bulk.toast.tagsUpdateFailed": "更新标签失败",
 
-  "settings.tabs.ai": "AI",
+  "settings.tabs.ai": "AI 助手",
   "settings.tabs.storage": "存储",
   "ai.config.desc": "配置 AI 提供商以使用 AI 助手功能。",
   "ai.config.add": "添加 AI 提供商",

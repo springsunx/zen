@@ -376,7 +376,7 @@
   "bulk.toast.tagsUpdated": "Tags updated for {count} notes",
   "bulk.toast.tagsUpdateFailed": "Failed to update tags",
 
-  "settings.tabs.ai": "AI",
+  "settings.tabs.ai": "AI Assistant",
   "settings.tabs.storage": "Storage",
   "ai.config.desc": "Configure AI providers to use with the AI assistant.",
   "ai.config.add": "Add AI Provider",

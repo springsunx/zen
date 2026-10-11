@@ -1,6 +1,6 @@
 import { h, useState, useEffect } from "../../assets/preact.esm.js"
 import { ModalBackdrop, ModalContainer, ModalHeader, closeModal } from "../../commons/components/Modal.jsx";
-import { UploadIcon, DownloadIcon, ThemeIcon, BrainCircuitIcon, SecurityIcon, ImagesIcon, PencilIcon, SettingsIcon } from "../../commons/components/Icon.jsx";
+import { UploadIcon, DownloadIcon, ThemeIcon, BrainCircuitIcon, BrainCogIcon, SecurityIcon, ImagesIcon, PencilIcon, SettingsIcon } from "../../commons/components/Icon.jsx";
 import ImportPane from "./ImportPane.jsx";
 import ExportPane from "./ExportPane.jsx";
 import AppearancePane from "./AppearancePane.jsx";
@@ -30,7 +30,7 @@ export default function SettingsModal() {
     { id: "import", label: t("settings.tabs.import"), icon: <UploadIcon className="settings-tab-icon" />, content: <ImportPane /> },
     { id: "export", label: t("settings.tabs.export"), icon: <DownloadIcon className="settings-tab-icon" />, content: <ExportPane /> },
     { id: "apiTokens", label: t("settings.tabs.apiTokens"), icon: <BrainCircuitIcon className="settings-tab-icon" />, content: <ApiTokensPane /> },
-    { id: "ai", label: t("settings.tabs.ai"), icon: <BrainCircuitIcon className="settings-tab-icon" />, content: <AiPane /> },
+    { id: "ai", label: t("settings.tabs.ai"), icon: <BrainCogIcon className="settings-tab-icon" />, content: <AiPane /> },
     { id: "storage", label: t("settings.tabs.storage"), icon: <ImagesIcon className="settings-tab-icon" />, content: <StoragePane /> }
   ];
 

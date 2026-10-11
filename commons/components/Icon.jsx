@@ -522,6 +522,21 @@ export function BrainCircuitIcon() {
   );
 }
 
+// A compact brain-and-gear mark used for the AI assistant settings entry.
+export function BrainCogIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-brain-cog">
+      <path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18" />
+      <path d="M9 13a4.5 4.5 0 0 0 3-4" />
+      <path d="M6.003 5.125A3 3 0 0 0 6.401 6.5" />
+      <path d="M3.477 10.896a4 4 0 0 1 .585-.396" />
+      <path d="M6 18a4 4 0 0 1-1.967-.516" />
+      <circle cx="17" cy="17" r="2.5" />
+      <path d="M17 12.5v1M17 20.5v1M20.5 17h-1M14.5 17h-1M19.47 14.53l-.71.71M15.24 18.76l-.71.71M19.47 19.47l-.71-.71M15.24 15.24l-.71-.71" />
+    </svg>
+  );
+}
+
 export function DownloadIcon() {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-cloud-download">
