@@ -144,6 +144,14 @@ function FilesPageContent() {
     setImagesTotal(Number(response?.total) || 0);
   }
 
+  async function reloadImagesThrough(pageCount) {
+    const responses = await Promise.all(
+      Array.from({ length: pageCount }, (_, index) => ApiClient.getImages(null, null, index + 1, false, IMAGE_PAGE_SIZE, true, true))
+    );
+    setImages(responses.flatMap((response) => getItems(response, "images")));
+    setImagesTotal(Number(responses[0]?.total) || 0);
+  }
+
   async function loadAttachments(page = 1) {
     const response = await ApiClient.getAttachments(page, null, null, true);
     const nextItems = getItems(response, "attachments");
@@ -151,29 +159,48 @@ function FilesPageContent() {
     setAttachmentsTotal(Number(response?.total) || 0);
   }
 
-  async function refreshFiles(scope = tab) {
+  async function reloadAttachmentsThrough(pageCount) {
+    const responses = await Promise.all(
+      Array.from({ length: pageCount }, (_, index) => ApiClient.getAttachments(index + 1, null, null, true))
+    );
+    setAttachments(responses.flatMap((response) => getItems(response, "attachments")));
+    setAttachmentsTotal(Number(responses[0]?.total) || 0);
+  }
+
+  async function refreshFiles(scope = tab, { preserveScroll = false } = {}) {
+    const scrollTop = preserveScroll ? scrollContentRef.current?.scrollTop : null;
+    const imagePagesToRestore = preserveScroll ? imagesPage : 1;
+    const attachmentPagesToRestore = preserveScroll ? attachmentsPage : 1;
     setIsLoading(true);
     try {
       if (scope === "images") {
-        setImagesPage(1);
-        await loadImages(1);
+        setImagesPage(imagePagesToRestore);
+        await reloadImagesThrough(imagePagesToRestore);
       } else if (scope === "attachments") {
-        setAttachmentsPage(1);
-        await loadAttachments(1);
+        setAttachmentsPage(attachmentPagesToRestore);
+        await reloadAttachmentsThrough(attachmentPagesToRestore);
       } else {
-        setImagesPage(1);
-        setAttachmentsPage(1);
+        setImagesPage(imagePagesToRestore);
+        setAttachmentsPage(attachmentPagesToRestore);
         // Images are the visual first impression of the page. Show them as
         // soon as they are ready and keep attachment loading in the background.
-        await loadImages(1);
+        await reloadImagesThrough(imagePagesToRestore);
         setIsLoading(false);
-        await loadAttachments(1);
+        await reloadAttachmentsThrough(attachmentPagesToRestore);
       }
     } catch (error) {
       console.error("Failed to load files:", error);
       showToast(t("files.loadFailed"));
     } finally {
       setIsLoading(false);
+      if (scrollTop !== null) {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            const scrollContent = scrollContentRef.current;
+            if (scrollContent) scrollContent.scrollTop = scrollTop;
+          });
+        });
+      }
     }
   }
 
@@ -188,8 +215,8 @@ function FilesPageContent() {
   }, []);
 
   useEffect(() => {
-    const refresh = () => refreshFiles(tab);
-    const refreshAll = () => refreshFiles("all");
+    const refresh = () => refreshFiles(tab, { preserveScroll: true });
+    const refreshAll = () => refreshFiles("all", { preserveScroll: true });
     window.addEventListener("images:refresh", refresh);
     window.addEventListener("attachments:refresh", refresh);
     window.addEventListener("files:refresh", refreshAll);
@@ -198,7 +225,7 @@ function FilesPageContent() {
       window.removeEventListener("attachments:refresh", refresh);
       window.removeEventListener("files:refresh", refreshAll);
     };
-  }, [tab]);
+  }, [tab, imagesPage, attachmentsPage]);
 
   useEffect(() => {
     const scrollContent = scrollContentRef.current;
@@ -379,6 +406,7 @@ function FilesPageContent() {
         orphans: result?.removedOrphans || 0,
         local: result?.removedLocal || 0,
         registered: result?.registered || 0,
+        updated: result?.updated || 0,
         linksRebuilt: result?.linksRebuilt || 0,
       }));
       await refreshFiles("images");

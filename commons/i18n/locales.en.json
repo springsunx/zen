@@ -303,7 +303,7 @@
   "images.delete.confirm.titleGeneral": "Delete image",
   "images.delete.confirm.descGeneral": "Delete this image? This action cannot be undone.",
   "images.cleanup.button": "Clean up invalid images",
-  "images.cleanup.toast": "Cleanup: {registered} registered, {linksRebuilt} links rebuilt, {missing} missing records removed, {orphans} orphans and {local} local migration leftovers removed",
+  "images.cleanup.toast": "Cleanup: {registered} registered, {updated} image records completed, {linksRebuilt} links rebuilt, {missing} missing records removed, {orphans} orphans and {local} local migration leftovers removed",
   "images.cleanup.preview.title": "Confirm image cleanup",
   "images.cleanup.preview.desc": "Confirm to permanently delete orphaned images and local leftovers migrated to S3; missing files only have their records removed.",
   "images.cleanup.preview.orphans": "Orphaned images to permanently delete",

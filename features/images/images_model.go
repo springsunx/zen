@@ -255,6 +255,20 @@ func CreateImage(imageRecord ImageRecord) (Image, error) {
 	return image, nil
 }
 
+// UpdateImageMetadata backfills image details after a storage migration.
+// It deliberately leaves the caption and created_at untouched.
+func UpdateImageMetadata(imageRecord ImageRecord) error {
+	_, err := sqlite.DB.Exec(`
+		UPDATE images
+		SET width = ?, height = ?, format = ?, aspect_ratio = ?, file_size = ?
+		WHERE filename = ?
+	`, imageRecord.Width, imageRecord.Height, imageRecord.Format, imageRecord.AspectRatio, imageRecord.FileSize, imageRecord.Filename)
+	if err != nil {
+		return fmt.Errorf("error updating image metadata: %w", err)
+	}
+	return nil
+}
+
 func DeleteImage(filename string) error {
 	query := "DELETE FROM images WHERE filename = ?"
 

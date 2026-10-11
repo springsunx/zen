@@ -331,6 +331,7 @@ func HandleCleanupImages(w http.ResponseWriter, r *http.Request) {
 		RemovedMissing  int      `json:"removedMissing"`
 		RemovedOrphans  int      `json:"removedOrphans"`
 		Registered      int      `json:"registered"`
+		Updated         int      `json:"updated"`
 		RemovedLocal    int      `json:"removedLocal"`
 		LinksRebuilt    int      `json:"linksRebuilt"`
 		MissingFiles    []string `json:"missingFiles"`
@@ -450,6 +451,19 @@ func HandleCleanupImages(w http.ResponseWriter, r *http.Request) {
 					return nil
 				}
 				if exists {
+					if im.Width > 0 && im.Height > 0 && im.FileSize > 0 && im.Format != "" {
+						return nil
+					}
+					record, recordErr := imageRecordFromS3(s3p, im.Filename)
+					if recordErr != nil {
+						slog.Warn("failed to read S3 image metadata", "filename", im.Filename, "error", recordErr)
+						return nil
+					}
+					if err := UpdateImageMetadata(record); err != nil {
+						slog.Warn("failed to update S3 image metadata", "filename", im.Filename, "error", err)
+						return nil
+					}
+					res.Updated++
 					return nil
 				}
 				_ = DeleteImageLinks(im.Filename)
