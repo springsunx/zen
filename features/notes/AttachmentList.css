@@ -188,9 +188,10 @@
 }
 
 .col-date {
-    width: 100px;
+    width: 128px;
     flex-shrink: 0;
     text-align: center;
+    white-space: nowrap;
     color: var(--neutral-400);
     font-size: 14px;
 }

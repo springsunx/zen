@@ -642,6 +642,7 @@
   "files.tabs.media": "媒体",
   "files.tabs.attachments": "附件",
   "files.searchPlaceholder": "搜索文件名...",
+  "files.list.ingestedAt": "入库时间",
   "files.section.media": "媒体相册",
   "files.media.view": "媒体视图",
   "files.media.gallery": "相册视图",

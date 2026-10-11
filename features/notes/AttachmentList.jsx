@@ -146,7 +146,7 @@ export default function AttachmentList({ attachments = [], isSelectable = false,
         <div className="col-attachment-location">{t('files.location.label')}</div>
         <div className="col-tags">{t('attachments.list.tags')}</div>
         <div className="col-storage">{t('attachments.list.storage')}</div>
-        <div className="col-date">{t('attachments.list.date')}</div>
+        <div className="col-date">{t('files.list.ingestedAt')}</div>
         <div className="col-actions">{t('attachments.list.actions')}</div>
       </div>
       {attachments.map(att => (

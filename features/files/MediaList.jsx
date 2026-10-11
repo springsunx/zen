@@ -160,7 +160,7 @@ export default function MediaList({ images = [], videos = [], selectedIds = new 
           <div className="col-media-location">{t("files.location.label")}</div>
           <div className="col-media-tags">{t("images.list.tags")}</div>
           <div className="col-media-storage">{t("images.list.storage")}</div>
-          <div className="col-media-date">{t("images.list.date")}</div>
+          <div className="col-media-date">{t("files.list.ingestedAt")}</div>
           <div className="col-media-actions">{t("images.list.actions")}</div>
         </div>
         {media.map((item, index) => (

@@ -642,6 +642,7 @@
   "files.tabs.media": "Media",
   "files.tabs.attachments": "Attachments",
   "files.searchPlaceholder": "Search file names...",
+  "files.list.ingestedAt": "Ingested",
   "files.section.media": "Media album",
   "files.media.view": "Media view",
   "files.media.gallery": "Gallery view",

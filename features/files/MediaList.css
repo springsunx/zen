@@ -86,7 +86,7 @@
 .col-media-location { width: 82px; flex-shrink: 0; text-align: center; }
 .col-media-tags { display: flex; flex: .65; min-width: 0; flex-wrap: wrap; gap: 4px; }
 .col-media-storage { width: 70px; flex-shrink: 0; text-align: center; }
-.col-media-date { width: 100px; flex-shrink: 0; color: var(--neutral-400); text-align: center; }
+.col-media-date { width: 128px; flex-shrink: 0; color: var(--neutral-400); text-align: center; white-space: nowrap; }
 .col-media-actions { width: 36px; flex-shrink: 0; text-align: center; }
 .col-media-name a { display: block; overflow: hidden; color: var(--text-primary); font-family: var(--font-family-code); font-size: 14px; font-weight: 500; text-decoration: none; text-overflow: ellipsis; white-space: nowrap; }
 .col-media-name a:hover { color: var(--neutral-700); text-decoration: underline; }
