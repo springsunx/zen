@@ -280,22 +280,13 @@ func getImageInfo(file io.Reader) (*ImageInfo, error) {
 }
 
 // HandleDeleteImage deletes an image file and its DB record.
-// URL format: DELETE /api/images/{filename}/
+// URL format: DELETE /api/v1/images/{filename}/
 func HandleDeleteImage(w http.ResponseWriter, r *http.Request) {
-	path := r.URL.Path
-	idx := strings.Index(path, "/api/images/")
-	if idx == -1 {
-		utils.SendErrorResponse(w, "INVALID_PATH", "Invalid image delete path", fmt.Errorf("invalid path"), http.StatusBadRequest)
-		return
-	}
-	rel := path[idx+len("/api/images/"):]
-	rel = strings.TrimSuffix(rel, "/")
-	if rel == "" {
+	filename := r.PathValue("filename")
+	if filename == "" {
 		utils.SendErrorResponse(w, "INVALID_FILENAME", "Missing image filename", fmt.Errorf("missing filename"), http.StatusBadRequest)
 		return
 	}
-
-	filename := rel
 
 	// pre-check references unless force=true
 	force := r.URL.Query().Get("force") == "true"

@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strings"
 	"time"
 	"zen/commons/sqlite"
 	"zen/commons/utils"
@@ -63,15 +62,7 @@ func HandleUploadAttachment(w http.ResponseWriter, r *http.Request) {
 }
 
 func HandleDeleteAttachment(w http.ResponseWriter, r *http.Request) {
-	path := r.URL.Path
-	idx := strings.Index(path, "/api/attachments/")
-	if idx == -1 {
-		utils.SendErrorResponse(w, "INVALID_PATH", "Invalid attachment path.", fmt.Errorf("invalid path"), http.StatusBadRequest)
-		return
-	}
-
-	remainder := path[idx+len("/api/attachments/"):]
-	filename := strings.TrimSuffix(remainder, "/")
+	filename := r.PathValue("filename")
 	if filename == "" {
 		utils.SendErrorResponse(w, "INVALID_FILENAME", "Filename is required.", fmt.Errorf("empty filename"), http.StatusBadRequest)
 		return

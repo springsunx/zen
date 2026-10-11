@@ -86,18 +86,20 @@ export default function MediaList({ images = [], videos = [] }) {
       showToast(t("images.deleted"));
       window.dispatchEvent(new CustomEvent("images:refresh"));
     } catch (error) {
-      if (item.type === "image" && error?.code === "IMAGE_IN_USE" && Array.isArray(error?.referencedBy) && confirm(t("images.delete.confirm.inUse", { count: error.referencedBy.length }))) {
+      if (item.type === "image" && error?.code === "IMAGE_IN_USE" && Array.isArray(error?.referencedBy)) {
+        if (!confirm(t("images.delete.confirm.inUse", { count: error.referencedBy.length }))) return;
         try {
           await ApiClient.forceDeleteImage(item.filename);
           showToast(t("images.deleted"));
           window.dispatchEvent(new CustomEvent("images:refresh"));
         } catch (forceError) {
           console.error("Force delete image failed:", forceError);
+          showToast(t("images.delete.failed"));
         }
-      } else {
-        console.error("Delete media failed:", error);
-        showToast(t(item.type === "image" ? "images.delete.failed" : "attachments.list.deleteFailed"));
+        return;
       }
+      console.error("Delete media failed:", error);
+      showToast(t(item.type === "image" ? "images.delete.failed" : "attachments.list.deleteFailed"));
     }
   }
 
