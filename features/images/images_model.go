@@ -26,7 +26,10 @@ func noteVisibilityCondition(filter ImagesFilter) string {
 
 func GetAllImages(filter ImagesFilter) ([]Image, int, error) {
 	images := []Image{}
-	total := 0
+	total, err := countImages(filter)
+	if err != nil {
+		return images, 0, err
+	}
 	limit := filter.limit
 	if limit <= 0 {
 		limit = IMAGES_LIMIT
@@ -41,8 +44,7 @@ func GetAllImages(filter ImagesFilter) ([]Image, int, error) {
 		query = `
 				SELECT
 					i.filename, i.width, i.height, i.format, i.aspect_ratio,
-					i.file_size, i.caption, i.created_at,
-					COUNT(*) OVER() as total_count
+					i.file_size, i.caption, i.created_at
 				FROM images i
 				INNER JOIN note_images ni ON i.filename = ni.filename
 				INNER JOIN note_tags nt ON ni.note_id = nt.note_id
@@ -56,8 +58,7 @@ func GetAllImages(filter ImagesFilter) ([]Image, int, error) {
 		query = `
 				SELECT
 					i.filename, i.width, i.height, i.format, i.aspect_ratio,
-					i.file_size, i.caption, i.created_at,
-					COUNT(*) OVER() as total_count
+					i.file_size, i.caption, i.created_at
 				FROM focus_mode_tags fmt
 				JOIN note_tags nt ON fmt.tag_id = nt.tag_id
 				JOIN note_images ni ON nt.note_id = ni.note_id
@@ -72,8 +73,7 @@ func GetAllImages(filter ImagesFilter) ([]Image, int, error) {
 		query = `
 				SELECT DISTINCT
 					i.filename, i.width, i.height, i.format, i.aspect_ratio,
-					i.file_size, i.caption, i.created_at,
-					COUNT(*) OVER() as total_count
+					i.file_size, i.caption, i.created_at
 				FROM images i
 				INNER JOIN note_images ni ON i.filename = ni.filename
 				INNER JOIN notes n ON ni.note_id = n.note_id
@@ -101,7 +101,6 @@ func GetAllImages(filter ImagesFilter) ([]Image, int, error) {
 			&image.FileSize,
 			&image.Caption,
 			&image.CreatedAt,
-			&total,
 		)
 		if err != nil {
 			err = fmt.Errorf("error scanning image: %w", err)
@@ -109,16 +108,6 @@ func GetAllImages(filter ImagesFilter) ([]Image, int, error) {
 		}
 		images = append(images, image)
 	}
-	// COUNT(*) OVER() is carried by result rows. An out-of-range page has no
-	// rows, therefore no window value either; keep the pagination contract
-	// stable by returning the actual total instead of an accidental zero.
-	if len(images) == 0 && offset > 0 {
-		total, err = countImages(filter)
-		if err != nil {
-			return images, total, err
-		}
-	}
-
 	// Populate URL and storage metadata locally, then load all linked notes and
 	// tags in one query. The previous per-image query pattern became very slow
 	// for the file-management page.
