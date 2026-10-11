@@ -489,7 +489,7 @@
   "storage.provider.local": "Local",
   "storage.provider.s3": "S3 Compatible",
   "storage.endpoint": "Endpoint",
-  "storage.bucket": "Images Bucket",
+  "storage.bucket": "Media Bucket",
   "storage.accessKey": "Access Key",
   "storage.secretKey": "Secret Key",
   "storage.region": "Region",

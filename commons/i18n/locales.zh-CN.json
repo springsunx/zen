@@ -490,7 +490,7 @@
   "storage.provider.local": "本地",
   "storage.provider.s3": "S3 兼容",
   "storage.endpoint": "服务地址",
-  "storage.bucket": "图片存储桶",
+  "storage.bucket": "媒体存储桶",
   "storage.accessKey": "访问密钥",
   "storage.secretKey": "秘密密钥",
   "storage.region": "区域",
