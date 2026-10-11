@@ -33,7 +33,7 @@ function NoteLink({ noteId, title }) {
     event.stopPropagation();
     try {
       const note = await ApiClient.getNoteById(noteId);
-      openModal(<AppProvider><NotesProvider><NotesEditorModal note={note} onModalClose={(savedNote) => { if (savedNote) patchNote(noteId, savedNote); window.dispatchEvent(new CustomEvent("files:refresh")); }} /></NotesProvider></AppProvider>, ".note-modal-root");
+      openModal(<AppProvider><NotesProvider><NotesEditorModal note={note} onModalClose={(savedNote, result = {}) => { if (savedNote) patchNote(noteId, savedNote); if (result.mutated) window.dispatchEvent(new CustomEvent("files:refresh")); }} /></NotesProvider></AppProvider>, ".note-modal-root");
     } catch (error) {
       console.error("Failed to open note:", error);
     }

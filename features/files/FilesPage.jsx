@@ -141,7 +141,10 @@ function FilesPageContent() {
     const response = await ApiClient.getImages(null, null, page, false, IMAGE_PAGE_SIZE, true, true);
     const nextItems = getItems(response, "images");
     setImages((current) => page > 1 ? [...current, ...nextItems] : nextItems);
-    setImagesTotal(Number(response?.total) || 0);
+    const nextTotal = Number(response?.total) || 0;
+    // A legacy server may respond to an out-of-range page without a total.
+    // Never let that empty follow-up response erase the total already shown.
+    setImagesTotal((currentTotal) => page > 1 && nextTotal === 0 && currentTotal > 0 ? currentTotal : nextTotal);
   }
 
   async function reloadImagesThrough(pageCount) {

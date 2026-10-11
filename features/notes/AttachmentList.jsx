@@ -58,7 +58,7 @@ function NoteLink({ noteId, title }) {
       openModal(
         <AppProvider>
           <NotesProvider>
-            <NotesEditorModal note={note} onModalClose={(savedNote) => { if (savedNote) patchNote(noteId, savedNote); window.dispatchEvent(new CustomEvent('files:refresh')); }} />
+            <NotesEditorModal note={note} onModalClose={(savedNote, result = {}) => { if (savedNote) patchNote(noteId, savedNote); if (result.mutated) window.dispatchEvent(new CustomEvent('files:refresh')); }} />
           </NotesProvider>
         </AppProvider>,
         '.note-modal-root'

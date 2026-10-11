@@ -9,11 +9,12 @@ export default function NotesEditorModal({ note, isNewNote, onModalClose }) {
   const { setSelectedNote, selectedNote } = useNotes();
   const [isEditorEditable, setIsEditorEditable] = useState(false);
   const savedNoteRef = useRef(null);
+  const hasMutatedRef = useRef(false);
   function handleCloseModal() {
     document.title = "Zen";
     closeModal('.note-modal-root');
     if (onModalClose) {
-      onModalClose(savedNoteRef.current);
+      onModalClose(savedNoteRef.current, { mutated: hasMutatedRef.current });
     }
   }
 
@@ -34,6 +35,7 @@ export default function NotesEditorModal({ note, isNewNote, onModalClose }) {
 
   function handleSaved(n) {
     savedNoteRef.current = n;
+    hasMutatedRef.current = true;
     setSelectedNote(n);
   }
 
@@ -48,6 +50,7 @@ export default function NotesEditorModal({ note, isNewNote, onModalClose }) {
             onClose={handleCloseModal}
             onEditModeChange={setIsEditorEditable}
             onSaved={handleSaved}
+            onMutation={() => { hasMutatedRef.current = true; }}
           />
         </ModalContent>
       </ModalContainer>

@@ -109,6 +109,15 @@ func GetAllImages(filter ImagesFilter) ([]Image, int, error) {
 		}
 		images = append(images, image)
 	}
+	// COUNT(*) OVER() is carried by result rows. An out-of-range page has no
+	// rows, therefore no window value either; keep the pagination contract
+	// stable by returning the actual total instead of an accidental zero.
+	if len(images) == 0 && offset > 0 {
+		total, err = countImages(filter)
+		if err != nil {
+			return images, total, err
+		}
+	}
 
 	// Populate URL and storage metadata locally, then load all linked notes and
 	// tags in one query. The previous per-image query pattern became very slow
@@ -122,6 +131,46 @@ func GetAllImages(filter ImagesFilter) ([]Image, int, error) {
 	}
 
 	return images, total, nil
+}
+
+func countImages(filter ImagesFilter) (int, error) {
+	noteCondition := noteVisibilityCondition(filter)
+	var query string
+	var queryArgs []interface{}
+
+	if filter.tagID != 0 {
+		query = `
+			SELECT COUNT(DISTINCT i.filename)
+			FROM images i
+			INNER JOIN note_images ni ON i.filename = ni.filename
+			INNER JOIN note_tags nt ON ni.note_id = nt.note_id
+			INNER JOIN notes n ON ni.note_id = n.note_id
+			WHERE nt.tag_id = ? AND ` + noteCondition
+		queryArgs = []interface{}{filter.tagID}
+	} else if filter.focusModeID != 0 {
+		query = `
+			SELECT COUNT(DISTINCT i.filename)
+			FROM focus_mode_tags fmt
+			JOIN note_tags nt ON fmt.tag_id = nt.tag_id
+			JOIN note_images ni ON nt.note_id = ni.note_id
+			JOIN images i ON ni.filename = i.filename
+			JOIN notes n ON ni.note_id = n.note_id
+			WHERE fmt.focus_mode_id = ? AND ` + noteCondition
+		queryArgs = []interface{}{filter.focusModeID}
+	} else {
+		query = `
+			SELECT COUNT(DISTINCT i.filename)
+			FROM images i
+			INNER JOIN note_images ni ON i.filename = ni.filename
+			INNER JOIN notes n ON ni.note_id = n.note_id
+			WHERE ` + noteCondition
+	}
+
+	var total int
+	if err := sqlite.DB.QueryRow(query, queryArgs...).Scan(&total); err != nil {
+		return 0, fmt.Errorf("error counting images: %w", err)
+	}
+	return total, nil
 }
 
 func populateImageLinkedNotes(images []Image) error {

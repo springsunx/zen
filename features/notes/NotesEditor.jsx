@@ -46,7 +46,7 @@ import CodeMirrorEditor from "./CodeMirrorEditor.jsx";
 import "./NotesEditor.css";
 import { t } from "../../commons/i18n/index.js";
 
-export default function NotesEditor({ isNewNote, isModal, isExpandable = false, onClose, onEditModeChange = () => {}, onContentChange = () => {}, onSaved = () => {}, onToggleShare }) {
+export default function NotesEditor({ isNewNote, isModal, isExpandable = false, onClose, onEditModeChange = () => {}, onContentChange = () => {}, onSaved = () => {}, onMutation = () => {}, onToggleShare }) {
   const { selectedNote, handleNoteChange, patchNote, handlePinToggle } = useNotes();
   const { refreshTags } = useAppContext();
   const { isEditorExpanded, toggleEditorExpanded } = useLayout();
@@ -67,7 +67,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
 
   const { handleVersionsClick } = useNoteVersions({
     note: selectedNote,
-    onRestored: () => handleNoteChange(),
+    onRestored: () => { handleNoteChange(); onMutation(); },
     cancelAutoSave,
   });
 
@@ -647,6 +647,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
       closeModal();
       handleNoteChange();
       refreshTags();
+      onMutation();
       if (onClose) onClose(); else navigateTo("/", true);
     });
   }
@@ -656,6 +657,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
       showToast(t('notes.toast.archived'));
       handleNoteChange();
       refreshTags();
+      onMutation();
     });
   }
 
@@ -664,6 +666,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
       showToast(t('notes.toast.unarchived'));
       handleNoteChange();
       refreshTags();
+      onMutation();
     });
   }
 
@@ -671,6 +674,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
     ApiClient.restoreNote(selectedNote.noteId).then(() => {
       handleNoteChange();
       refreshTags();
+      onMutation();
     });
   }
 
