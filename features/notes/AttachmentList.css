@@ -41,6 +41,21 @@
     }
 }
 
+.attachment-row.is-selected {
+    background-color: var(--neutral-100);
+}
+
+.col-attachment-select {
+    width: 24px;
+    flex-shrink: 0;
+    text-align: center;
+
+    input {
+        margin: 0;
+        cursor: pointer;
+    }
+}
+
 .col-icon {
     width: 32px;
     flex-shrink: 0;

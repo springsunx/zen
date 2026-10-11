@@ -3,10 +3,12 @@ import GalleryLightbox from "../../commons/components/GalleryLightbox.jsx";
 import { t } from "../../commons/i18n/index.js";
 import ApiClient from "../../commons/http/ApiClient.js";
 import { showToast } from "../../commons/components/Toast.jsx";
-import { openModal } from "../../commons/components/Modal.jsx";
+import { closeModal, openModal } from "../../commons/components/Modal.jsx";
 import { AppProvider } from "../../commons/contexts/AppContext.jsx";
 import { NotesProvider, useNotes } from "../../commons/contexts/NotesContext.jsx";
 import NotesEditorModal from "../notes/NotesEditorModal.jsx";
+import ImageDeleteConfirmModal from "../notes/ImageDeleteConfirmModal.jsx";
+import FileDeleteConfirmModal from "./FileDeleteConfirmModal.jsx";
 import { TAG_COLORS } from "../tags/TagDetailModal.jsx";
 import { buildMediaItems } from "./MediaGallery.jsx";
 import "./MediaList.css";
@@ -31,7 +33,7 @@ function NoteLink({ noteId, title }) {
     event.stopPropagation();
     try {
       const note = await ApiClient.getNoteById(noteId);
-      openModal(<AppProvider><NotesProvider><NotesEditorModal note={note} onModalClose={(savedNote) => { if (savedNote) patchNote(noteId, savedNote); }} /></NotesProvider></AppProvider>, ".note-modal-root");
+      openModal(<AppProvider><NotesProvider><NotesEditorModal note={note} onModalClose={(savedNote) => { if (savedNote) patchNote(noteId, savedNote); window.dispatchEvent(new CustomEvent("files:refresh")); }} /></NotesProvider></AppProvider>, ".note-modal-root");
     } catch (error) {
       console.error("Failed to open note:", error);
     }
@@ -68,28 +70,69 @@ function NoteLocations({ linkedNotes }) {
   return <div className="media-note-locations">{locations.map((location) => <span key={location} className={`media-note-location is-${location}`}>{t(`files.location.${location}`)}</span>)}</div>;
 }
 
-export default function MediaList({ images = [], videos = [] }) {
+export default function MediaList({ images = [], videos = [], selectedIds = new Set(), onToggleSelect = () => {}, onToggleSelectAll = () => {} }) {
   const [openIndex, setOpenIndex] = useState(null);
   const media = useMemo(() => buildMediaItems(images, videos), [images, videos]);
+
+  function requestDeleteConfirmation(description, onConfirm) {
+    return new Promise((resolve, reject) => {
+      const handleCancel = () => {
+        closeModal();
+        resolve(false);
+      };
+      const handleConfirm = async () => {
+        try {
+          await onConfirm();
+          closeModal();
+          resolve(true);
+        } catch (error) {
+          closeModal();
+          reject(error);
+        }
+      };
+      openModal(<FileDeleteConfirmModal description={description} onConfirm={handleConfirm} onClose={handleCancel} />);
+    });
+  }
+
+  function requestReferencedImageDelete(item, noteIds) {
+    return new Promise((resolve, reject) => {
+      const handleCancel = () => {
+        closeModal();
+        resolve(false);
+      };
+      const handleConfirm = async () => {
+        try {
+          await ApiClient.forceDeleteImage(item.filename);
+          closeModal();
+          resolve(true);
+        } catch (error) {
+          closeModal();
+          reject(error);
+        }
+      };
+      openModal(<ImageDeleteConfirmModal filename={item.filename} noteIds={noteIds} onConfirm={handleConfirm} onCancel={handleCancel} />);
+    });
+  }
 
   async function handleDelete(event, item) {
     event.stopPropagation();
     try {
       if (item.type === "video") {
-        if (!confirm(t("attachments.list.deleteConfirm"))) return;
-        await ApiClient.deleteAttachment(item.filename);
+        const deleted = await requestDeleteConfirmation(t("files.delete.desc", { filename: item.filename }), () => ApiClient.deleteAttachment(item.filename));
+        if (!deleted) return;
         showToast(t("attachments.list.deleted"));
         window.dispatchEvent(new CustomEvent("attachments:refresh"));
         return;
       }
-      await ApiClient.deleteImage(item.filename);
+      const deleted = await requestDeleteConfirmation(t("files.delete.desc", { filename: item.filename }), () => ApiClient.deleteImage(item.filename));
+      if (!deleted) return;
       showToast(t("images.deleted"));
       window.dispatchEvent(new CustomEvent("images:refresh"));
     } catch (error) {
       if (item.type === "image" && error?.code === "IMAGE_IN_USE" && Array.isArray(error?.referencedBy)) {
-        if (!confirm(t("images.delete.confirm.inUse", { count: error.referencedBy.length }))) return;
         try {
-          await ApiClient.forceDeleteImage(item.filename);
+          const deleted = await requestReferencedImageDelete(item, error.referencedBy);
+          if (!deleted) return;
           showToast(t("images.deleted"));
           window.dispatchEvent(new CustomEvent("images:refresh"));
         } catch (forceError) {
@@ -107,6 +150,7 @@ export default function MediaList({ images = [], videos = [] }) {
     <>
       <div className="media-table">
         <div className="media-table-header">
+		  <div className="col-media-select"><input type="checkbox" checked={media.length > 0 && media.every((item) => selectedIds.has(item.id))} onChange={onToggleSelectAll} aria-label={t("files.bulk.selectAll")} /></div>
           <div className="col-media-thumb">{t("images.list.thumb")}</div>
           <div className="col-media-name">{t("images.list.filename")}</div>
           <div className="col-media-type">{t("files.media.type")}</div>
@@ -120,7 +164,8 @@ export default function MediaList({ images = [], videos = [] }) {
           <div className="col-media-actions">{t("images.list.actions")}</div>
         </div>
         {media.map((item, index) => (
-          <div className="media-table-row" key={item.id}>
+          <div className={`media-table-row${selectedIds.has(item.id) ? " is-selected" : ""}`} key={item.id}>
+			<div className="col-media-select"><input type="checkbox" checked={selectedIds.has(item.id)} onChange={() => onToggleSelect(item.id)} aria-label={t("files.bulk.selectItem")} /></div>
             <div className="col-media-thumb" onClick={() => setOpenIndex(index)}>
               {item.type === "image" ? <img src={item.thumbnailUrl} className="media-table-thumb" loading="lazy" decoding="async" width="48" height="48" alt="" /> : <span className="media-video-thumb"><svg viewBox="0 0 24 24" width="20" height="20"><path d="M8 5v14l11-7z" fill="currentColor" /></svg></span>}
             </div>

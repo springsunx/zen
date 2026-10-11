@@ -127,6 +127,20 @@
     font: var(--sm);
 }
 
+.files-bulk-actions {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: var(--spacing-2);
+    color: var(--text-secondary);
+    font: var(--sm);
+
+    .button {
+        margin: 0;
+        white-space: nowrap;
+    }
+}
+
 .files-view-switch {
     display: flex;
     flex-shrink: 0;

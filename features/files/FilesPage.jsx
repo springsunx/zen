@@ -4,7 +4,7 @@ import MobileNavbar from "../../commons/components/MobileNavbar.jsx";
 import EmptyState from "../../commons/components/EmptyState.jsx";
 import Spinner from "../../commons/components/Spinner.jsx";
 import Button from "../../commons/components/Button.jsx";
-import { ModalBackdrop, ModalContainer, ModalContent, ModalFooter, ModalHeader } from "../../commons/components/Modal.jsx";
+import { closeModal, ModalBackdrop, ModalContainer, ModalContent, ModalFooter, ModalHeader, openModal } from "../../commons/components/Modal.jsx";
 import { AttachmentsIcon, GalleryViewIcon, ImagesIcon, ListViewIcon } from "../../commons/components/Icon.jsx";
 import { LayoutProvider } from "../../commons/contexts/LayoutContext.jsx";
 import { NotesProvider } from "../../commons/contexts/NotesContext.jsx";
@@ -12,8 +12,9 @@ import ApiClient from "../../commons/http/ApiClient.js";
 import { showToast } from "../../commons/components/Toast.jsx";
 import { t } from "../../commons/i18n/index.js";
 import AttachmentList from "../notes/AttachmentList.jsx";
-import MediaGallery, { isVideoAttachment } from "./MediaGallery.jsx";
+import MediaGallery, { buildMediaItems, isVideoAttachment } from "./MediaGallery.jsx";
 import MediaList from "./MediaList.jsx";
+import FileDeleteConfirmModal from "./FileDeleteConfirmModal.jsx";
 import "./FilesPage.css";
 
 const IMAGE_PAGE_SIZE = 30;
@@ -124,7 +125,10 @@ function FilesPageContent() {
   const scrollContentRef = useRef(null);
   const [scrollbarWidth, setScrollbarWidth] = useState(0);
   const [isCleaning, setIsCleaning] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [imageCleanupPlan, setImageCleanupPlan] = useState(null);
+  const [selectedMediaIds, setSelectedMediaIds] = useState(new Set());
+  const [selectedAttachmentFilenames, setSelectedAttachmentFilenames] = useState(new Set());
 
   async function loadImages(page = 1) {
     const response = await ApiClient.getImages(null, null, page, false, IMAGE_PAGE_SIZE, true, true);
@@ -178,11 +182,14 @@ function FilesPageContent() {
 
   useEffect(() => {
     const refresh = () => refreshFiles(tab);
+    const refreshAll = () => refreshFiles("all");
     window.addEventListener("images:refresh", refresh);
     window.addEventListener("attachments:refresh", refresh);
+    window.addEventListener("files:refresh", refreshAll);
     return () => {
       window.removeEventListener("images:refresh", refresh);
       window.removeEventListener("attachments:refresh", refresh);
+      window.removeEventListener("files:refresh", refreshAll);
     };
   }, [tab]);
 
@@ -224,7 +231,94 @@ function FilesPageContent() {
   );
   const videoAttachments = useMemo(() => visibleAttachments.filter(isVideoAttachment), [visibleAttachments]);
   const fileAttachments = useMemo(() => visibleAttachments.filter((attachment) => !isVideoAttachment(attachment)), [visibleAttachments]);
+  const mediaItems = useMemo(() => buildMediaItems(visibleImages, videoAttachments), [visibleImages, videoAttachments]);
   const mediaCount = visibleImages.length + videoAttachments.length;
+  const selectedCount = tab === "media" ? selectedMediaIds.size : selectedAttachmentFilenames.size;
+
+  useEffect(() => {
+    setSelectedMediaIds(new Set());
+    setSelectedAttachmentFilenames(new Set());
+  }, [tab, normalizedQuery]);
+
+  function toggleMediaSelection(id) {
+    setSelectedMediaIds((selected) => {
+      const next = new Set(selected);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAllMediaSelection() {
+    setSelectedMediaIds((selected) => {
+      const next = new Set(selected);
+      const allSelected = mediaItems.length > 0 && mediaItems.every((item) => next.has(item.id));
+      mediaItems.forEach((item) => allSelected ? next.delete(item.id) : next.add(item.id));
+      return next;
+    });
+  }
+
+  function toggleAttachmentSelection(filename) {
+    setSelectedAttachmentFilenames((selected) => {
+      const next = new Set(selected);
+      next.has(filename) ? next.delete(filename) : next.add(filename);
+      return next;
+    });
+  }
+
+  function toggleAllAttachmentSelection() {
+    setSelectedAttachmentFilenames((selected) => {
+      const next = new Set(selected);
+      const allSelected = fileAttachments.length > 0 && fileAttachments.every((attachment) => next.has(attachment.filename));
+      fileAttachments.forEach((attachment) => allSelected ? next.delete(attachment.filename) : next.add(attachment.filename));
+      return next;
+    });
+  }
+
+  async function handleBulkDelete() {
+    const selectedItems = tab === "media"
+      ? mediaItems.filter((item) => selectedMediaIds.has(item.id))
+      : fileAttachments.filter((attachment) => selectedAttachmentFilenames.has(attachment.filename));
+    if (selectedItems.length === 0 || isBulkDeleting) return;
+
+    const referencedImages = tab === "media"
+      ? selectedItems.filter((item) => item.type === "image" && item.linkedNotes?.length > 0)
+      : [];
+    const confirmation = referencedImages.length > 0
+      ? t("files.bulk.deleteReferencedConfirm", { count: selectedItems.length, referenced: referencedImages.length })
+      : t("files.bulk.deleteConfirm", { count: selectedItems.length });
+    const confirmed = await new Promise((resolve) => {
+      const handleClose = () => {
+        closeModal();
+        resolve(false);
+      };
+      openModal(<FileDeleteConfirmModal description={confirmation} onClose={handleClose} onConfirm={() => { closeModal(); resolve(true); }} />);
+    });
+    if (!confirmed) return;
+
+    setIsBulkDeleting(true);
+    let deleted = 0;
+    let failed = 0;
+    for (const item of selectedItems) {
+      try {
+        if (tab === "media" && item.type === "image") {
+          if (item.linkedNotes?.length > 0) await ApiClient.forceDeleteImage(item.filename);
+          else await ApiClient.deleteImage(item.filename);
+        } else {
+          await ApiClient.deleteAttachment(item.filename);
+        }
+        deleted++;
+      } catch (error) {
+        failed++;
+        console.error("Bulk file deletion failed:", error);
+      }
+    }
+    setSelectedMediaIds(new Set());
+    setSelectedAttachmentFilenames(new Set());
+    setIsBulkDeleting(false);
+    await refreshFiles("all");
+    if (failed > 0) showToast(t("files.bulk.partialFailed", { deleted, failed }));
+    else showToast(t("files.bulk.deleted", { count: deleted }));
+  }
 
   async function handleCleanup(kind) {
     if (isCleaning) return;
@@ -345,14 +439,14 @@ function FilesPageContent() {
     if (mediaView === "gallery") {
       return <MediaGallery images={visibleImages} videos={videoAttachments} thumbnailSize={mediaThumbnailSize} />;
     }
-    return <MediaList images={visibleImages} videos={videoAttachments} />;
+    return <MediaList images={visibleImages} videos={videoAttachments} selectedIds={selectedMediaIds} onToggleSelect={toggleMediaSelection} onToggleSelectAll={toggleAllMediaSelection} />;
   }
 
   function renderAttachments() {
     if (fileAttachments.length === 0) {
       return <EmptyState icon={<AttachmentsIcon />} title={t("files.empty.attachments.title")} description={t("files.empty.attachments.desc")} />;
     }
-    return <AttachmentList attachments={fileAttachments} />;
+    return <AttachmentList attachments={fileAttachments} isSelectable selectedFilenames={selectedAttachmentFilenames} onToggleSelect={toggleAttachmentSelection} onToggleSelectAll={toggleAllAttachmentSelection} />;
   }
 
   let content;
@@ -390,6 +484,7 @@ function FilesPageContent() {
             ))}
           </div>
           <input className="files-search" type="search" value={query} onInput={(event) => setQuery(event.target.value)} placeholder={t("files.searchPlaceholder")} aria-label={t("files.searchPlaceholder")} />
+          {selectedCount > 0 && <div className="files-bulk-actions"><span>{t("files.bulk.selected", { count: selectedCount })}</span><Button variant="danger" isDisabled={isBulkDeleting} onClick={handleBulkDelete}>{t("files.bulk.delete")}</Button></div>}
           {tab === "media" && (
             <div className="files-media-controls">
               {mediaView === "gallery" && (
@@ -408,11 +503,11 @@ function FilesPageContent() {
           <div className="files-fixed-table-header">
             {tab === "media" && mediaView === "list" ? (
               <div className="media-table-header">
-                <div className="col-media-thumb">{t("images.list.thumb")}</div><div className="col-media-name">{t("images.list.filename")}</div><div className="col-media-type">{t("files.media.type")}</div><div className="col-media-dimensions">{t("images.list.dimensions")}</div><div className="col-media-size">{t("images.list.size")}</div><div className="col-media-notes">{t("images.list.linkedNotes")}</div><div className="col-media-location">{t("files.location.label")}</div><div className="col-media-tags">{t("images.list.tags")}</div><div className="col-media-storage">{t("images.list.storage")}</div><div className="col-media-date">{t("images.list.date")}</div><div className="col-media-actions">{t("images.list.actions")}</div>
+                <div className="col-media-select"><input type="checkbox" checked={mediaItems.length > 0 && mediaItems.every((item) => selectedMediaIds.has(item.id))} onChange={toggleAllMediaSelection} aria-label={t("files.bulk.selectAll")} /></div><div className="col-media-thumb">{t("images.list.thumb")}</div><div className="col-media-name">{t("images.list.filename")}</div><div className="col-media-type">{t("files.media.type")}</div><div className="col-media-dimensions">{t("images.list.dimensions")}</div><div className="col-media-size">{t("images.list.size")}</div><div className="col-media-notes">{t("images.list.linkedNotes")}</div><div className="col-media-location">{t("files.location.label")}</div><div className="col-media-tags">{t("images.list.tags")}</div><div className="col-media-storage">{t("images.list.storage")}</div><div className="col-media-date">{t("images.list.date")}</div><div className="col-media-actions">{t("images.list.actions")}</div>
               </div>
             ) : tab === "attachments" ? (
               <div className="attachment-table-header">
-                <div className="col-name">{t("attachments.list.name")}</div><div className="col-type">{t("attachments.list.type")}</div><div className="col-size">{t("attachments.list.size")}</div><div className="col-notes">{t("attachments.list.linkedNotes")}</div><div className="col-attachment-location">{t("files.location.label")}</div><div className="col-tags">{t("attachments.list.tags")}</div><div className="col-storage">{t("attachments.list.storage")}</div><div className="col-date">{t("attachments.list.date")}</div><div className="col-actions">{t("attachments.list.actions")}</div>
+                <div className="col-attachment-select"><input type="checkbox" checked={fileAttachments.length > 0 && fileAttachments.every((attachment) => selectedAttachmentFilenames.has(attachment.filename))} onChange={toggleAllAttachmentSelection} aria-label={t("files.bulk.selectAll")} /></div><div className="col-name">{t("attachments.list.name")}</div><div className="col-type">{t("attachments.list.type")}</div><div className="col-size">{t("attachments.list.size")}</div><div className="col-notes">{t("attachments.list.linkedNotes")}</div><div className="col-attachment-location">{t("files.location.label")}</div><div className="col-tags">{t("attachments.list.tags")}</div><div className="col-storage">{t("attachments.list.storage")}</div><div className="col-date">{t("attachments.list.date")}</div><div className="col-actions">{t("attachments.list.actions")}</div>
               </div>
             ) : null}
           </div>
@@ -423,8 +518,8 @@ function FilesPageContent() {
       </main>
       <MobileNavbar />
       {imageCleanupPlan && <ImageCleanupConfirmModal plan={imageCleanupPlan} onConfirm={runImageCleanup} onClose={() => setImageCleanupPlan(null)} />}
-      <div className="modal-root"></div>
       <div className="note-modal-root"></div>
+      <div className="modal-root"></div>
       <div className="toast-root"></div>
     </div>
   );

@@ -8,11 +8,17 @@ import { t } from "../../commons/i18n/index.js";
 
 
 export default function ImageDeleteConfirmModal({ filename, noteIds = [], onConfirm, onCancel }) {
-
+  const hasReferences = noteIds.length > 0;
   const [notes, setNotes] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(hasReferences);
 
   useEffect(() => {
+    if (!hasReferences) {
+      setNotes([]);
+      setLoading(false);
+      return undefined;
+    }
+
     let cancelled = false;
     async function load() {
       try {
@@ -30,9 +36,9 @@ export default function ImageDeleteConfirmModal({ filename, noteIds = [], onConf
     }
     load();
     return () => { cancelled = true; };
-  }, [noteIds.join(',')]);
+  }, [hasReferences, noteIds.join(',')]);
 
-  const title = t('images.delete.confirm.title');
+  const title = t(hasReferences ? 'images.delete.confirm.title' : 'images.delete.confirm.titleGeneral');
 
   return (
     <ModalBackdrop onClose={onCancel} isCentered={true} closeOnBackdrop={true}>
@@ -41,29 +47,33 @@ export default function ImageDeleteConfirmModal({ filename, noteIds = [], onConf
         <ModalContent>
           <div style={{ maxWidth: '520px' }}>
             <p style={{ marginBottom: '8px' }}>{t('images.delete.confirm.file', { filename })}</p>
-            {loading ? (
-              <p>{t('images.delete.loading')}</p>
-            ) : (
-              <ul style={{ paddingLeft: '16px', margin: 0 }}>
-                {notes.length === 0 ? (
-                  <li>{t('images.delete.notes.loadFail')}</li>
+            {hasReferences ? (
+              <>
+                {loading ? (
+                  <p>{t('images.delete.loading')}</p>
                 ) : (
-                  notes.map(n => (
-                    <li key={n.noteId} style={{ marginBottom: '6px' }}>
-                      <Link to={`/notes/${n.noteId}`} shouldPreserveSearchParams>
-                        {n.title || t('images.delete.untitled', { id: n.noteId })}
-                      </Link>
-                    </li>
-                  ))
+                  <ul style={{ paddingLeft: '16px', margin: 0 }}>
+                    {notes.length === 0 ? (
+                      <li>{t('images.delete.notes.loadFail')}</li>
+                    ) : (
+                      notes.map(n => (
+                        <li key={n.noteId} style={{ marginBottom: '6px' }}>
+                          <Link to={`/notes/${n.noteId}`} shouldPreserveSearchParams>
+                            {n.title || t('images.delete.untitled', { id: n.noteId })}
+                          </Link>
+                        </li>
+                      ))
+                    )}
+                  </ul>
                 )}
-              </ul>
-            )}
-            <p style={{ marginTop: '8px', color: 'var(--neutral-500)' }}>{t('images.delete.confirm.desc')}</p>
+                <p style={{ marginTop: '8px', color: 'var(--neutral-500)' }}>{t('images.delete.confirm.desc')}</p>
+              </>
+            ) : <p className="modal-description">{t('images.delete.confirm.descGeneral')}</p>}
           </div>
         </ModalContent>
         <ModalFooter isRightAligned={true}>
           <Button onClick={onCancel}>{t('images.delete.confirm.cancel')}</Button>
-          <Button variant="danger" onClick={onConfirm} style={{ marginLeft: '8px' }}>{t('images.delete.confirm.ok')}</Button>
+          <Button variant="danger" onClick={onConfirm} style={{ marginLeft: '8px' }}>{t(hasReferences ? 'images.delete.confirm.ok' : 'files.delete.confirm')}</Button>
         </ModalFooter>
       </ModalContainer>
     </ModalBackdrop>

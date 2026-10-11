@@ -2,10 +2,11 @@ import { h } from "../../assets/preact.esm.js";
 import { t } from "../../commons/i18n/index.js";
 import ApiClient from "../../commons/http/ApiClient.js";
 import { showToast } from "../../commons/components/Toast.jsx";
-import { openModal } from "../../commons/components/Modal.jsx";
+import { closeModal, openModal } from "../../commons/components/Modal.jsx";
 import { AppProvider } from "../../commons/contexts/AppContext.jsx";
 import { NotesProvider, useNotes } from "../../commons/contexts/NotesContext.jsx";
 import NotesEditorModal from "./NotesEditorModal.jsx";
+import FileDeleteConfirmModal from "../files/FileDeleteConfirmModal.jsx";
 import { TAG_COLORS } from "../tags/TagDetailModal.jsx";
 import "./AttachmentList.css";
 
@@ -57,7 +58,7 @@ function NoteLink({ noteId, title }) {
       openModal(
         <AppProvider>
           <NotesProvider>
-            <NotesEditorModal note={note} onModalClose={(savedNote) => { if (savedNote) patchNote(noteId, savedNote); }} />
+            <NotesEditorModal note={note} onModalClose={(savedNote) => { if (savedNote) patchNote(noteId, savedNote); window.dispatchEvent(new CustomEvent('files:refresh')); }} />
           </NotesProvider>
         </AppProvider>,
         '.note-modal-root'
@@ -100,12 +101,28 @@ function NoteLocations({ linkedNotes }) {
   return <div className="attachment-note-locations">{locations.map((location) => <span key={location} className={`attachment-note-location is-${location}`}>{t(`files.location.${location}`)}</span>)}</div>;
 }
 
-export default function AttachmentList({ attachments = [] }) {
+export default function AttachmentList({ attachments = [], isSelectable = false, selectedFilenames = new Set(), onToggleSelect = () => {}, onToggleSelectAll = () => {} }) {
   async function handleDelete(e, filename) {
     e.stopPropagation();
-    if (!confirm(t('attachments.list.deleteConfirm'))) return;
     try {
-      await ApiClient.deleteAttachment(filename);
+      const confirmed = await new Promise((resolve, reject) => {
+        const handleClose = () => {
+          closeModal();
+          resolve(false);
+        };
+        const handleConfirm = async () => {
+          try {
+            await ApiClient.deleteAttachment(filename);
+            closeModal();
+            resolve(true);
+          } catch (error) {
+            closeModal();
+            reject(error);
+          }
+        };
+        openModal(<FileDeleteConfirmModal description={t('files.delete.desc', { filename })} onConfirm={handleConfirm} onClose={handleClose} />);
+      });
+      if (!confirmed) return;
       showToast(t('attachments.list.deleted'));
       window.dispatchEvent(new CustomEvent('attachments:refresh'));
     } catch (err) {
@@ -121,6 +138,7 @@ export default function AttachmentList({ attachments = [] }) {
   return (
     <div className="attachment-table">
       <div className="attachment-table-header">
+        {isSelectable && <div className="col-attachment-select"><input type="checkbox" checked={attachments.length > 0 && attachments.every((attachment) => selectedFilenames.has(attachment.filename))} onChange={onToggleSelectAll} aria-label={t('files.bulk.selectAll')} /></div>}
         <div className="col-name">{t('attachments.list.name')}</div>
         <div className="col-type">{t('attachments.list.type')}</div>
         <div className="col-size">{t('attachments.list.size')}</div>
@@ -132,7 +150,8 @@ export default function AttachmentList({ attachments = [] }) {
         <div className="col-actions">{t('attachments.list.actions')}</div>
       </div>
       {attachments.map(att => (
-        <div className="attachment-row" key={att.filename}>
+          <div className={`attachment-row${isSelectable && selectedFilenames.has(att.filename) ? ' is-selected' : ''}`} key={att.filename}>
+		  {isSelectable && <div className="col-attachment-select"><input type="checkbox" checked={selectedFilenames.has(att.filename)} onChange={() => onToggleSelect(att.filename)} aria-label={t('files.bulk.selectItem')} /></div>}
           <div className="col-name">
             <span className="attachment-file-icon">{getFileIcon(att.contentType)}</span>
             <a href={att.url} target="_blank" rel="noopener" title={att.originalName}>

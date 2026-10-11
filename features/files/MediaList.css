@@ -74,6 +74,9 @@
 .media-table-header { position: sticky; top: 0; z-index: 1; padding: 10px 12px; border-bottom: 2px solid var(--neutral-200); color: var(--neutral-400); background: var(--bg-primary); font-size: 13px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase; }
 .media-table-header > * { text-align: center; }
 .media-table-row:hover { background: var(--bg-secondary); .media-delete { opacity: 1; } }
+.media-table-row.is-selected { background: var(--neutral-100); }
+.col-media-select { width: 24px; flex-shrink: 0; text-align: center; }
+.col-media-select input { margin: 0; cursor: pointer; }
 .col-media-thumb { width: 56px; flex-shrink: 0; padding-right: 8px; cursor: pointer; }
 .col-media-name { flex: 1.5; min-width: 0; overflow: hidden; text-align: center; }
 .col-media-type { width: 62px; flex-shrink: 0; text-align: center; }

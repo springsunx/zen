@@ -71,23 +71,43 @@ export default function ImageTable({ images = [] }) {
   const [openIndex, setOpenIndex] = useState(null);
   const urls = images.map(img => img.url);
 
-  async function handleDelete(e, filename, referencedBy) {
+  function requestImageDelete(filename, noteIds = [], force = false) {
+    return new Promise((resolve, reject) => {
+      const handleCancel = () => {
+        closeModal();
+        resolve(false);
+      };
+      const handleConfirm = async () => {
+        try {
+          await (force ? ApiClient.forceDeleteImage(filename) : ApiClient.deleteImage(filename));
+          closeModal();
+          resolve(true);
+        } catch (error) {
+          closeModal();
+          reject(error);
+        }
+      };
+      openModal(<ImageDeleteConfirmModal filename={filename} noteIds={noteIds} onConfirm={handleConfirm} onCancel={handleCancel} />);
+    });
+  }
+
+  async function handleDelete(e, filename) {
     e.stopPropagation();
     try {
-      await ApiClient.deleteImage(filename);
+      const deleted = await requestImageDelete(filename);
+      if (!deleted) return;
       showToast(t('images.deleted'));
       window.dispatchEvent(new CustomEvent('images:refresh'));
     } catch (err) {
       if (err?.code === "IMAGE_IN_USE" && Array.isArray(err?.referencedBy)) {
-        const confirmed = confirm(t('images.delete.confirm.inUse', { count: err.referencedBy.length }));
-        if (confirmed) {
-          try {
-            await ApiClient.forceDeleteImage(filename);
-            showToast(t('images.deleted'));
-            window.dispatchEvent(new CustomEvent('images:refresh'));
-          } catch (e) {
-            console.error('Force delete failed:', e);
-          }
+        try {
+          const deleted = await requestImageDelete(filename, err.referencedBy, true);
+          if (!deleted) return;
+          showToast(t('images.deleted'));
+          window.dispatchEvent(new CustomEvent('images:refresh'));
+        } catch (forceError) {
+          console.error('Force delete failed:', forceError);
+          showToast(t('images.delete.failed'));
         }
       } else {
         console.error('Delete image failed:', err);
