@@ -6,6 +6,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/xml"
 	"fmt"
 	"io"
 	"net/http"
@@ -15,7 +16,7 @@ import (
 )
 
 // S3Client is a minimal S3-compatible client using only the standard library.
-// It supports PutObject, RemoveObject, and BucketExists via AWS Signature V4.
+// It supports common object and bucket operations via AWS Signature V4.
 type S3Client struct {
 	endpoint  string // host:port, no scheme
 	accessKey string
@@ -171,6 +172,60 @@ func (c *S3Client) ObjectExists(ctx context.Context, bucket, key string) (bool, 
 		return false, nil
 	default:
 		return false, fmt.Errorf("HEAD failed with status %d", resp.StatusCode)
+	}
+}
+
+// ListObjects returns every object key in a bucket using the S3 ListObjectsV2 API.
+func (c *S3Client) ListObjects(ctx context.Context, bucket string) ([]string, error) {
+	type listResponse struct {
+		IsTruncated           bool   `xml:"IsTruncated"`
+		NextContinuationToken string `xml:"NextContinuationToken"`
+		Contents              []struct {
+			Key string `xml:"Key"`
+		} `xml:"Contents"`
+	}
+
+	var keys []string
+	continuationToken := ""
+	for {
+		query := url.Values{"list-type": {"2"}}
+		if continuationToken != "" {
+			query.Set("continuation-token", continuationToken)
+		}
+		requestURL := fmt.Sprintf("%s://%s/%s?%s", c.scheme(), c.endpoint, bucket, query.Encode())
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURL, nil)
+		if err != nil {
+			return nil, err
+		}
+		if err := c.sign(req, nil); err != nil {
+			return nil, err
+		}
+		resp, err := c.client.Do(req)
+		if err != nil {
+			return nil, err
+		}
+		if resp.StatusCode != http.StatusOK {
+			io.Copy(io.Discard, resp.Body)
+			resp.Body.Close()
+			return nil, fmt.Errorf("ListObjectsV2 failed with status %d", resp.StatusCode)
+		}
+
+		var result listResponse
+		decodeErr := xml.NewDecoder(resp.Body).Decode(&result)
+		resp.Body.Close()
+		if decodeErr != nil {
+			return nil, fmt.Errorf("decoding ListObjectsV2 response: %w", decodeErr)
+		}
+		for _, object := range result.Contents {
+			keys = append(keys, object.Key)
+		}
+		if !result.IsTruncated {
+			return keys, nil
+		}
+		if result.NextContinuationToken == "" {
+			return nil, fmt.Errorf("ListObjectsV2 response is truncated without a continuation token")
+		}
+		continuationToken = result.NextContinuationToken
 	}
 }
 

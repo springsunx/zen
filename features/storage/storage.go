@@ -188,6 +188,11 @@ func (p *S3Provider) ObjectExists(filename string) (bool, error) {
 	return p.client.ObjectExists(context.Background(), p.bucket, filename)
 }
 
+// ListObjects returns every object key in the configured bucket.
+func (p *S3Provider) ListObjects() ([]string, error) {
+	return p.client.ListObjects(context.Background(), p.bucket)
+}
+
 // ── Config DB Operations ──
 
 func GetConfig() (StorageConfig, error) {

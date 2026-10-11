@@ -11,7 +11,9 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -324,7 +326,7 @@ func HandleDeleteImage(w http.ResponseWriter, r *http.Request) {
 
 // HandleCleanupImages cleans up image records and files.
 // Local mode: registers disk files, removes missing/orphaned files.
-// S3 mode: registers note-referenced images, deletes unused S3 files.
+// S3 mode: registers note-referenced images and removes unused or untracked S3 files.
 // Both modes: full rebuild of note_images links from note content.
 func HandleCleanupImages(w http.ResponseWriter, r *http.Request) {
 	type result struct {
@@ -352,6 +354,42 @@ func HandleCleanupImages(w http.ResponseWriter, r *http.Request) {
 
 	// ── Collect note image references ──
 	referencedInContent := collectNoteImageRefs()
+	linkedInDatabase, linksErr := collectDatabaseImageLinks()
+	if linksErr != nil {
+		utils.SendErrorResponse(w, "IMAGE_LINKS_READ_FAILED", "Unable to read image links", linksErr, http.StatusInternalServerError)
+		return
+	}
+	isReferenced := func(filename string) bool {
+		return len(referencedInContent[filename]) > 0 || linkedInDatabase[filename]
+	}
+
+	var s3p *storage.S3Provider
+	var s3ObjectKeys []string
+	s3Objects := make(map[string]bool)
+	if isS3 {
+		s3p, _ = storage.GetProvider().(*storage.S3Provider)
+		if s3p == nil {
+			utils.SendErrorResponse(w, "S3_PROVIDER_UNAVAILABLE", "S3 image storage is unavailable", fmt.Errorf("image provider is not S3"), http.StatusInternalServerError)
+			return
+		}
+		var listErr error
+		s3ObjectKeys, listErr = s3p.ListObjects()
+		if listErr != nil {
+			utils.SendErrorResponse(w, "S3_LIST_FAILED", "Unable to list S3 image objects", listErr, http.StatusBadGateway)
+			return
+		}
+		for _, key := range s3ObjectKeys {
+			s3Objects[key] = true
+		}
+	}
+
+	appendUntrackedS3Images := func(target *[]string) {
+		for _, filename := range s3ObjectKeys {
+			if isImageFile(filename) && !dbFilenames[filename] && !isReferenced(filename) {
+				*target = append(*target, filename)
+			}
+		}
+	}
 
 	if dryRun {
 		if isS3 {
@@ -363,29 +401,36 @@ func HandleCleanupImages(w http.ResponseWriter, r *http.Request) {
 			} else {
 				res.LocalFiles = append(res.LocalFiles, localFiles...)
 			}
-			s3p, _ := storage.GetProvider().(*storage.S3Provider)
+			appendUntrackedS3Images(&res.OrphanFiles)
 			forEachAllImages(func(im Image) error {
-				if len(referencedInContent[im.Filename]) == 0 {
-					res.OrphanFiles = append(res.OrphanFiles, im.Filename)
+				// Older imports can leave non-image records in this table. They
+				// belong to attachment management and must never be deleted by an
+				// image cleanup.
+				if !isImageFile(im.Filename) {
 					return nil
 				}
-				if s3p == nil {
-					return nil
-				}
-				exists, existsErr := s3p.ObjectExists(im.Filename)
-				if existsErr != nil {
-					slog.Warn("failed to check S3 image", "filename", im.Filename, "error", existsErr)
-					return nil
-				}
-				if !exists {
+				if !s3Objects[im.Filename] {
 					res.MissingFiles = append(res.MissingFiles, im.Filename)
+					return nil
+				}
+				if !isReferenced(im.Filename) {
+					res.OrphanFiles = append(res.OrphanFiles, im.Filename)
 				}
 				return nil
 			})
 		} else {
-			imagesDir := os.Getenv("IMAGES_FOLDER")
-			if imagesDir == "" {
-				imagesDir = "./images"
+			imagesDir := localImagesDir()
+			// Files that were never registered also need to be shown before a
+			// cleanup. The actual pass used to register then remove them in one
+			// request, which bypassed the confirmation dialog.
+			if localFiles, err := localImageFiles(); err != nil {
+				slog.Warn("failed to scan local image files", "error", err)
+			} else {
+				for _, filename := range localFiles {
+					if !dbFilenames[filename] && !isReferenced(filename) {
+						res.OrphanFiles = append(res.OrphanFiles, filename)
+					}
+				}
 			}
 			forEachAllImages(func(im Image) error {
 				if _, err := os.Stat(filepath.Join(imagesDir, im.Filename)); err != nil {
@@ -411,13 +456,8 @@ func HandleCleanupImages(w http.ResponseWriter, r *http.Request) {
 
 	if isS3 {
 		// ── S3: Register note-referenced images that still exist in storage ──
-		s3provider := storage.GetProvider()
-		s3p, _ := s3provider.(*storage.S3Provider)
 		for filename := range referencedInContent {
 			if dbFilenames[filename] || !isImageFile(filename) {
-				continue
-			}
-			if s3p == nil {
 				continue
 			}
 			exists, existsErr := s3p.ObjectExists(filename)
@@ -441,31 +481,10 @@ func HandleCleanupImages(w http.ResponseWriter, r *http.Request) {
 
 		// ── S3: Delete unused and missing DB records ──
 		forEachAllImages(func(im Image) error {
-			if len(referencedInContent[im.Filename]) > 0 {
-				if s3p == nil {
-					return nil
-				}
-				exists, existsErr := s3p.ObjectExists(im.Filename)
-				if existsErr != nil {
-					slog.Warn("failed to check S3 image", "filename", im.Filename, "error", existsErr)
-					return nil
-				}
-				if exists {
-					if im.Width > 0 && im.Height > 0 && im.FileSize > 0 && im.Format != "" {
-						return nil
-					}
-					record, recordErr := imageRecordFromS3(s3p, im.Filename)
-					if recordErr != nil {
-						slog.Warn("failed to read S3 image metadata", "filename", im.Filename, "error", recordErr)
-						return nil
-					}
-					if err := UpdateImageMetadata(record); err != nil {
-						slog.Warn("failed to update S3 image metadata", "filename", im.Filename, "error", err)
-						return nil
-					}
-					res.Updated++
-					return nil
-				}
+			if !isImageFile(im.Filename) {
+				return nil
+			}
+			if !s3Objects[im.Filename] {
 				_ = DeleteImageLinks(im.Filename)
 				_ = DeleteImage(im.Filename)
 				_ = DeleteThumbnail(im.Filename)
@@ -473,13 +492,43 @@ func HandleCleanupImages(w http.ResponseWriter, r *http.Request) {
 				res.MissingFiles = append(res.MissingFiles, im.Filename)
 				return nil
 			}
-			_ = s3provider.Delete(im.Filename)
+			if isReferenced(im.Filename) {
+				if im.Width > 0 && im.Height > 0 && im.FileSize > 0 && im.Format != "" {
+					return nil
+				}
+				record, recordErr := imageRecordFromS3(s3p, im.Filename)
+				if recordErr != nil {
+					slog.Warn("failed to read S3 image metadata", "filename", im.Filename, "error", recordErr)
+					return nil
+				}
+				if err := UpdateImageMetadata(record); err != nil {
+					slog.Warn("failed to update S3 image metadata", "filename", im.Filename, "error", err)
+					return nil
+				}
+				res.Updated++
+				return nil
+			}
+			_ = s3p.Delete(im.Filename)
 			_ = DeleteImageLinks(im.Filename)
 			_ = DeleteImage(im.Filename)
 			res.RemovedOrphans++
 			res.OrphanFiles = append(res.OrphanFiles, im.Filename)
 			return nil
 		})
+
+		// Remove S3 objects that are not represented in Zen at all. These are
+		// discovered from the bucket listing and have already been shown in the
+		// dry-run confirmation dialog.
+		var untrackedS3Images []string
+		appendUntrackedS3Images(&untrackedS3Images)
+		for _, filename := range untrackedS3Images {
+			if err := s3p.Delete(filename); err != nil {
+				slog.Warn("failed to remove untracked S3 image", "filename", filename, "error", err)
+				continue
+			}
+			res.RemovedOrphans++
+			res.OrphanFiles = append(res.OrphanFiles, filename)
+		}
 
 		// S3 is the active image store in this mode. Remove local source files
 		// left behind by an S3 migration after the user confirms the preview.
@@ -646,7 +695,12 @@ func imageRecordFromS3(provider *storage.S3Provider, filename string) (ImageReco
 
 // ── Helpers ──
 
-var imageRefRegex = regexp.MustCompile(`!\[.*?\]\(/images/([^)]+)\)`)
+// A note can contain images created by the editor (HTML img tags), standard
+// Markdown, or links written by an importer. Treat every Markdown link whose
+// target is an image as a reference: being conservative here prevents a live
+// S3 object from being offered for deletion.
+var markdownLinkRefRegex = regexp.MustCompile(`!?\[[^\]]*\]\(\s*(?:<([^>]+)>|([^\s)]+))`)
+var htmlImageRefRegex = regexp.MustCompile(`(?is)<img\b[^>]*?\bsrc\s*=\s*(?:"([^"]+)"|'([^']+)'|([^\s>]+))`)
 
 func forEachAllImages(fn func(Image) error) {
 	rows, err := sqlite.DB.Query(`
@@ -674,11 +728,55 @@ func collectNoteImageRefs() map[string][]int {
 		return refs
 	}
 	for _, note := range notes {
-		for _, m := range imageRefRegex.FindAllStringSubmatch(note.Content, -1) {
-			if len(m) > 1 {
-				refs[m[1]] = append(refs[m[1]], note.NoteID)
-			}
-		}
+		collectImageReferenceMatches(refs, note.NoteID, markdownLinkRefRegex.FindAllStringSubmatch(note.Content, -1))
+		collectImageReferenceMatches(refs, note.NoteID, htmlImageRefRegex.FindAllStringSubmatch(note.Content, -1))
 	}
 	return refs
+}
+
+func collectImageReferenceMatches(refs map[string][]int, noteID int, matches [][]string) {
+	for _, match := range matches {
+		for _, destination := range match[1:] {
+			if destination == "" {
+				continue
+			}
+			if filename := imageFilenameFromMarkdownURL(destination); filename != "" {
+				refs[filename] = append(refs[filename], noteID)
+			}
+			break
+		}
+	}
+}
+
+func imageFilenameFromMarkdownURL(destination string) string {
+	parsed, err := url.Parse(strings.TrimSpace(destination))
+	if err != nil {
+		return ""
+	}
+	filename, err := url.PathUnescape(path.Base(parsed.Path))
+	if err != nil || !isImageFile(filename) {
+		return ""
+	}
+	return filename
+}
+
+func collectDatabaseImageLinks() (map[string]bool, error) {
+	rows, err := sqlite.DB.Query("SELECT DISTINCT filename FROM note_images")
+	if err != nil {
+		return nil, fmt.Errorf("querying image links: %w", err)
+	}
+	defer rows.Close()
+
+	links := make(map[string]bool)
+	for rows.Next() {
+		var filename string
+		if err := rows.Scan(&filename); err != nil {
+			return nil, fmt.Errorf("scanning image link: %w", err)
+		}
+		links[filename] = true
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterating image links: %w", err)
+	}
+	return links, nil
 }
