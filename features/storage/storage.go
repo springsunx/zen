@@ -27,7 +27,6 @@ type StorageConfig struct {
 	AttachmentsPublicURL string `json:"attachmentsPublicUrl"`
 }
 
-
 // Provider is the interface for file storage operations.
 type Provider interface {
 	Upload(filename string, reader io.Reader, size int64, contentType string, metadata map[string]string) error
@@ -65,8 +64,6 @@ func (p *LocalProvider) Delete(filename string) error {
 	return nil
 }
 
-
-
 // ── Local Attachment Provider ──
 
 type LocalAttachmentProvider struct {
@@ -97,8 +94,6 @@ func (p *LocalAttachmentProvider) Delete(filename string) error {
 	}
 	return nil
 }
-
-
 
 // ── S3 Provider ──
 
@@ -183,11 +178,14 @@ func (p *S3Provider) Delete(filename string) error {
 	return nil
 }
 
-
-
 // DownloadObject returns an io.ReadCloser for reading from S3.
 func (p *S3Provider) DownloadObject(filename string) (io.ReadCloser, error) {
 	return p.client.GetObject(context.Background(), p.bucket, filename)
+}
+
+// ObjectExists checks whether a file is still present in the configured bucket.
+func (p *S3Provider) ObjectExists(filename string) (bool, error) {
+	return p.client.ObjectExists(context.Background(), p.bucket, filename)
 }
 
 // ── Config DB Operations ──
@@ -312,8 +310,6 @@ func TestS3Connection(config StorageConfig) error {
 
 	return nil
 }
-
-
 
 // GetImageURL returns a URL for an image via the server proxy endpoint.
 // The server handles both local files and S3 proxying transparently.

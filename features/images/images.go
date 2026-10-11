@@ -331,9 +331,11 @@ func HandleCleanupImages(w http.ResponseWriter, r *http.Request) {
 		RemovedMissing  int      `json:"removedMissing"`
 		RemovedOrphans  int      `json:"removedOrphans"`
 		Registered      int      `json:"registered"`
+		RemovedLocal    int      `json:"removedLocal"`
 		LinksRebuilt    int      `json:"linksRebuilt"`
 		MissingFiles    []string `json:"missingFiles"`
 		OrphanFiles     []string `json:"orphanFiles"`
+		LocalFiles      []string `json:"localFiles"`
 		RegisteredFiles []string `json:"registeredFiles"`
 	}
 	res := result{}
@@ -352,9 +354,30 @@ func HandleCleanupImages(w http.ResponseWriter, r *http.Request) {
 
 	if dryRun {
 		if isS3 {
+			// Once S3 is active, image files in the local image directory are
+			// migration leftovers rather than active storage. Surface them for
+			// confirmation instead of silently leaving them on disk.
+			if localFiles, err := localImageFiles(); err != nil {
+				slog.Warn("failed to scan local image leftovers", "error", err)
+			} else {
+				res.LocalFiles = append(res.LocalFiles, localFiles...)
+			}
+			s3p, _ := storage.GetProvider().(*storage.S3Provider)
 			forEachAllImages(func(im Image) error {
 				if len(referencedInContent[im.Filename]) == 0 {
 					res.OrphanFiles = append(res.OrphanFiles, im.Filename)
+					return nil
+				}
+				if s3p == nil {
+					return nil
+				}
+				exists, existsErr := s3p.ObjectExists(im.Filename)
+				if existsErr != nil {
+					slog.Warn("failed to check S3 image", "filename", im.Filename, "error", existsErr)
+					return nil
+				}
+				if !exists {
+					res.MissingFiles = append(res.MissingFiles, im.Filename)
 				}
 				return nil
 			})
@@ -379,34 +402,35 @@ func HandleCleanupImages(w http.ResponseWriter, r *http.Request) {
 		}
 		sort.Strings(res.MissingFiles)
 		sort.Strings(res.OrphanFiles)
+		sort.Strings(res.LocalFiles)
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(res)
 		return
 	}
 
 	if isS3 {
-		// ── S3: Register note-referenced images missing from DB ──
+		// ── S3: Register note-referenced images that still exist in storage ──
 		s3provider := storage.GetProvider()
 		s3p, _ := s3provider.(*storage.S3Provider)
 		for filename := range referencedInContent {
 			if dbFilenames[filename] || !isImageFile(filename) {
 				continue
 			}
-			record := ImageRecord{Filename: filename}
-			if s3p != nil {
-				if reader, dlErr := s3p.DownloadObject(filename); dlErr == nil {
-					data, _ := io.ReadAll(reader)
-					reader.Close()
-					if len(data) > 0 {
-						record.FileSize = int64(len(data))
-						if info, imgErr := getImageInfo(bytes.NewReader(data)); imgErr == nil {
-							record.Width = info.Width
-							record.Height = info.Height
-							record.Format = info.Format
-							record.AspectRatio = info.AspectRatio
-						}
-					}
-				}
+			if s3p == nil {
+				continue
+			}
+			exists, existsErr := s3p.ObjectExists(filename)
+			if existsErr != nil {
+				slog.Warn("failed to check S3 image", "filename", filename, "error", existsErr)
+				continue
+			}
+			if !exists {
+				continue
+			}
+			record, recordErr := imageRecordFromS3(s3p, filename)
+			if recordErr != nil {
+				slog.Warn("failed to read S3 image", "filename", filename, "error", recordErr)
+				continue
 			}
 			if _, err := CreateImage(record); err == nil {
 				res.Registered++
@@ -414,9 +438,25 @@ func HandleCleanupImages(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		// ── S3: Delete unused DB records and S3 files ──
+		// ── S3: Delete unused and missing DB records ──
 		forEachAllImages(func(im Image) error {
 			if len(referencedInContent[im.Filename]) > 0 {
+				if s3p == nil {
+					return nil
+				}
+				exists, existsErr := s3p.ObjectExists(im.Filename)
+				if existsErr != nil {
+					slog.Warn("failed to check S3 image", "filename", im.Filename, "error", existsErr)
+					return nil
+				}
+				if exists {
+					return nil
+				}
+				_ = DeleteImageLinks(im.Filename)
+				_ = DeleteImage(im.Filename)
+				_ = DeleteThumbnail(im.Filename)
+				res.RemovedMissing++
+				res.MissingFiles = append(res.MissingFiles, im.Filename)
 				return nil
 			}
 			_ = s3provider.Delete(im.Filename)
@@ -426,12 +466,25 @@ func HandleCleanupImages(w http.ResponseWriter, r *http.Request) {
 			res.OrphanFiles = append(res.OrphanFiles, im.Filename)
 			return nil
 		})
+
+		// S3 is the active image store in this mode. Remove local source files
+		// left behind by an S3 migration after the user confirms the preview.
+		if localFiles, err := localImageFiles(); err != nil {
+			slog.Warn("failed to scan local image leftovers", "error", err)
+		} else {
+			imagesDir := localImagesDir()
+			for _, filename := range localFiles {
+				if err := os.Remove(filepath.Join(imagesDir, filename)); err != nil {
+					slog.Warn("failed to remove local image leftover", "filename", filename, "error", err)
+					continue
+				}
+				res.RemovedLocal++
+				res.LocalFiles = append(res.LocalFiles, filename)
+			}
+		}
 	} else {
 		// ── Local: Register disk files missing from DB ──
-		imagesDir := os.Getenv("IMAGES_FOLDER")
-		if imagesDir == "" {
-			imagesDir = "./images"
-		}
+		imagesDir := localImagesDir()
 		if entries, err := os.ReadDir(imagesDir); err == nil {
 			for _, entry := range entries {
 				if entry.IsDir() {
@@ -499,10 +552,19 @@ func HandleCleanupImages(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// ── Rebuild ALL note_images links from note content ──
-	// Delete all existing links first, then recreate from content
+	// ── Rebuild image links for files that still have valid records ──
+	// A deleted image can still have Markdown left in a note. Do not recreate a
+	// dangling DB link for it just because that stale Markdown is present.
+	validImages := make(map[string]bool)
+	forEachAllImages(func(im Image) error {
+		validImages[im.Filename] = true
+		return nil
+	})
 	_, _ = sqlite.DB.Exec("DELETE FROM note_images")
 	for filename, noteIDs := range referencedInContent {
+		if !validImages[filename] {
+			continue
+		}
 		for _, nid := range noteIDs {
 			if LinkImageToNote(nid, filename) == nil {
 				res.LinksRebuilt++
@@ -512,6 +574,60 @@ func HandleCleanupImages(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(res)
+}
+
+func localImagesDir() string {
+	if imagesDir := os.Getenv("IMAGES_FOLDER"); imagesDir != "" {
+		return imagesDir
+	}
+	return "./images"
+}
+
+func localImageFiles() ([]string, error) {
+	entries, err := os.ReadDir(localImagesDir())
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	filenames := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		if !entry.IsDir() && isImageFile(entry.Name()) {
+			filenames = append(filenames, entry.Name())
+		}
+	}
+	return filenames, nil
+}
+
+func imageRecordFromS3(provider *storage.S3Provider, filename string) (ImageRecord, error) {
+	reader, err := provider.DownloadObject(filename)
+	if err != nil {
+		return ImageRecord{}, err
+	}
+	defer reader.Close()
+
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		return ImageRecord{}, err
+	}
+	if len(data) == 0 {
+		return ImageRecord{}, fmt.Errorf("S3 image is empty")
+	}
+
+	info, err := getImageInfo(bytes.NewReader(data))
+	if err != nil {
+		return ImageRecord{}, err
+	}
+	return ImageRecord{
+		Filename:    filename,
+		Width:       info.Width,
+		Height:      info.Height,
+		Format:      info.Format,
+		AspectRatio: info.AspectRatio,
+		FileSize:    int64(len(data)),
+	}, nil
 }
 
 // ── Helpers ──

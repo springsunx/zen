@@ -148,6 +148,32 @@ func (c *S3Client) GetObject(ctx context.Context, bucket, key string) (io.ReadCl
 	return resp.Body, nil
 }
 
+// ObjectExists checks for an object without downloading its content.
+func (c *S3Client) ObjectExists(ctx context.Context, bucket, key string) (bool, error) {
+	url := fmt.Sprintf("%s://%s/%s/%s", c.scheme(), c.endpoint, bucket, key)
+	req, err := http.NewRequestWithContext(ctx, http.MethodHead, url, nil)
+	if err != nil {
+		return false, err
+	}
+	if err := c.sign(req, nil); err != nil {
+		return false, err
+	}
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return false, err
+	}
+	defer resp.Body.Close()
+
+	switch resp.StatusCode {
+	case http.StatusOK:
+		return true, nil
+	case http.StatusNotFound:
+		return false, nil
+	default:
+		return false, fmt.Errorf("HEAD failed with status %d", resp.StatusCode)
+	}
+}
+
 // PresignGetObject generates a presigned URL for downloading an object.
 // contentDisposition is optional (e.g. `attachment; filename="report.pdf"`).
 func (c *S3Client) PresignGetObject(bucket, key string, expiry time.Duration, contentDisposition string) (string, error) {

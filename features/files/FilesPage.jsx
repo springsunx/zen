@@ -65,7 +65,8 @@ function FileSection({ hasMore, onLoadMore, isLoadingMore, children }) {
 function ImageCleanupConfirmModal({ plan, onConfirm, onClose }) {
   const orphanFiles = Array.isArray(plan?.orphanFiles) ? plan.orphanFiles : [];
   const missingFiles = Array.isArray(plan?.missingFiles) ? plan.missingFiles : [];
-  const count = orphanFiles.length + missingFiles.length;
+  const localFiles = Array.isArray(plan?.localFiles) ? plan.localFiles : [];
+  const count = orphanFiles.length + missingFiles.length + localFiles.length;
 
   return (
     <ModalBackdrop onClose={onClose}>
@@ -83,6 +84,12 @@ function ImageCleanupConfirmModal({ plan, onConfirm, onClose }) {
             <section className="image-cleanup-list">
               <h4>{t("images.cleanup.preview.missing")}</h4>
               <ul>{missingFiles.map((filename) => <li key={filename}>{filename}</li>)}</ul>
+            </section>
+          )}
+          {localFiles.length > 0 && (
+            <section className="image-cleanup-list">
+              <h4>{t("images.cleanup.preview.local")}</h4>
+              <ul>{localFiles.map((filename) => <li key={filename}>{filename}</li>)}</ul>
             </section>
           )}
         </ModalContent>
@@ -368,10 +375,11 @@ function FilesPageContent() {
       const result = await ApiClient.cleanupImages();
       setImageCleanupPlan(null);
       showToast(t("images.cleanup.toast", {
-        missing: result?.RemovedMissing || 0,
-        orphans: result?.RemovedOrphans || 0,
-        registered: result?.Registered || 0,
-        linksRebuilt: result?.LinksRebuilt || 0,
+        missing: result?.removedMissing || 0,
+        orphans: result?.removedOrphans || 0,
+        local: result?.removedLocal || 0,
+        registered: result?.registered || 0,
+        linksRebuilt: result?.linksRebuilt || 0,
       }));
       await refreshFiles("images");
     } catch (error) {
