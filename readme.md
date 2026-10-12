@@ -96,6 +96,19 @@ $ go install github.com/evanw/esbuild/cmd/esbuild@latest
 $ make watch
 ```
 
+### Self-hosted AI services
+Zen blocks private and internal AI addresses by default to prevent server-side
+request forgery. To use a trusted LAN model such as llama.cpp, configure the
+exact host names or IP addresses that the deployment may contact:
+
+```shell
+AI_ALLOWED_HOSTS=192.168.8.106,llama-server
+```
+
+Then configure the AI assistant with the OpenAI-compatible base URL, for
+example `http://192.168.8.106:8080/v1`. Do not include `/models` or
+`/chat/completions`; Zen appends those paths itself.
+
 ### Schema Migrations
 * Create new migration file under `./migrations`
 * Use the format `<version>_<title>.sql`
