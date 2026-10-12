@@ -1,6 +1,6 @@
 import { useRef } from "../../assets/preact.esm.js";
 
-export default function useLongPress(callback, delay = 500) {
+export default function useLongPress(callback, delay = 800) {
   const timerRef = useRef(null);
   const firedRef = useRef(false);
 
