@@ -141,10 +141,10 @@ func HandleSetDefault(w http.ResponseWriter, r *http.Request) {
 // ─── AI Process Handler ───
 
 type ProcessRequest struct {
-	ConfigID      int           `json:"configId"`      // 0 = use default
-	Instruction   string        `json:"instruction"`
-	Content       string        `json:"content"`
-	Messages      []chatMessage `json:"messages"`      // conversation history
+	ConfigID    int           `json:"configId"` // 0 = use default
+	Instruction string        `json:"instruction"`
+	Content     string        `json:"content"`
+	Messages    []chatMessage `json:"messages"` // conversation history
 }
 
 type ProcessResponse struct {
@@ -188,9 +188,9 @@ func HandleProcess(w http.ResponseWriter, r *http.Request) {
 // ─── Fetch Models ───
 
 type FetchModelsRequest struct {
-	BaseURL      string `json:"baseUrl"`
-	APIKey       string `json:"apiKey"`
-	SkipTLSVerify bool  `json:"skipTlsVerify"`
+	BaseURL       string `json:"baseUrl"`
+	APIKey        string `json:"apiKey"`
+	SkipTLSVerify bool   `json:"skipTlsVerify"`
 }
 
 type ModelInfo struct {
@@ -378,28 +378,50 @@ func boolToInt(b bool) int {
 	return 0
 }
 
-// validateBaseURL checks that the URL is not pointing to a private/internal IP (SSRF protection).
+// validateBaseURL blocks private and internal AI endpoints unless the deployment
+// explicitly permits their host through AI_ALLOWED_HOSTS.
 func validateBaseURL(rawURL string) error {
 	parsed, err := url.Parse(rawURL)
 	if err != nil {
 		return fmt.Errorf("invalid URL: %w", err)
 	}
-	host := parsed.Hostname()
-	if host == "" || host == "localhost" {
+	host := normalizeAIHost(parsed.Hostname())
+	if host == "" {
 		return fmt.Errorf("invalid host")
+	}
+	if isAllowedAIHost(host) {
+		return nil
+	}
+	if host == "localhost" {
+		return fmt.Errorf("internal host is not allowed; add it to AI_ALLOWED_HOSTS to allow it")
 	}
 	ip := net.ParseIP(host)
 	if ip != nil {
 		if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
-			return fmt.Errorf("private/internal IP addresses are not allowed")
+			return fmt.Errorf("private/internal IP address is not allowed; add it to AI_ALLOWED_HOSTS to allow it")
 		}
 	}
 	// Also block common internal hostnames
-	lower := strings.ToLower(host)
-	if lower == "localhost" || strings.HasSuffix(lower, ".local") || strings.HasSuffix(lower, ".internal") {
-		return fmt.Errorf("internal hostnames are not allowed")
+	if !strings.Contains(host, ".") || strings.HasSuffix(host, ".local") || strings.HasSuffix(host, ".internal") {
+		return fmt.Errorf("internal hostname is not allowed; add it to AI_ALLOWED_HOSTS to allow it")
 	}
 	return nil
+}
+
+// AI_ALLOWED_HOSTS is a comma-separated, deployment-managed allowlist for
+// self-hosted AI endpoints. Exact host matching keeps the SSRF safeguard on
+// for all other internal addresses.
+func isAllowedAIHost(host string) bool {
+	for _, allowed := range strings.Split(os.Getenv("AI_ALLOWED_HOSTS"), ",") {
+		if normalizeAIHost(allowed) == host && host != "" {
+			return true
+		}
+	}
+	return false
+}
+
+func normalizeAIHost(host string) string {
+	return strings.TrimSuffix(strings.ToLower(strings.TrimSpace(host)), ".")
 }
 
 func resolveConfig(configID int) (AIConfig, error) {

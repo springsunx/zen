@@ -92,6 +92,15 @@ $ go install github.com/evanw/esbuild/cmd/esbuild@latest
 $ make watch
 ```
 
+### 自建 AI 服务
+为防止服务端请求伪造，Zen 默认拒绝访问内网 AI 地址。若要使用受信任的局域网模型（例如 llama.cpp），请在部署环境中明确列出可访问的主机名或 IP：
+
+```shell
+AI_ALLOWED_HOSTS=192.168.8.106,llama-server
+```
+
+随后在 AI 助手中填写 OpenAI 兼容的基础地址，例如 `http://192.168.8.106:8080/v1`。不要填写 `/models` 或 `/chat/completions`，Zen 会自行补上这些路径。
+
 ### 数据库模式迁移
 * 在 `./migrations` 目录下创建新的迁移文件
 * 文件命名格式为 `<版本号>_<标题>.sql`
