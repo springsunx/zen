@@ -66,7 +66,7 @@ function escapeHtml(value) {
 
 function getFenceLanguage(token) {
   const info = (token.info || "").trim();
-  return info === "" ? "" : info.split(/\s+/)[0];
+  return info;
 }
 
 
