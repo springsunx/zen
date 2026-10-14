@@ -554,6 +554,7 @@ function SearchResultItem({ item, isSelected, onClick, onMouseEnter }) {
   let icon = <NoteIcon />
   let title = item.title || item.name
   let subtitle = ""
+  const tags = Array.isArray(item.tags) ? item.tags : []
 
   if (item.tagId) {
     icon = <TagIcon />
@@ -582,6 +583,11 @@ function SearchResultItem({ item, isSelected, onClick, onMouseEnter }) {
       <div className="search-result-item-content">
         <p className="title" dangerouslySetInnerHTML={{ __html: displayTitle }}></p>
         <p className="subtitle" dangerouslySetInnerHTML={{ __html: displaySubtitle }}></p>
+        {tags.length > 0 && (
+          <div className="search-result-tags">
+            {tags.map(tag => <span className="search-result-tag" key={tag.tagId}>{tag.name}</span>)}
+          </div>
+        )}
       </div>
     </div>
   );

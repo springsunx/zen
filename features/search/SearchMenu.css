@@ -197,6 +197,25 @@
                         font-weight: 500;
                     }
                 }
+
+                .search-result-tags {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: var(--spacing-1);
+                    margin-top: var(--spacing-1);
+                }
+
+                .search-result-tag {
+                    max-width: 100%;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                    padding: 1px 6px;
+                    border-radius: var(--radius-full);
+                    background-color: var(--neutral-100);
+                    color: var(--text-secondary);
+                    font: var(--xs);
+                }
             }
 
             &.search-command-item {
