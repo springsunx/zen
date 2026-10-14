@@ -386,6 +386,8 @@
   "ai.config.baseUrl": "API 地址",
   "ai.config.apiKey": "API 密钥",
   "ai.config.model": "模型",
+  "ai.config.modelDisplayName": "模型显示名称（可选）",
+  "ai.config.modelDisplayName.placeholder": "例如：本地 Qwen 7B",
   "ai.config.isDefault": "设为默认",
   "ai.config.default": "默认",
   "ai.config.setDefault": "设为默认",

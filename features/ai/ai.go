@@ -18,16 +18,17 @@ import (
 )
 
 type AIConfig struct {
-	ConfigID      int       `json:"configId"`
-	Name          string    `json:"name"`
-	BaseURL       string    `json:"baseUrl"`
-	APIKey        string    `json:"apiKey"`
-	Model         string    `json:"model"`
-	IsDefault     bool      `json:"isDefault"`
-	SkipTLSVerify bool      `json:"skipTlsVerify"`
-	SystemPrompt  string    `json:"systemPrompt"`
-	CreatedAt     time.Time `json:"createdAt"`
-	UpdatedAt     time.Time `json:"updatedAt"`
+	ConfigID         int       `json:"configId"`
+	Name             string    `json:"name"`
+	BaseURL          string    `json:"baseUrl"`
+	APIKey           string    `json:"apiKey"`
+	Model            string    `json:"model"`
+	ModelDisplayName string    `json:"modelDisplayName"`
+	IsDefault        bool      `json:"isDefault"`
+	SkipTLSVerify    bool      `json:"skipTlsVerify"`
+	SystemPrompt     string    `json:"systemPrompt"`
+	CreatedAt        time.Time `json:"createdAt"`
+	UpdatedAt        time.Time `json:"updatedAt"`
 }
 
 // ─── CRUD Handlers ───
@@ -268,7 +269,7 @@ func HandleFetchModels(w http.ResponseWriter, r *http.Request) {
 func GetAllConfigs() ([]AIConfig, error) {
 	var configs []AIConfig
 	rows, err := sqlite.DB.Query(`
-		SELECT config_id, name, base_url, api_key, model, is_default, skip_tls_verify, system_prompt, created_at, updated_at
+		SELECT config_id, name, base_url, api_key, model, model_display_name, is_default, skip_tls_verify, system_prompt, created_at, updated_at
 		FROM ai_configs ORDER BY is_default DESC, config_id ASC
 	`)
 	if err != nil {
@@ -280,7 +281,7 @@ func GetAllConfigs() ([]AIConfig, error) {
 		var c AIConfig
 		var isDefault int
 		var skipTLS int
-		err = rows.Scan(&c.ConfigID, &c.Name, &c.BaseURL, &c.APIKey, &c.Model, &isDefault, &skipTLS, &c.SystemPrompt, &c.CreatedAt, &c.UpdatedAt)
+		err = rows.Scan(&c.ConfigID, &c.Name, &c.BaseURL, &c.APIKey, &c.Model, &c.ModelDisplayName, &isDefault, &skipTLS, &c.SystemPrompt, &c.CreatedAt, &c.UpdatedAt)
 		if err != nil {
 			return configs, fmt.Errorf("error scanning ai_config: %w", err)
 		}
@@ -303,9 +304,9 @@ func CreateConfig(c AIConfig) (AIConfig, error) {
 	}
 
 	result, err := sqlite.DB.Exec(`
-		INSERT INTO ai_configs (name, base_url, api_key, model, is_default, skip_tls_verify, system_prompt)
-		VALUES (?, ?, ?, ?, ?, ?, ?)
-	`, c.Name, c.BaseURL, c.APIKey, c.Model, isDefault, boolToInt(c.SkipTLSVerify), c.SystemPrompt)
+		INSERT INTO ai_configs (name, base_url, api_key, model, model_display_name, is_default, skip_tls_verify, system_prompt)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+	`, c.Name, c.BaseURL, c.APIKey, c.Model, c.ModelDisplayName, isDefault, boolToInt(c.SkipTLSVerify), c.SystemPrompt)
 	if err != nil {
 		return c, fmt.Errorf("error creating ai_config: %w", err)
 	}
@@ -329,9 +330,9 @@ func UpdateConfig(c AIConfig) error {
 	}
 
 	_, err := sqlite.DB.Exec(`
-		UPDATE ai_configs SET name = ?, base_url = ?, api_key = ?, model = ?, is_default = ?, skip_tls_verify = ?, system_prompt = ?, updated_at = CURRENT_TIMESTAMP
+		UPDATE ai_configs SET name = ?, base_url = ?, api_key = ?, model = ?, model_display_name = ?, is_default = ?, skip_tls_verify = ?, system_prompt = ?, updated_at = CURRENT_TIMESTAMP
 		WHERE config_id = ?
-	`, c.Name, c.BaseURL, c.APIKey, c.Model, isDefault, boolToInt(c.SkipTLSVerify), c.SystemPrompt, c.ConfigID)
+	`, c.Name, c.BaseURL, c.APIKey, c.Model, c.ModelDisplayName, isDefault, boolToInt(c.SkipTLSVerify), c.SystemPrompt, c.ConfigID)
 	if err != nil {
 		return fmt.Errorf("error updating ai_config: %w", err)
 	}
@@ -431,9 +432,9 @@ func resolveConfig(configID int) (AIConfig, error) {
 		var isDefault int
 		var skipTLS int
 		err := sqlite.DB.QueryRow(`
-			SELECT config_id, name, base_url, api_key, model, is_default, skip_tls_verify, system_prompt, created_at, updated_at
+			SELECT config_id, name, base_url, api_key, model, model_display_name, is_default, skip_tls_verify, system_prompt, created_at, updated_at
 			FROM ai_configs WHERE is_default = 1 LIMIT 1
-		`).Scan(&c.ConfigID, &c.Name, &c.BaseURL, &c.APIKey, &c.Model, &isDefault, &skipTLS, &c.SystemPrompt, &c.CreatedAt, &c.UpdatedAt)
+		`).Scan(&c.ConfigID, &c.Name, &c.BaseURL, &c.APIKey, &c.Model, &c.ModelDisplayName, &isDefault, &skipTLS, &c.SystemPrompt, &c.CreatedAt, &c.UpdatedAt)
 		if err == nil {
 			c.IsDefault = true
 			c.SkipTLSVerify = skipTLS == 1
@@ -456,9 +457,9 @@ func resolveConfig(configID int) (AIConfig, error) {
 	var isDefault int
 	var skipTLS int
 	err := sqlite.DB.QueryRow(`
-		SELECT config_id, name, base_url, api_key, model, is_default, skip_tls_verify, system_prompt, created_at, updated_at
+		SELECT config_id, name, base_url, api_key, model, model_display_name, is_default, skip_tls_verify, system_prompt, created_at, updated_at
 		FROM ai_configs WHERE config_id = ?
-	`, configID).Scan(&c.ConfigID, &c.Name, &c.BaseURL, &c.APIKey, &c.Model, &isDefault, &skipTLS, &c.SystemPrompt, &c.CreatedAt, &c.UpdatedAt)
+	`, configID).Scan(&c.ConfigID, &c.Name, &c.BaseURL, &c.APIKey, &c.Model, &c.ModelDisplayName, &isDefault, &skipTLS, &c.SystemPrompt, &c.CreatedAt, &c.UpdatedAt)
 	if err != nil {
 		return c, fmt.Errorf("config not found: %w", err)
 	}

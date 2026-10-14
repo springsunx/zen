@@ -385,6 +385,8 @@
   "ai.config.baseUrl": "Base URL",
   "ai.config.apiKey": "API Key",
   "ai.config.model": "Model",
+  "ai.config.modelDisplayName": "Model Display Name (optional)",
+  "ai.config.modelDisplayName.placeholder": "For example: Local Qwen 7B",
   "ai.config.isDefault": "Set as default",
   "ai.config.default": "Default",
   "ai.config.setDefault": "Set Default",

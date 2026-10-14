@@ -112,7 +112,7 @@ export default function AIPanel({ fullContent, selectedText, noteTitle, messages
             onChange={e => setSelectedConfigId(Number(e.target.value))}
           >
             {configs.map(c => (
-              <option key={c.configId} value={c.configId}>{c.name} ({c.model})</option>
+              <option key={c.configId} value={c.configId}>{c.name} ({c.modelDisplayName || c.model})</option>
             ))}
           </select>
           {messages.length > 1 && (

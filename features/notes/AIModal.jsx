@@ -59,7 +59,7 @@ export default function AIModal({ fullContent, selectedText, onInsert, onReplace
           <div className="ai-modal-config-row">
             <select value={selectedConfigId} onChange={e => setSelectedConfigId(Number(e.target.value))}>
               {configs.map(c => (
-                <option key={c.configId} value={c.configId}>{c.name} ({c.model})</option>
+                <option key={c.configId} value={c.configId}>{c.name} ({c.modelDisplayName || c.model})</option>
               ))}
             </select>
           </div>

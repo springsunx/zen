@@ -13,6 +13,7 @@ export default function AiPane() {
   const [baseUrl, setBaseUrl] = useState("https://api.openai.com/v1");
   const [apiKey, setApiKey] = useState("");
   const [model, setModel] = useState("gpt-4o-mini");
+  const [modelDisplayName, setModelDisplayName] = useState("");
   const [isDefault, setIsDefault] = useState(false);
   const [availableModels, setAvailableModels] = useState([]);
   const [isFetchingModels, setIsFetchingModels] = useState(false);
@@ -32,6 +33,7 @@ export default function AiPane() {
     setBaseUrl("https://api.openai.com/v1");
     setApiKey("");
     setModel("gpt-4o-mini");
+    setModelDisplayName("");
     setIsDefault(false);
     setIsEditing(false);
     setEditConfig(null);
@@ -52,6 +54,7 @@ export default function AiPane() {
     setBaseUrl(config.baseUrl);
     setApiKey(config.apiKey === "***" ? "" : config.apiKey);
     setModel(config.model);
+    setModelDisplayName(config.modelDisplayName || "");
     setIsDefault(config.isDefault);
     setSkipTlsVerify(config.skipTlsVerify || false);
     setSystemPrompt(config.systemPrompt || "");
@@ -70,7 +73,7 @@ export default function AiPane() {
   }
 
   function handleSave() {
-    const payload = { name, baseUrl, apiKey: apiKey || (editConfig ? editConfig.apiKey : ""), model, isDefault, skipTlsVerify, systemPrompt };
+    const payload = { name, baseUrl, apiKey: apiKey || (editConfig ? editConfig.apiKey : ""), model, modelDisplayName, isDefault, skipTlsVerify, systemPrompt };
 
     if (editConfig && editConfig.configId > 0) {
       ApiClient.updateAIConfig(editConfig.configId, payload)
@@ -153,6 +156,15 @@ export default function AiPane() {
               </button>
             </div>
           </div>
+          <div className="ai-pane-field">
+            <label>{t('ai.config.modelDisplayName')}</label>
+            <input
+              type="text"
+              value={modelDisplayName}
+              onInput={e => setModelDisplayName(e.target.value)}
+              placeholder={t('ai.config.modelDisplayName.placeholder')}
+            />
+          </div>
           <div className="ai-pane-field ai-pane-checkboxes-row">
             <label className="ai-pane-checkbox">
               <input type="checkbox" checked={isDefault} onChange={e => setIsDefault(e.target.checked)} />
@@ -201,7 +213,7 @@ export default function AiPane() {
                 {config.name}
                 {config.isDefault && <span className="ai-pane-default-badge">{t('ai.config.default')}</span>}
               </div>
-              <div className="ai-pane-item-detail">{config.model} @ {config.baseUrl}</div>
+              <div className="ai-pane-item-detail">{config.modelDisplayName || config.model} @ {config.baseUrl}</div>
             </div>
             <div className="ai-pane-item-actions">
               {!config.isDefault && config.configId > 0 && (

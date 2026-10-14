@@ -1,6 +1,35 @@
 package ai
 
-import "testing"
+import (
+	"encoding/json"
+	"testing"
+)
+
+func TestAIConfigModelDisplayNameDoesNotReplaceModel(t *testing.T) {
+	config := AIConfig{
+		Model:            "/models/Qwen2.5-7B-Instruct-Q4_K_M.gguf",
+		ModelDisplayName: "本地 Qwen 7B",
+	}
+
+	payload, err := json.Marshal(config)
+	if err != nil {
+		t.Fatalf("marshal config: %v", err)
+	}
+
+	var response struct {
+		Model            string `json:"model"`
+		ModelDisplayName string `json:"modelDisplayName"`
+	}
+	if err := json.Unmarshal(payload, &response); err != nil {
+		t.Fatalf("unmarshal config: %v", err)
+	}
+	if response.Model != config.Model {
+		t.Errorf("model = %q, want %q", response.Model, config.Model)
+	}
+	if response.ModelDisplayName != config.ModelDisplayName {
+		t.Errorf("modelDisplayName = %q, want %q", response.ModelDisplayName, config.ModelDisplayName)
+	}
+}
 
 func TestValidateBaseURLAllowsOnlyConfiguredInternalHosts(t *testing.T) {
 	tests := []struct {
