@@ -14,7 +14,7 @@ function sanitizeHTML(html) {
 }
 import "./AIPanel.css";
 
-export default function AIPanel({ fullContent, selectedText, noteTitle, messages, setMessages, onInsert, onReplace, onClose }) {
+export default function AIPanel({ fullContent, selectedText, noteTitle, messages, setMessages, onInsert, onReplace, onClose, readOnly = false, quickPrompts = [] }) {
   const [configs, setConfigs] = useState([]);
   const [selectedConfigId, setSelectedConfigId] = useState(0);
   const [instruction, setInstruction] = useState("");
@@ -40,8 +40,8 @@ export default function AIPanel({ fullContent, selectedText, noteTitle, messages
     }
   }, [messages, isProcessing]);
 
-  function handleSend() {
-    const text = instruction.trim();
+  function handleSend(instructionOverride = instruction) {
+    const text = instructionOverride.trim();
     if (!text || isProcessing) return;
 
     // Add user message
@@ -115,7 +115,7 @@ export default function AIPanel({ fullContent, selectedText, noteTitle, messages
               <option key={c.configId} value={c.configId}>{c.name} ({c.modelDisplayName || c.model})</option>
             ))}
           </select>
-          {messages.length > 1 && (
+          {!readOnly && messages.length > 1 && (
             <button className="ai-panel-insert-all" onClick={() => onInsert(formatFullConversation())} title={t('ai.modal.insertAll')}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -131,6 +131,16 @@ export default function AIPanel({ fullContent, selectedText, noteTitle, messages
           </svg>
         </button>
       </div>
+
+      {quickPrompts.length > 0 && (
+        <div className="ai-panel-quick-prompts">
+          {quickPrompts.map(({ label, instruction: prompt }) => (
+            <button key={label} className="ai-panel-quick-prompt" onClick={() => handleSend(prompt)} disabled={isProcessing}>
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Messages Area */}
       <div className="ai-panel-body" ref={bodyRef}>
@@ -169,7 +179,7 @@ export default function AIPanel({ fullContent, selectedText, noteTitle, messages
                     </svg>
                     {t('ai.modal.copy')}
                   </button>
-                  {selectedText && (
+                  {!readOnly && selectedText && (
                     <button className="ai-panel-action-btn" onClick={() => onReplace(msg.content)} title={t('ai.modal.replaceSelection')}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="17 1 21 5 17 9"/>
@@ -180,20 +190,20 @@ export default function AIPanel({ fullContent, selectedText, noteTitle, messages
                       {t('ai.modal.replaceSelection')}
                     </button>
                   )}
-                  <button className="ai-panel-action-btn" onClick={() => onInsert(msg.content)} title={t('ai.modal.insert')}>
+                  {!readOnly && <button className="ai-panel-action-btn" onClick={() => onInsert(msg.content)} title={t('ai.modal.insert')}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <line x1="12" y1="5" x2="12" y2="19"/>
                       <line x1="5" y1="12" x2="19" y2="12"/>
                     </svg>
                     {t('ai.modal.insert')}
-                  </button>
-                  <button className="ai-panel-action-btn primary" onClick={() => onReplace(msg.content)} title={t('ai.modal.replace')}>
+                  </button>}
+                  {!readOnly && <button className="ai-panel-action-btn primary" onClick={() => onReplace(msg.content)} title={t('ai.modal.replace')}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M12 20h9"/>
                       <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
                     </svg>
                     {t('ai.modal.replace')}
-                  </button>
+                  </button>}
                 </div>
               )}
             </div>
@@ -228,7 +238,7 @@ export default function AIPanel({ fullContent, selectedText, noteTitle, messages
           rows="1"
         />
         <div className="ai-panel-right-col">
-          <select
+          {!readOnly && <select
             className="ai-panel-context-select"
             value={contentMode}
             onChange={e => setContentMode(e.target.value)}
@@ -236,7 +246,7 @@ export default function AIPanel({ fullContent, selectedText, noteTitle, messages
             <option value="none">{t('ai.context.none')}</option>
             {selectedText && <option value="selection">{t('ai.context.selection')}</option>}
             <option value="full">{t('ai.context.full')}</option>
-          </select>
+          </select>}
           <button
             className="ai-panel-send"
             onClick={handleSend}

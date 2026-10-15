@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from "../../assets/preact.esm.js";
+import { useEffect, useCallback, useRef } from "../../assets/preact.esm.js";
 
 function min(a,b){return a<b?a:b;}
 
@@ -15,10 +15,25 @@ export default function useEditorKeyboardShortcuts({
   onInsertAtCursor,
   onFormatText,
   onSaveAndClose,
-  onInsertInternalLink
+  onInsertInternalLink,
+  onOpenAI
 }) {
+  const lastCtrlPress = useRef(0);
+
   const handleKeyDown = useCallback(e => {
     const isTextAreaFocused = textareaRef.current?.hasFocus() === true;
+
+    if (!isEditable && onOpenAI && e.key === 'Control' && !e.shiftKey && !e.altKey && !e.metaKey && !e.repeat) {
+      const now = Date.now();
+      if (now - lastCtrlPress.current < 400) {
+        e.preventDefault();
+        lastCtrlPress.current = 0;
+        onOpenAI();
+        return;
+      }
+      lastCtrlPress.current = now;
+      return;
+    }
 
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
       e.preventDefault();
@@ -160,7 +175,7 @@ export default function useEditorKeyboardShortcuts({
         }
       }
     }
-  }, [isEditable, isModal, isExpanded, isExpandable, textareaRef, onSave, onEdit, onClose, onExpandToggle, onInsertAtCursor, onFormatText, onSaveAndClose]);
+  }, [isEditable, isModal, isExpanded, isExpandable, textareaRef, onSave, onEdit, onClose, onExpandToggle, onInsertAtCursor, onFormatText, onSaveAndClose, onOpenAI]);
 
   useEffect(() => {
     document.addEventListener("keydown", handleKeyDown);

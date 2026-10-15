@@ -6,9 +6,9 @@ build:
 
 dev:
 ifeq ($(OS),Windows_NT)
-	set "DEV_MODE=true" && "$(shell go env GOPATH)/bin/air.exe" -c .air.toml
+	set "DEV_MODE=true" && set "AI_ALLOWED_HOSTS=localhost" && "$(shell go env GOPATH)/bin/air.exe" -c .air.toml
 else
-	DEV_MODE=true air -c .air.toml
+	DEV_MODE=true AI_ALLOWED_HOSTS=localhost air -c .air.toml
 endif
 
 watch: dev

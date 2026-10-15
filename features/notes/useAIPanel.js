@@ -3,15 +3,18 @@ import { useState, useRef } from "../../assets/preact.esm.js";
 export default function useAIPanel({ textareaRef, updateContent, pendingCursorPos }) {
   const [showAIModal, setShowAIModal] = useState(false);
   const [aiMessages, setAiMessages] = useState([]);
+  const [aiSelectedText, setAiSelectedText] = useState("");
   const aiSavedSelection = useRef(null); // { start, end } saved before opening AI panel
 
   function handleOpenAI() {
     // Save current textarea selection before AI panel takes focus
     if (textareaRef.current) {
-      aiSavedSelection.current = {
-        start: textareaRef.current.selectionStart,
-        end: textareaRef.current.selectionEnd,
-      };
+      const start = textareaRef.current.selectionStart;
+      const end = textareaRef.current.selectionEnd;
+      aiSavedSelection.current = { start, end };
+      setAiSelectedText(textareaRef.current.value.substring(start, end));
+    } else {
+      setAiSelectedText("");
     }
     setShowAIModal(true);
   }
@@ -24,6 +27,7 @@ export default function useAIPanel({ textareaRef, updateContent, pendingCursorPo
       const after = ta.value.substring(ta.selectionEnd);
       updateContent(before + text + after);
     }
+    setAiSelectedText("");
     setShowAIModal(false);
   }
 
@@ -41,11 +45,13 @@ export default function useAIPanel({ textareaRef, updateContent, pendingCursorPo
       updateContent(text);
     }
     aiSavedSelection.current = null;
+    setAiSelectedText("");
     setShowAIModal(false);
     setTimeout(() => { if (textareaRef.current) textareaRef.current.focus(); }, 50);
   }
 
   function handleCloseAI() {
+    setAiSelectedText("");
     setShowAIModal(false);
     setTimeout(() => { if (textareaRef.current) textareaRef.current.focus(); }, 50);
   }
@@ -54,6 +60,7 @@ export default function useAIPanel({ textareaRef, updateContent, pendingCursorPo
     showAIModal,
     aiMessages,
     setAiMessages,
+    aiSelectedText,
     aiSavedSelection,
     handleOpenAI,
     handleAIInsert,

@@ -131,7 +131,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   }, [content]);
 
   const {
-    showAIModal, aiMessages, setAiMessages, aiSavedSelection,
+    showAIModal, aiMessages, setAiMessages, aiSelectedText, aiSavedSelection,
     handleOpenAI, handleAIInsert, handleAIReplace, handleCloseAI,
   } = useAIPanel({ textareaRef, updateContent, pendingCursorPos });
 
@@ -559,7 +559,8 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
     onExpandToggle: handleExpandToggleClick,
     onInsertAtCursor: insertAtCursor,
     onFormatText: applyMarkdownFormat,
-    onInsertInternalLink: handleShowLinkPicker
+    onInsertInternalLink: handleShowLinkPicker,
+    onOpenAI: handleOpenAI
   });
 
   function handleEditCancelClick() {
@@ -942,6 +943,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
           onUnpinClick={handlePinToggleClick}
           onVersionsClick={handleVersionsClick}
           onToggleShare={onToggleShare}
+          onOpenReadAI={handleOpenAI}
         />
         <div className="notes-editor-header">
           <div className="notes-editor-title" spellCheck={spellcheckValue} contentEditable={isEditable} ref={titleRef} onBlur={handleTitleChange} dangerouslySetInnerHTML={{ __html: title }} />
@@ -966,13 +968,19 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
           {showAIModal && (
             <AIPanel
               fullContent={textareaRef.current?.value || content}
-              selectedText={textareaRef.current ? textareaRef.current.value.substring(textareaRef.current.selectionStart, textareaRef.current.selectionEnd) : ""}
+              selectedText={aiSelectedText}
               noteTitle={title}
               messages={aiMessages}
               setMessages={setAiMessages}
               onInsert={handleAIInsert}
               onReplace={handleAIReplace}
               onClose={handleCloseAI}
+              readOnly={!isEditable}
+              quickPrompts={isEditable ? [] : [
+                { label: t('ai.preview.summary'), instruction: t('ai.preview.summaryPrompt') },
+                { label: t('ai.preview.keyPoints'), instruction: t('ai.preview.keyPointsPrompt') },
+                { label: t('ai.preview.todos'), instruction: t('ai.preview.todosPrompt') },
+              ]}
             />
           )}
           <div className="notes-editor-content" onScroll={(e) => { editScrollRef.current = e.currentTarget.scrollTop; }}>
