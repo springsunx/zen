@@ -1007,11 +1007,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
               onClose={handleCloseAI}
               docked={isRightPanelManaged}
               readOnly={!isEditable}
-              quickPrompts={isEditable ? [] : [
-                { label: t('ai.preview.summary'), instruction: t('ai.preview.summaryPrompt') },
-                { label: t('ai.preview.keyPoints'), instruction: t('ai.preview.keyPointsPrompt') },
-                { label: t('ai.preview.todos'), instruction: t('ai.preview.todosPrompt') },
-              ]}
+              quickPrompts={isEditable ? [] : undefined}
             />
           )}
           <div className="notes-editor-content" onScroll={(e) => { editScrollRef.current = e.currentTarget.scrollTop; }}>

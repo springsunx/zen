@@ -3,6 +3,7 @@ import ApiClient from '../../commons/http/ApiClient.js';
 import { showToast } from '../../commons/components/Toast.jsx';
 import renderMarkdown from '../../commons/utils/renderMarkdown.js';
 import { t } from "../../commons/i18n/index.js";
+import { getAIQuickPrompts } from "../../commons/preferences/AIQuickPromptPreferences.js";
 
 // Simple HTML sanitizer for AI-generated markdown output
 function sanitizeHTML(html) {
@@ -14,12 +15,13 @@ function sanitizeHTML(html) {
 }
 import "./AIPanel.css";
 
-export default function AIPanel({ fullContent, selectedText, getSelectedText, noteTitle, messages, setMessages, onInsert, onReplace, onClose, readOnly = false, quickPrompts = [], docked = false }) {
+export default function AIPanel({ fullContent, selectedText, getSelectedText, noteTitle, messages, setMessages, onInsert, onReplace, onClose, readOnly = false, quickPrompts, docked = false }) {
   const [configs, setConfigs] = useState([]);
   const [selectedConfigId, setSelectedConfigId] = useState(0);
   const [instruction, setInstruction] = useState("");
   const [contentMode, setContentMode] = useState(selectedText ? "selection" : "full");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [savedQuickPrompts, setSavedQuickPrompts] = useState(() => getAIQuickPrompts());
   const bodyRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -45,6 +47,14 @@ export default function AIPanel({ fullContent, selectedText, getSelectedText, no
       setContentMode("full");
     }
   }, [selectedText, contentMode]);
+
+  useEffect(() => {
+    function refreshQuickPrompts() { setSavedQuickPrompts(getAIQuickPrompts()); }
+    window.addEventListener("ai-quick-prompts:change", refreshQuickPrompts);
+    return () => window.removeEventListener("ai-quick-prompts:change", refreshQuickPrompts);
+  }, []);
+
+  const activeQuickPrompts = quickPrompts === undefined ? savedQuickPrompts : quickPrompts;
 
   function handleSend(instructionOverride) {
     const text = (typeof instructionOverride === "string" ? instructionOverride : instruction).trim();
@@ -142,10 +152,10 @@ export default function AIPanel({ fullContent, selectedText, getSelectedText, no
         </button>
       </div>
 
-      {quickPrompts.length > 0 && (
+      {activeQuickPrompts.filter(prompt => prompt.enabled !== false).length > 0 && (
         <div className="ai-panel-quick-prompts">
-          {quickPrompts.map(({ label, instruction: prompt }) => (
-            <button key={label} className="ai-panel-quick-prompt" onClick={() => handleSend(prompt)} disabled={isProcessing}>
+          {activeQuickPrompts.filter(item => item.enabled !== false).map(({ id, label, instruction: prompt }) => (
+            <button key={id || label} className="ai-panel-quick-prompt" onClick={() => handleSend(prompt)} disabled={isProcessing}>
               {label}
             </button>
           ))}

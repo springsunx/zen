@@ -56,11 +56,6 @@ export default function NotePreview({ noteId, onOpenLink, onNavigateLink, onNote
         messages={aiMessages}
         setMessages={setAiMessages}
         onClose={handleCloseAI}
-        quickPrompts={[
-          { label: t('ai.preview.summary'), instruction: t('ai.preview.summaryPrompt') },
-          { label: t('ai.preview.keyPoints'), instruction: t('ai.preview.keyPointsPrompt') },
-          { label: t('ai.preview.todos'), instruction: t('ai.preview.todosPrompt') },
-        ]}
       />
     );
   }

@@ -3,6 +3,7 @@ import ApiClient from '../../commons/http/ApiClient.js';
 import { showToast } from '../../commons/components/Toast.jsx';
 import Button from '../../commons/components/Button.jsx';
 import { t } from "../../commons/i18n/index.js";
+import { getAIQuickPrompts, saveAIQuickPrompts, resetAIQuickPrompts } from "../../commons/preferences/AIQuickPromptPreferences.js";
 import "./AiPane.css";
 
 export default function AiPane() {
@@ -19,6 +20,7 @@ export default function AiPane() {
   const [isFetchingModels, setIsFetchingModels] = useState(false);
   const [skipTlsVerify, setSkipTlsVerify] = useState(false);
   const [systemPrompt, setSystemPrompt] = useState("");
+  const [quickPrompts, setQuickPrompts] = useState(() => getAIQuickPrompts());
 
   useEffect(() => {
     loadConfigs();
@@ -100,6 +102,33 @@ export default function AiPane() {
 
   function handleCancel() {
     resetForm();
+  }
+
+  function updateQuickPrompt(index, changes) {
+    setQuickPrompts(items => items.map((item, itemIndex) => itemIndex === index ? { ...item, ...changes } : item));
+  }
+
+  function moveQuickPrompt(index, offset) {
+    const target = index + offset;
+    if (target < 0 || target >= quickPrompts.length) return;
+    const next = [...quickPrompts];
+    [next[index], next[target]] = [next[target], next[index]];
+    setQuickPrompts(next);
+  }
+
+  function handleAddQuickPrompt() {
+    setQuickPrompts(items => [...items, { id: `custom-${Date.now()}`, label: "", instruction: "", enabled: true }]);
+  }
+
+  function handleSaveQuickPrompts() {
+    const valid = quickPrompts.filter(item => item.label.trim() && item.instruction.trim());
+    setQuickPrompts(saveAIQuickPrompts(valid));
+    showToast(t('ai.quickPrompts.saved'));
+  }
+
+  function handleResetQuickPrompts() {
+    setQuickPrompts(resetAIQuickPrompts());
+    showToast(t('ai.quickPrompts.reset'));
   }
 
   function handleFetchModels() {
@@ -227,6 +256,34 @@ export default function AiPane() {
           </div>
         ))}
       </div>
+
+      <section className="ai-quick-prompts-settings">
+        <div className="ai-quick-prompts-header">
+          <div>
+            <h3>{t('ai.quickPrompts.title')}</h3>
+            <p>{t('ai.quickPrompts.desc')}</p>
+          </div>
+          <button className="ghost-button" onClick={handleAddQuickPrompt}>+ {t('ai.quickPrompts.add')}</button>
+        </div>
+        <div className="ai-quick-prompts-list">
+          {quickPrompts.map((prompt, index) => (
+            <div className="ai-quick-prompts-item" key={prompt.id}>
+              <label className="ai-pane-checkbox"><input type="checkbox" checked={prompt.enabled !== false} onChange={e => updateQuickPrompt(index, { enabled: e.target.checked })} />{t('ai.quickPrompts.show')}</label>
+              <input value={prompt.label} onInput={e => updateQuickPrompt(index, { label: e.target.value })} placeholder={t('ai.quickPrompts.name')} />
+              <textarea value={prompt.instruction} onInput={e => updateQuickPrompt(index, { instruction: e.target.value })} placeholder={t('ai.quickPrompts.prompt')} rows="3" />
+              <div className="ai-quick-prompts-actions">
+                <button className="ghost-button" onClick={() => moveQuickPrompt(index, -1)} disabled={index === 0}>↑</button>
+                <button className="ghost-button" onClick={() => moveQuickPrompt(index, 1)} disabled={index === quickPrompts.length - 1}>↓</button>
+                <button className="ghost-button danger" onClick={() => setQuickPrompts(items => items.filter((_, itemIndex) => itemIndex !== index))}>{t('common.delete')}</button>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="ai-pane-actions">
+          <Button onClick={handleResetQuickPrompts}>{t('ai.quickPrompts.reset')}</Button>
+          <Button variant="primary" onClick={handleSaveQuickPrompts}>{t('common.save')}</Button>
+        </div>
+      </section>
     </div>
   );
 }
