@@ -37,11 +37,7 @@ export default function SharePanel({ noteId, showShare, onClose = () => {} }) {
   useEffect(function () {
     if (showShare === true && noteId && noteId !== "new") {
       loadShares();
-      document.body.classList.add('has-right-share');
-    } else {
-      document.body.classList.remove('has-right-share');
     }
-    return function () { document.body.classList.remove('has-right-share'); };
   }, [showShare, noteId]);
 
   function loadShares() {

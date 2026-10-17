@@ -18,6 +18,50 @@ import { AppProvider } from "../../commons/contexts/AppContext.jsx";
 import { openModal } from "../../commons/components/Modal.jsx";
 import { t } from "../../commons/i18n/index.js";
 
+const RIGHT_PANEL_WIDTH_KEY = 'zen.rightPanelWidth';
+const DEFAULT_RIGHT_PANEL_WIDTH = 480;
+const MIN_RIGHT_PANEL_WIDTH = 360;
+const MAX_RIGHT_PANEL_WIDTH = 720;
+
+function clampRightPanelWidth(width) {
+  return Math.min(MAX_RIGHT_PANEL_WIDTH, Math.max(MIN_RIGHT_PANEL_WIDTH, width));
+}
+
+function getRightPanelWidth() {
+  try {
+    return clampRightPanelWidth(Number(localStorage.getItem(RIGHT_PANEL_WIDTH_KEY)) || DEFAULT_RIGHT_PANEL_WIDTH);
+  } catch {
+    return DEFAULT_RIGHT_PANEL_WIDTH;
+  }
+}
+
+function RightPanelResizeHandle({ width, onWidthChange }) {
+  function handlePointerDown(event) {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    const startX = event.clientX;
+    const startWidth = width;
+    document.documentElement.classList.add('is-resizing-right-panel');
+
+    function handlePointerMove(moveEvent) {
+      onWidthChange(clampRightPanelWidth(startWidth + startX - moveEvent.clientX));
+    }
+
+    function handlePointerUp() {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('pointercancel', handlePointerUp);
+      document.documentElement.classList.remove('is-resizing-right-panel');
+    }
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('pointercancel', handlePointerUp);
+  }
+
+  return <div className="right-panel-resize-handle" onPointerDown={handlePointerDown} aria-hidden="true" />;
+}
+
 function normalizeNotesView(view) {
   return view === "gallery" || view === "attachments" ? "list" : view;
 }
@@ -36,9 +80,10 @@ function NotesPageContent({ noteId }) {
   const { isSidebarOpen, toggleSidebar, isEditorExpanded } = useLayout();
   const [isMultiSelect, setIsMultiSelect] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
-  const [showShare, setShowShare] = useState(() => {
-    try { return localStorage.getItem('zen.showShare') === 'true'; } catch { return false; }
+  const [rightPanel, setRightPanel] = useState(() => {
+    try { return localStorage.getItem('zen.showShare') === 'true' ? 'share' : null; } catch { return null; }
   });
+  const [rightPanelWidth, setRightPanelWidth] = useState(getRightPanelWidth);
 
   const { refreshTags, refreshFocusModes } = useAppContext();
   const {
@@ -256,9 +301,34 @@ function NotesPageContent({ noteId }) {
     setSelectedIds([noteId]);
   }
 
-  function handleCloseShare() {
-    setShowShare(false);
+  useEffect(() => {
+    document.documentElement.style.setProperty('--right-panel-width', `${rightPanelWidth}px`);
+    try { localStorage.setItem(RIGHT_PANEL_WIDTH_KEY, String(rightPanelWidth)); } catch {}
+  }, [rightPanelWidth]);
+
+  useEffect(() => {
+    const isOpen = rightPanel === 'ai' || (rightPanel === 'share' && selectedNote?.noteId != null && noteId !== 'new');
+    document.body.classList.toggle('has-right-panel', isOpen);
+    return () => document.body.classList.remove('has-right-panel');
+  }, [rightPanel, selectedNote?.noteId, noteId]);
+
+  useEffect(() => {
+    if (rightPanel === 'ai') {
+      setRightPanel(null);
+    }
+  }, [selectedNote?.noteId]);
+
+  function handleCloseRightPanel() {
+    setRightPanel(null);
     try { localStorage.setItem('zen.showShare', 'false'); } catch {}
+  }
+
+  function handleToggleShare() {
+    setRightPanel(current => {
+      const next = current === 'share' ? null : 'share';
+      try { localStorage.setItem('zen.showShare', String(next === 'share')); } catch {}
+      return next;
+    });
   }
 
   function handleToggleSelect(noteId) {
@@ -282,7 +352,16 @@ function NotesPageContent({ noteId }) {
   const isEditorExpandable = selectedView === "list";
   const isPageExpanded = isEditorExpanded === true && isEditorExpandable === true;
 
-  let editorContent = <NotesEditor isNewNote={noteId === "new"} isExpandable={isEditorExpandable} onToggleShare={() => setShowShare(prev => { const next = !prev; try { localStorage.setItem('zen.showShare', String(next)); } catch {} return next; })} key={selectedNote?.noteId} />;
+  let editorContent = <NotesEditor
+    isNewNote={noteId === "new"}
+    isExpandable={isEditorExpandable}
+    onToggleShare={handleToggleShare}
+    onOpenAIPanel={() => setRightPanel('ai')}
+    onCloseAIPanel={handleCloseRightPanel}
+    activeRightPanel={rightPanel}
+    isRightPanelManaged
+    key={selectedNote?.noteId}
+  />;
   if (isMultiSelect === true) {
     editorContent = <BulkActionsPanel selectedIds={selectedIds} allIds={notes.map(n => n.noteId)} selectedNotes={notes.filter(n => selectedIds.includes(n.noteId))} onClose={handleClearSelection} onSelectAll={() => setSelectedIds(notes.map(n => n.noteId))} />;
   }
@@ -351,7 +430,8 @@ function NotesPageContent({ noteId }) {
           {editorContent}
         </div>
 
-      <SharePanel noteId={selectedNote?.noteId} showShare={showShare} onClose={handleCloseShare} />
+      {(rightPanel === 'ai' || (rightPanel === 'share' && selectedNote?.noteId != null && noteId !== 'new')) && <RightPanelResizeHandle width={rightPanelWidth} onWidthChange={setRightPanelWidth} />}
+      <SharePanel noteId={selectedNote?.noteId} showShare={rightPanel === 'share'} onClose={handleCloseRightPanel} />
         <MobileNavbar />
         <div className="note-modal-root"></div>
         <div className="modal-root"></div>

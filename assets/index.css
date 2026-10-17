@@ -327,27 +327,54 @@ svg.lucide {
         transition: transform var(--transition-fast) ease-out;
     }
 }
-/* Layout adjustments for the right side share panel */
-body.has-right-share .page-container {
-  padding-right: 220px;
+/* Layout adjustments for the right-side sharing / AI panel. */
+body.has-right-panel .page-container {
+  padding-right: var(--right-panel-width, 480px);
 }
-body.has-right-share .page-container.is-editor-expanded {
-  padding-right: 0;
-}
-body.has-right-share .notes-editor-container {
+body.has-right-panel .notes-editor-container {
   flex: 1;
   min-width: 0;
 }
 
-/* Responsive adjustments */
-@media screen and (max-width: 1200px) {
-  body.has-right-share .page-container { padding-right: 200px; }
+.right-panel-resize-handle {
+  position: fixed;
+  top: 0;
+  right: var(--right-panel-width, 480px);
+  bottom: 0;
+  width: 8px;
+  margin-right: -4px;
+  cursor: col-resize;
+  z-index: 2;
 }
 
+.right-panel-resize-handle::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 3px;
+  width: 1px;
+  background: transparent;
+  transition: background-color 0.15s ease;
+}
+
+.right-panel-resize-handle:hover::after,
+html.is-resizing-right-panel .right-panel-resize-handle::after {
+  background: var(--primary-500, #3b82f6);
+}
+
+html.is-resizing-right-panel,
+html.is-resizing-right-panel * {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
+/* Responsive adjustments */
 @media screen and (max-width: 1024px) {
-  body.has-right-share .page-container {
+  body.has-right-panel .page-container {
     padding-right: 0;
   }
+  .right-panel-resize-handle { display: none; }
 }
 
 /* Explicit theme overrides — light-dark() resolves off color-scheme */

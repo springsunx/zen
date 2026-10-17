@@ -178,16 +178,18 @@ function createChineseSearchPanel(view) {
   };
 }
 
-export default function CodeMirrorEditor({ value, placeholderText, spellcheck, editorRef, onChange, onBlur, onKeyDown }) {
+export default function CodeMirrorEditor({ value, placeholderText, spellcheck, editorRef, onChange, onBlur, onKeyDown, onSelectionChange }) {
   const hostRef = useRef(null);
   const viewRef = useRef(null);
   const onChangeRef = useRef(onChange);
   const onBlurRef = useRef(onBlur);
   const onKeyDownRef = useRef(onKeyDown);
+  const onSelectionChangeRef = useRef(onSelectionChange);
 
   onChangeRef.current = onChange;
   onBlurRef.current = onBlur;
   onKeyDownRef.current = onKeyDown;
+  onSelectionChangeRef.current = onSelectionChange;
 
   function getView() {
     return viewRef.current;
@@ -282,6 +284,7 @@ export default function CodeMirrorEditor({ value, placeholderText, spellcheck, e
           placeholder(placeholderText),
           EditorView.updateListener.of(update => {
             if (update.docChanged) onChangeRef.current?.(update.state.doc.toString());
+            if (update.selectionSet) onSelectionChangeRef.current?.();
           }),
           EditorView.domEventHandlers({
             keydown(event) {

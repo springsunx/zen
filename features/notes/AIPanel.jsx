@@ -1,4 +1,4 @@
-import { h, useState, useEffect, useRef } from "../../assets/preact.esm.js"
+import { h, Fragment, useState, useEffect, useRef } from "../../assets/preact.esm.js"
 import ApiClient from '../../commons/http/ApiClient.js';
 import { showToast } from '../../commons/components/Toast.jsx';
 import renderMarkdown from '../../commons/utils/renderMarkdown.js';
@@ -14,7 +14,7 @@ function sanitizeHTML(html) {
 }
 import "./AIPanel.css";
 
-export default function AIPanel({ fullContent, selectedText, noteTitle, messages, setMessages, onInsert, onReplace, onClose, readOnly = false, quickPrompts = [] }) {
+export default function AIPanel({ fullContent, selectedText, getSelectedText, noteTitle, messages, setMessages, onInsert, onReplace, onClose, readOnly = false, quickPrompts = [], docked = false }) {
   const [configs, setConfigs] = useState([]);
   const [selectedConfigId, setSelectedConfigId] = useState(0);
   const [instruction, setInstruction] = useState("");
@@ -40,9 +40,21 @@ export default function AIPanel({ fullContent, selectedText, noteTitle, messages
     }
   }, [messages, isProcessing]);
 
-  function handleSend(instructionOverride = instruction) {
-    const text = instructionOverride.trim();
+  useEffect(() => {
+    if (!selectedText && contentMode === "selection") {
+      setContentMode("full");
+    }
+  }, [selectedText, contentMode]);
+
+  function handleSend(instructionOverride) {
+    const text = (typeof instructionOverride === "string" ? instructionOverride : instruction).trim();
     if (!text || isProcessing) return;
+
+    const currentSelection = getSelectedText ? getSelectedText() : selectedText;
+    if (contentMode === "selection" && !currentSelection) {
+      showToast(t('ai.context.noSelection'));
+      return;
+    }
 
     // Add user message
     const userMsg = { role: "user", content: text };
@@ -54,15 +66,13 @@ export default function AIPanel({ fullContent, selectedText, noteTitle, messages
     setIsProcessing(true);
 
     let content = "";
-    // Only send content on the first message; subsequent messages reuse the context
-    if (messages.length === 0) {
-      if (contentMode === "full") {
-        content = fullContent || "";
-      } else if (contentMode === "selection") {
-        content = selectedText || "";
-      } else if (contentMode === "none" && noteTitle) {
-        content = noteTitle;
-      }
+    // Local AI providers are stateless, so every turn must include the chosen note context.
+    if (contentMode === "full") {
+      content = fullContent || "";
+    } else if (contentMode === "selection") {
+      content = currentSelection;
+    } else if (contentMode === "none" && noteTitle) {
+      content = noteTitle;
     }
 
     ApiClient.processWithAI(selectedConfigId, text, content, messages)
@@ -101,7 +111,7 @@ export default function AIPanel({ fullContent, selectedText, noteTitle, messages
   }
 
   return (
-    <div className="ai-panel">
+    <div className={`ai-panel${docked ? ' is-docked' : ''}`}>
       {/* Header */}
       <div className="ai-panel-header">
         <div className="ai-panel-header-left">
@@ -238,18 +248,19 @@ export default function AIPanel({ fullContent, selectedText, noteTitle, messages
           rows="1"
         />
         <div className="ai-panel-right-col">
-          {!readOnly && <select
-            className="ai-panel-context-select"
-            value={contentMode}
-            onChange={e => setContentMode(e.target.value)}
-          >
-            <option value="none">{t('ai.context.none')}</option>
-            {selectedText && <option value="selection">{t('ai.context.selection')}</option>}
-            <option value="full">{t('ai.context.full')}</option>
-          </select>}
+          {!readOnly &&
+            <select
+              className="ai-panel-context-select"
+              value={contentMode}
+              onChange={e => setContentMode(e.target.value)}
+            >
+              <option value="none">{t('ai.context.none')}</option>
+              {selectedText && <option value="selection">{t('ai.context.selection')}</option>}
+              <option value="full">{t('ai.context.full')}</option>
+            </select>}
           <button
             className="ai-panel-send"
-            onClick={handleSend}
+            onClick={() => handleSend()}
             disabled={isProcessing || !instruction.trim()}
             title={t('ai.modal.send')}
           >

@@ -16,6 +16,37 @@
     animation: ai-panel-in 0.2s ease-out;
 }
 
+/* The main note page docks the assistant beside the note, sharing the same right
+   panel width as link sharing so it never covers the note content. */
+.ai-panel.is-docked {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: var(--right-panel-width, 480px);
+    max-height: none;
+    border: 0;
+    border-left: 1px solid var(--neutral-200, #e5e5e5);
+    border-radius: 0;
+    box-shadow: none;
+    z-index: 1;
+}
+
+.ai-panel.is-docked .ai-panel-input {
+    min-height: 100px;
+    resize: vertical;
+}
+
+.ai-panel.is-docked .ai-panel-body {
+    min-height: 0;
+    max-height: none;
+}
+
+.ai-panel.is-docked .ai-panel-footer {
+    margin-top: auto;
+    align-items: flex-end;
+}
+
 @keyframes ai-panel-in {
     from {
         opacity: 0;
@@ -444,6 +475,7 @@
     }
 }
 
+
 /* ─── Responsive ─── */
 @media screen and (max-width: 948px) {
     .ai-panel {
@@ -455,5 +487,19 @@
 
     .ai-fab {
         display: flex;
+    }
+}
+
+@media screen and (max-width: 1024px) {
+    .ai-panel.is-docked {
+        width: calc(100vw - 16px);
+        top: auto;
+        right: 8px;
+        bottom: calc(var(--mobile-navbar-height) + var(--safe-area-bottom) + 72px);
+        max-height: 60vh;
+        border: 1px solid var(--neutral-200, #e5e5e5);
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(0,0,0,.12), 0 2px 8px rgba(0,0,0,.08);
+        z-index: var(--z-popover, 100);
     }
 }

@@ -46,7 +46,7 @@ import CodeMirrorEditor from "./CodeMirrorEditor.jsx";
 import "./NotesEditor.css";
 import { t } from "../../commons/i18n/index.js";
 
-export default function NotesEditor({ isNewNote, isModal, isExpandable = false, onClose, onEditModeChange = () => {}, onContentChange = () => {}, onSaved = () => {}, onMutation = () => {}, onToggleShare }) {
+export default function NotesEditor({ isNewNote, isModal, isExpandable = false, onClose, onEditModeChange = () => {}, onContentChange = () => {}, onSaved = () => {}, onMutation = () => {}, onToggleShare, onOpenAIPanel = () => {}, onCloseAIPanel = () => {}, activeRightPanel = null, isRightPanelManaged = false }) {
   const { selectedNote, handleNoteChange, patchNote, handlePinToggle } = useNotes();
   const { refreshTags } = useAppContext();
   const { isEditorExpanded, toggleEditorExpanded } = useLayout();
@@ -131,9 +131,37 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   }, [content]);
 
   const {
-    showAIModal, aiMessages, setAiMessages, aiSelectedText, aiSavedSelection,
-    handleOpenAI, handleAIInsert, handleAIReplace, handleCloseAI,
+    showAIModal, aiMessages, setAiMessages, aiSelectedText, aiSavedSelection, captureCurrentSelection,
+    handleOpenAI: openAIPanel, handleAIInsert: insertAIResult, handleAIReplace: replaceWithAIResult, handleCloseAI: closeAIPanel,
   } = useAIPanel({ textareaRef, updateContent, pendingCursorPos });
+
+  const handleOpenAI = useCallback(() => {
+    onOpenAIPanel();
+    openAIPanel();
+  }, [onOpenAIPanel, openAIPanel]);
+
+  const handleCloseAI = useCallback(() => {
+    closeAIPanel();
+    onCloseAIPanel();
+  }, [closeAIPanel, onCloseAIPanel]);
+
+  const handleAIInsert = useCallback((text) => {
+    insertAIResult(text);
+    onCloseAIPanel();
+  }, [insertAIResult, onCloseAIPanel]);
+
+  const handleAIReplace = useCallback((text) => {
+    replaceWithAIResult(text);
+    onCloseAIPanel();
+  }, [replaceWithAIResult, onCloseAIPanel]);
+
+  // Opening the sharing panel closes a previously opened assistant without changing
+  // the active right-panel state back from "share".
+  useEffect(() => {
+    if (isRightPanelManaged && showAIModal && activeRightPanel !== 'ai') {
+      closeAIPanel();
+    }
+  }, [activeRightPanel, showAIModal, closeAIPanel, isRightPanelManaged]);
 
   function handleShowLinkPicker() {
     if (textareaRef.current) {
@@ -853,6 +881,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
           onChange={handleCodeMirrorChange}
           onBlur={handleCodeMirrorBlur}
           onKeyDown={handleCodeMirrorKeyDown}
+          onSelectionChange={captureCurrentSelection}
         />
         {slashMenu && filteredCommands.length > 0 && (
           <SlashCommandMenu
@@ -965,16 +994,18 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
             />
           )}
           <NotesEditorFormattingToolbar isEditable={isEditable} onFormat={handleEditorActions} onInsertInternalLink={handleShowLinkPicker} onOpenAI={handleOpenAI} />
-          {showAIModal && (
+          {showAIModal && (!isRightPanelManaged || activeRightPanel === 'ai') && (
             <AIPanel
               fullContent={textareaRef.current?.value || content}
               selectedText={aiSelectedText}
+              getSelectedText={captureCurrentSelection}
               noteTitle={title}
               messages={aiMessages}
               setMessages={setAiMessages}
               onInsert={handleAIInsert}
               onReplace={handleAIReplace}
               onClose={handleCloseAI}
+              docked={isRightPanelManaged}
               readOnly={!isEditable}
               quickPrompts={isEditable ? [] : [
                 { label: t('ai.preview.summary'), instruction: t('ai.preview.summaryPrompt') },

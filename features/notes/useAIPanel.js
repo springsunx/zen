@@ -6,16 +6,23 @@ export default function useAIPanel({ textareaRef, updateContent, pendingCursorPo
   const [aiSelectedText, setAiSelectedText] = useState("");
   const aiSavedSelection = useRef(null); // { start, end } saved before opening AI panel
 
-  function handleOpenAI() {
-    // Save current textarea selection before AI panel takes focus
+  function captureCurrentSelection() {
     if (textareaRef.current) {
       const start = textareaRef.current.selectionStart;
       const end = textareaRef.current.selectionEnd;
+      const selectedText = textareaRef.current.value.substring(start, end);
       aiSavedSelection.current = { start, end };
-      setAiSelectedText(textareaRef.current.value.substring(start, end));
+      setAiSelectedText(selectedText);
+      return selectedText;
     } else {
       setAiSelectedText("");
+      return "";
     }
+  }
+
+  function handleOpenAI() {
+    // Save the current CodeMirror selection before the assistant takes focus.
+    captureCurrentSelection();
     setShowAIModal(true);
   }
 
@@ -62,6 +69,7 @@ export default function useAIPanel({ textareaRef, updateContent, pendingCursorPo
     setAiMessages,
     aiSelectedText,
     aiSavedSelection,
+    captureCurrentSelection,
     handleOpenAI,
     handleAIInsert,
     handleAIReplace,

@@ -3,7 +3,7 @@
   right: 0;
   top: 0;
   bottom: 0;
-  width: 220px;
+  width: var(--right-panel-width, 480px);
   background: var(--neutral-50);
   border-left: 1px solid var(--neutral-200);
   z-index: 1;
@@ -228,9 +228,6 @@
 }
 
 /* ─── Responsive ─── */
-@media screen and (max-width: 1200px) {
-  .share-panel-container { width: 200px; }
-}
 @media screen and (max-width: 1024px) {
   .share-panel-container { display: none; }
 }
