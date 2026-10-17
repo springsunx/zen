@@ -166,7 +166,9 @@ export function NotesProvider({ children }) {
     setNotesPageNumber(1);
     setImagesPageNumber(1);
     setAttachmentsPageNumber(1);
-    setSelectedNote(null);
+    // Keep the current note visible until the refreshed list supplies its
+    // replacement. Clearing it here briefly unmounts the editor and side panel
+    // whenever a tag or other list filter changes.
   }, []);
 
   return (

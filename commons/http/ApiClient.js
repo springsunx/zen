@@ -365,8 +365,8 @@ async function setDefaultAIConfig(configId) {
   return await request('PUT', `/api/ai/configs/${configId}/default/`);
 }
 
-async function processWithAI(configId, instruction, content, messages) {
-  return await request('POST', '/api/ai/process/', { configId, instruction, content, messages: messages || [] });
+async function processWithAI(configId, instruction, content, messages, opts) {
+  return await request('POST', '/api/ai/process/', { configId, instruction, content, messages: messages || [] }, opts);
 }
 
 async function fetchAIModels(baseUrl, apiKey, skipTlsVerify) {

@@ -1,4 +1,4 @@
-import { h, Fragment, useState, useEffect, useRef } from "../../assets/preact.esm.js"
+import { h, Fragment, useState, useEffect, useLayoutEffect, useRef } from "../../assets/preact.esm.js"
 import ApiClient from '../../commons/http/ApiClient.js';
 import { showToast } from '../../commons/components/Toast.jsx';
 import renderMarkdown from '../../commons/utils/renderMarkdown.js';
@@ -15,7 +15,7 @@ function sanitizeHTML(html) {
 }
 import "./AIPanel.css";
 
-export default function AIPanel({ fullContent, selectedText, getSelectedText, noteTitle, messages, setMessages, onInsert, onReplace, onClose, readOnly = false, quickPrompts, docked = false }) {
+export default function AIPanel({ fullContent, selectedText, getSelectedText, noteId, noteTitle, messages, setMessages, onInsert, onReplace, onClose, readOnly = false, quickPrompts, docked = false }) {
   const [configs, setConfigs] = useState([]);
   const [selectedConfigId, setSelectedConfigId] = useState(0);
   const [instruction, setInstruction] = useState("");
@@ -24,6 +24,7 @@ export default function AIPanel({ fullContent, selectedText, getSelectedText, no
   const [savedQuickPrompts, setSavedQuickPrompts] = useState(() => getAIQuickPrompts());
   const bodyRef = useRef(null);
   const inputRef = useRef(null);
+  const requestControllerRef = useRef(null);
 
   useEffect(() => {
     ApiClient.getAIConfigs().then(list => {
@@ -53,6 +54,20 @@ export default function AIPanel({ fullContent, selectedText, getSelectedText, no
     window.addEventListener("ai-quick-prompts:change", refreshQuickPrompts);
     return () => window.removeEventListener("ai-quick-prompts:change", refreshQuickPrompts);
   }, []);
+
+  // A panel belongs to one note. Leaving that note must not let a late AI result
+  // appear in the next note's fresh conversation.
+  useEffect(() => () => requestControllerRef.current?.abort(), []);
+
+  // Reset before the next note paints, so the panel never briefly shows its
+  // predecessor's conversation or an in-progress reply.
+  useLayoutEffect(() => {
+    requestControllerRef.current?.abort();
+    requestControllerRef.current = null;
+    setIsProcessing(false);
+    setInstruction("");
+    setContentMode("full");
+  }, [noteId]);
 
   const activeQuickPrompts = quickPrompts === undefined ? savedQuickPrompts : quickPrompts;
 
@@ -85,16 +100,23 @@ export default function AIPanel({ fullContent, selectedText, getSelectedText, no
       content = noteTitle;
     }
 
-    ApiClient.processWithAI(selectedConfigId, text, content, messages)
+    const controller = new AbortController();
+    requestControllerRef.current = controller;
+
+    ApiClient.processWithAI(selectedConfigId, text, content, messages, { signal: controller.signal })
       .then(res => {
+        if (requestControllerRef.current !== controller) return;
         const aiMsg = { role: "assistant", content: res.result };
         setMessages(prev => [...prev, aiMsg]);
       })
-      .catch(() => {
+      .catch(error => {
+        if (controller.signal.aborted || requestControllerRef.current !== controller) return;
         const errMsg = { role: "assistant", content: t('ai.process.failed'), isError: true };
         setMessages(prev => [...prev, errMsg]);
       })
       .finally(() => {
+        if (requestControllerRef.current !== controller) return;
+        requestControllerRef.current = null;
         setIsProcessing(false);
       });
   }

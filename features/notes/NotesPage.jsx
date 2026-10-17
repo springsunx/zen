@@ -19,6 +19,7 @@ import { openModal } from "../../commons/components/Modal.jsx";
 import { t } from "../../commons/i18n/index.js";
 
 const RIGHT_PANEL_WIDTH_KEY = 'zen.rightPanelWidth';
+const RIGHT_PANEL_KEY = 'zen.rightPanel';
 const DEFAULT_RIGHT_PANEL_WIDTH = 480;
 const MIN_RIGHT_PANEL_WIDTH = 360;
 const MAX_RIGHT_PANEL_WIDTH = 720;
@@ -81,7 +82,11 @@ function NotesPageContent({ noteId }) {
   const [isMultiSelect, setIsMultiSelect] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
   const [rightPanel, setRightPanel] = useState(() => {
-    try { return localStorage.getItem('zen.showShare') === 'true' ? 'share' : null; } catch { return null; }
+    try {
+      const saved = localStorage.getItem(RIGHT_PANEL_KEY);
+      if (saved === 'ai' || saved === 'share') return saved;
+      return localStorage.getItem('zen.showShare') === 'true' ? 'share' : null;
+    } catch { return null; }
   });
   const [rightPanelWidth, setRightPanelWidth] = useState(getRightPanelWidth);
 
@@ -307,16 +312,20 @@ function NotesPageContent({ noteId }) {
   }, [rightPanelWidth]);
 
   useEffect(() => {
+    try {
+      if (rightPanel === 'ai' || rightPanel === 'share') {
+        localStorage.setItem(RIGHT_PANEL_KEY, rightPanel);
+      } else {
+        localStorage.removeItem(RIGHT_PANEL_KEY);
+      }
+    } catch {}
+  }, [rightPanel]);
+
+  useEffect(() => {
     const isOpen = rightPanel === 'ai' || (rightPanel === 'share' && selectedNote?.noteId != null && noteId !== 'new');
     document.body.classList.toggle('has-right-panel', isOpen);
     return () => document.body.classList.remove('has-right-panel');
   }, [rightPanel, selectedNote?.noteId, noteId]);
-
-  useEffect(() => {
-    if (rightPanel === 'ai') {
-      setRightPanel(null);
-    }
-  }, [selectedNote?.noteId]);
 
   function handleCloseRightPanel() {
     setRightPanel(null);
@@ -360,7 +369,7 @@ function NotesPageContent({ noteId }) {
     onCloseAIPanel={handleCloseRightPanel}
     activeRightPanel={rightPanel}
     isRightPanelManaged
-    key={selectedNote?.noteId}
+    key={rightPanel === 'ai' ? 'ai-panel-open' : selectedNote?.noteId}
   />;
   if (isMultiSelect === true) {
     editorContent = <BulkActionsPanel selectedIds={selectedIds} allIds={notes.map(n => n.noteId)} selectedNotes={notes.filter(n => selectedIds.includes(n.noteId))} onClose={handleClearSelection} onSelectAll={() => setSelectedIds(notes.map(n => n.noteId))} />;

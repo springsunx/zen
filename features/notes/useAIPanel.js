@@ -1,10 +1,18 @@
-import { useState, useRef } from "../../assets/preact.esm.js";
+import { useState, useRef, useLayoutEffect } from "../../assets/preact.esm.js";
 
-export default function useAIPanel({ textareaRef, updateContent, pendingCursorPos }) {
+export default function useAIPanel({ textareaRef, updateContent, pendingCursorPos, noteId }) {
   const [showAIModal, setShowAIModal] = useState(false);
   const [aiMessages, setAiMessages] = useState([]);
   const [aiSelectedText, setAiSelectedText] = useState("");
   const aiSavedSelection = useRef(null); // { start, end } saved before opening AI panel
+
+  // Keep the side panel open between notes, but never carry a selection or
+  // conversation from one note into another.
+  useLayoutEffect(() => {
+    setAiMessages([]);
+    setAiSelectedText("");
+    aiSavedSelection.current = null;
+  }, [noteId]);
 
   function captureCurrentSelection() {
     if (textareaRef.current) {

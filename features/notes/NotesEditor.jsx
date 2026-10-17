@@ -133,7 +133,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   const {
     showAIModal, aiMessages, setAiMessages, aiSelectedText, aiSavedSelection, captureCurrentSelection,
     handleOpenAI: openAIPanel, handleAIInsert: insertAIResult, handleAIReplace: replaceWithAIResult, handleCloseAI: closeAIPanel,
-  } = useAIPanel({ textareaRef, updateContent, pendingCursorPos });
+  } = useAIPanel({ textareaRef, updateContent, pendingCursorPos, noteId });
 
   const handleOpenAI = useCallback(() => {
     onOpenAIPanel();
@@ -154,6 +154,8 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
     replaceWithAIResult(text);
     onCloseAIPanel();
   }, [replaceWithAIResult, onCloseAIPanel]);
+
+  const isAIPanelOpen = showAIModal || (isRightPanelManaged && activeRightPanel === 'ai');
 
   // Opening the sharing panel closes a previously opened assistant without changing
   // the active right-panel state back from "share".
@@ -994,11 +996,12 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
             />
           )}
           <NotesEditorFormattingToolbar isEditable={isEditable} onFormat={handleEditorActions} onInsertInternalLink={handleShowLinkPicker} onOpenAI={handleOpenAI} />
-          {showAIModal && (!isRightPanelManaged || activeRightPanel === 'ai') && (
+          {isAIPanelOpen && (!isRightPanelManaged || activeRightPanel === 'ai') && (
             <AIPanel
               fullContent={textareaRef.current?.value || content}
               selectedText={aiSelectedText}
               getSelectedText={captureCurrentSelection}
+              noteId={noteId}
               noteTitle={title}
               messages={aiMessages}
               setMessages={setAiMessages}
@@ -1019,7 +1022,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
           )}
         </div>
       </div>
-      {isEditable && !showAIModal && (
+      {isEditable && !isAIPanelOpen && (
         <button type="button" className="ai-fab" onClick={handleOpenAI} title={t('notes.toolbar.ai')}>
           <BrainCircuitIcon />
         </button>
