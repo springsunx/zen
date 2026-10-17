@@ -500,7 +500,12 @@ func callLLM(config AIConfig, prompt string, history []chatMessage, content stri
 		{Role: "system", Content: systemPrompt},
 	}
 
-	// Embed content as context only once (first message carries content)
+	// Append conversation history
+	messages = append(messages, history...)
+
+	// Each request may target a different selection or updated note. Keep the
+	// current content next to the current instruction so it remains prominent
+	// after a long conversation history.
 	if content != "" {
 		messages = append(messages, chatMessage{
 			Role:    "user",
@@ -508,12 +513,9 @@ func callLLM(config AIConfig, prompt string, history []chatMessage, content stri
 		})
 		messages = append(messages, chatMessage{
 			Role:    "assistant",
-			Content: "I've received the content. I'll use it as context for our conversation.",
+			Content: "I've received the current content. I'll use it as context for the next instruction.",
 		})
 	}
-
-	// Append conversation history
-	messages = append(messages, history...)
 
 	// Append current instruction
 	messages = append(messages, chatMessage{Role: "user", Content: prompt})
