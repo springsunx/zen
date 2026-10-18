@@ -398,6 +398,86 @@
     background-color: color-mix(in srgb, var(--neutral-500) 28%, transparent);
 }
 
+.notes-editor-code-mirror .cm-line.cm-md-heading {
+    color: var(--text-primary);
+    font-family: var(--font-family);
+    font-weight: 700;
+    letter-spacing: -0.015em;
+}
+
+.notes-editor-code-mirror .cm-line.cm-md-heading-1 {
+    font-size: 1.7rem;
+    line-height: 1.35;
+}
+
+.notes-editor-code-mirror .cm-line.cm-md-heading-2 {
+    font-size: 1.45rem;
+    line-height: 1.35;
+}
+
+.notes-editor-code-mirror .cm-line.cm-md-heading-3 {
+    font-size: 1.25rem;
+    line-height: 1.35;
+}
+
+.notes-editor-code-mirror .cm-line.cm-md-heading-4 {
+    font-size: 1.1rem;
+    line-height: 1.35;
+}
+
+.notes-editor-code-mirror .cm-line.cm-md-heading-5,
+.notes-editor-code-mirror .cm-line.cm-md-heading-6 {
+    font-size: 1rem;
+    line-height: 1.35;
+}
+
+.notes-editor-code-mirror .cm-line.cm-md-blockquote {
+    color: var(--neutral-600);
+    font-style: italic;
+}
+
+.notes-editor-code-mirror .cm-line.cm-md-code-block {
+    color: var(--text-primary);
+}
+
+.notes-editor-code-mirror .cm-md-inline-code {
+    color: var(--text-primary);
+}
+
+.notes-editor-code-mirror .cm-md-strikethrough {
+    color: inherit;
+    text-decoration-line: line-through;
+    text-decoration-color: currentColor;
+    text-decoration-thickness: 1px;
+}
+
+.notes-editor-code-mirror .cm-md-link-label {
+    color: var(--primary-600, #2563eb);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+}
+
+.notes-editor-code-mirror .cm-md-link-destination {
+    color: var(--neutral-600);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+}
+
+.notes-editor-code-mirror .cm-line.cm-md-list-line {
+    color: var(--primary-600, #2563eb);
+}
+
+.notes-editor-code-mirror .cm-md-list-marker {
+    color: var(--primary-600, #2563eb);
+    font-weight: 700;
+}
+
+.notes-editor-code-mirror .cm-md-task-marker {
+    color: inherit;
+}
+
 .notes-editor-code-mirror .cm-search {
     display: flex;
     flex-direction: column;
@@ -997,29 +1077,6 @@
     }
 }
 
-.ai-fab {
-    display: none;
-    position: fixed;
-    bottom: calc(var(--mobile-navbar-height) + var(--safe-area-bottom) + 16px);
-    right: 16px;
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    border: none;
-    background: var(--neutral-900, #171717);
-    color: var(--neutral-50, #fafafa);
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    z-index: 3;
-    box-shadow: 0 4px 12px rgba(0,0,0,.2);
-    transition: transform 0.15s, background 0.15s;
-
-    svg.lucide { width: 22px; height: 22px; }
-    &:hover { transform: scale(1.05); }
-    &:active { transform: scale(0.95); }
-}
-
 @media screen and (max-width: 948px) {
     .formatting-toolbar {
         display: none;
@@ -1034,10 +1091,6 @@
         table td {
             padding: 4px 6px;
         }
-    }
-
-    .ai-fab {
-        display: flex;
     }
 }
 /* 改进的滚动布局：滚动交给 .notes-editor-scroll，正文列不再自己滚 */

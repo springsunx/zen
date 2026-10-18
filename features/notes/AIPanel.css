@@ -484,10 +484,6 @@
         bottom: calc(var(--mobile-navbar-height) + var(--safe-area-bottom) + 72px);
         max-height: 60vh;
     }
-
-    .ai-fab {
-        display: flex;
-    }
 }
 
 @media screen and (max-width: 1024px) {

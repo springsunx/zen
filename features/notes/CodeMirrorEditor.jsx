@@ -1,10 +1,11 @@
 import { h, useEffect, useRef } from "../../assets/preact.esm.js";
 import { EditorState } from "@codemirror/state";
-import { EditorView, placeholder } from "@codemirror/view";
-import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
+import { Decoration, EditorView, ViewPlugin, placeholder } from "@codemirror/view";
+import { HighlightStyle, syntaxHighlighting, syntaxTree } from "@codemirror/language";
 import { markdown } from "@codemirror/lang-markdown";
 import { SearchQuery, closeSearchPanel, findNext, findPrevious, getSearchQuery, replaceAll, replaceNext, search, selectMatches, setSearchQuery } from "@codemirror/search";
 import { tags } from "@lezer/highlight";
+import { Strikethrough } from "@lezer/markdown";
 import { basicSetup } from "codemirror";
 
 function clampPosition(position, length) {
@@ -12,14 +13,140 @@ function clampPosition(position, length) {
 }
 
 const markdownHighlightStyle = HighlightStyle.define([
-  { tag: [tags.heading, tags.heading1, tags.heading2, tags.heading3, tags.heading4, tags.heading5, tags.heading6], color: "var(--primary-600, #2563eb)", fontWeight: "700" },
-  { tag: [tags.link, tags.url], color: "var(--primary-600, #2563eb)", textDecoration: "underline" },
+  { tag: [tags.heading, tags.heading1, tags.heading2, tags.heading3, tags.heading4, tags.heading5, tags.heading6], color: "var(--text-primary)", fontWeight: "700" },
+  { tag: tags.link, color: "var(--primary-600, #2563eb)", textDecoration: "underline", textDecorationThickness: "1px", textUnderlineOffset: "3px" },
+  { tag: tags.url, color: "var(--neutral-600)", textDecoration: "underline", textDecorationThickness: "1px", textUnderlineOffset: "3px" },
   { tag: tags.strong, color: "var(--text-primary)", fontWeight: "700" },
   { tag: tags.emphasis, color: "var(--text-primary)", fontStyle: "italic" },
-  { tag: tags.monospace, color: "var(--green-600, #16a34a)", backgroundColor: "color-mix(in srgb, var(--green-500, #22c55e) 12%, transparent)" },
-  { tag: [tags.meta, tags.contentSeparator], color: "var(--neutral-500)" },
-  { tag: tags.quote, color: "var(--neutral-600)" },
+  { tag: tags.strikethrough, textDecoration: "line-through" },
+  { tag: [tags.meta, tags.contentSeparator, tags.processingInstruction], color: "var(--neutral-400)" },
+  { tag: tags.quote, color: "var(--neutral-600)", fontStyle: "italic" },
 ]);
+
+const HEADING_NODE_LEVELS = {
+  ATXHeading1: 1,
+  SetextHeading1: 1,
+  ATXHeading2: 2,
+  SetextHeading2: 2,
+  ATXHeading3: 3,
+  ATXHeading4: 4,
+  ATXHeading5: 5,
+  ATXHeading6: 6,
+};
+
+function addLineDecoration(doc, lineNumber, className, decorations, lineDecorationKeys) {
+  const line = doc.line(lineNumber);
+  const key = `${line.from}:${className}`;
+  if (lineDecorationKeys.has(key)) return;
+  lineDecorationKeys.add(key);
+  decorations.push(Decoration.line({ attributes: { class: className } }).range(line.from));
+}
+
+function addLineRangeDecorations(doc, from, to, className, decorations, lineDecorationKeys, lineStarts = null) {
+  if (doc.lines === 0) return;
+  const firstLine = doc.lineAt(Math.max(0, Math.min(from, doc.length))).number;
+  const lastPosition = Math.max(from, to - 1);
+  const lastLine = doc.lineAt(Math.max(0, Math.min(lastPosition, doc.length))).number;
+
+  for (let lineNumber = firstLine; lineNumber <= lastLine; lineNumber += 1) {
+    addLineDecoration(doc, lineNumber, className, decorations, lineDecorationKeys);
+    lineStarts?.add(doc.line(lineNumber).from);
+  }
+}
+
+function createMarkdownDisplayDecorations(view) {
+  const { doc } = view.state;
+  const decorations = [];
+  const lineDecorationKeys = new Set();
+  const codeLineStarts = new Set();
+  const tree = syntaxTree(view.state);
+
+  for (const visibleRange of view.visibleRanges) {
+    tree.iterate({
+      from: visibleRange.from,
+      to: visibleRange.to,
+      enter(node) {
+        const nodeName = node.type.name;
+        const headingLevel = HEADING_NODE_LEVELS[nodeName];
+
+        if (headingLevel) {
+          addLineRangeDecorations(doc, node.from, node.to, `cm-md-heading cm-md-heading-${headingLevel}`, decorations, lineDecorationKeys);
+          return;
+        }
+
+        if (nodeName === "Blockquote" || nodeName === "BlockQuote") {
+          addLineRangeDecorations(doc, Math.max(node.from, visibleRange.from), Math.min(node.to, visibleRange.to), "cm-md-blockquote", decorations, lineDecorationKeys);
+          return;
+        }
+
+        if (nodeName === "FencedCode" || nodeName === "CodeBlock") {
+          addLineRangeDecorations(doc, Math.max(node.from, visibleRange.from), Math.min(node.to, visibleRange.to), "cm-md-code-block", decorations, lineDecorationKeys, codeLineStarts);
+          return;
+        }
+
+        if (nodeName === "Link") {
+          const linkMarks = node.node.getChildren("LinkMark");
+          if (linkMarks.length >= 2 && linkMarks[0].to <= linkMarks[1].from) {
+            decorations.push(Decoration.mark({ class: "cm-md-link-label" }).range(linkMarks[0].to, linkMarks[1].from));
+            decorations.push(Decoration.mark({ class: "cm-md-link-destination" }).range(linkMarks[1].from, node.to));
+          }
+        }
+
+        if (nodeName === "InlineCode") {
+          const codeMarks = node.node.getChildren("CodeMark");
+          if (codeMarks.length >= 2 && codeMarks[0].to <= codeMarks[1].from) {
+            decorations.push(Decoration.mark({ class: "cm-md-inline-code" }).range(codeMarks[0].to, codeMarks[1].from));
+          }
+        }
+
+        if (nodeName === "Strikethrough") {
+          decorations.push(Decoration.mark({ class: "cm-md-strikethrough" }).range(node.from, node.to));
+        }
+      },
+    });
+
+    let line = doc.lineAt(visibleRange.from);
+    const lastVisibleLine = doc.lineAt(Math.max(visibleRange.from, visibleRange.to - 1)).number;
+    while (line.number <= lastVisibleLine) {
+      if (!codeLineStarts.has(line.from)) {
+        const prefix = line.text.match(/^\s*(?:>\s*)*/)?.[0] || "";
+        const lineContent = line.text.slice(prefix.length);
+        const listMatch = lineContent.match(/^([-+*]|\d+[.)])(?=\s)/);
+        if (listMatch) {
+          const markerFrom = line.from + prefix.length;
+          addLineDecoration(doc, line.number, "cm-md-list-line", decorations, lineDecorationKeys);
+          decorations.push(Decoration.mark({ class: "cm-md-list-marker" }).range(markerFrom, markerFrom + listMatch[1].length));
+        }
+
+        const taskMatch = lineContent.match(/^[-+*]\s+(\[[ xX]\])(?=\s)/);
+        if (taskMatch) {
+          const markerOffset = lineContent.indexOf(taskMatch[1]);
+          const markerFrom = line.from + prefix.length + markerOffset;
+          decorations.push(Decoration.mark({ class: "cm-md-task-marker" }).range(markerFrom, markerFrom + taskMatch[1].length));
+        }
+      }
+
+      if (line.number === doc.lines) break;
+      line = doc.line(line.number + 1);
+    }
+  }
+
+  return Decoration.set(decorations, true);
+}
+
+const markdownDisplayPlugin = ViewPlugin.fromClass(class {
+  constructor(view) {
+    this.decorations = createMarkdownDisplayDecorations(view);
+  }
+
+  update(update) {
+    if (update.docChanged || update.viewportChanged) {
+      this.decorations = createMarkdownDisplayDecorations(update.view);
+    }
+  }
+}, {
+  decorations: plugin => plugin.decorations,
+});
 
 const chineseEditorPhrases = EditorState.phrases.of({
   "Go to line": "跳转到行",
@@ -276,9 +403,10 @@ export default function CodeMirrorEditor({ value, placeholderText, spellcheck, e
         extensions: [
           basicSetup,
           chineseEditorPhrases,
-          markdown(),
+          markdown({ extensions: [Strikethrough] }),
           search({ top: true, createPanel: createChineseSearchPanel }),
           syntaxHighlighting(markdownHighlightStyle),
+          markdownDisplayPlugin,
           EditorView.lineWrapping,
           EditorView.inputHandler.of(markdownPairInputHandler),
           placeholder(placeholderText),

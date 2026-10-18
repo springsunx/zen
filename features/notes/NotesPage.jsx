@@ -369,7 +369,7 @@ function NotesPageContent({ noteId }) {
     onCloseAIPanel={handleCloseRightPanel}
     activeRightPanel={rightPanel}
     isRightPanelManaged
-    key={rightPanel === 'ai' ? 'ai-panel-open' : selectedNote?.noteId}
+    key={selectedNote?.noteId}
   />;
   if (isMultiSelect === true) {
     editorContent = <BulkActionsPanel selectedIds={selectedIds} allIds={notes.map(n => n.noteId)} selectedNotes={notes.filter(n => selectedIds.includes(n.noteId))} onClose={handleClearSelection} onSelectAll={() => setSelectedIds(notes.map(n => n.noteId))} />;

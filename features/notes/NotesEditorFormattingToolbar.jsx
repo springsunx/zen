@@ -1,8 +1,8 @@
 import { h } from "../../assets/preact.esm.js"
-import { TableIcon, TablePropertiesIcon, BoldIcon, ItalicIcon, StrikethroughIcon, HighlightIcon, CodeIcon, CodeBlocksIcon, Heading1Icon, Heading2Icon, Heading3Icon, ListIcon, ListOrderedIcon, ListTodoIcon, QuoteIcon, LinkIcon, DescriptionIcon, SeparatorIcon, NeurologyIcon } from '../../commons/components/Icon.jsx';
+import { TableIcon, TablePropertiesIcon, BoldIcon, ItalicIcon, StrikethroughIcon, HighlightIcon, CodeIcon, CodeBlocksIcon, Heading1Icon, Heading2Icon, Heading3Icon, ListIcon, ListOrderedIcon, ListTodoIcon, QuoteIcon, LinkIcon, DescriptionIcon, SeparatorIcon } from '../../commons/components/Icon.jsx';
 import { t } from "../../commons/i18n/index.js";
 
-export default function NotesEditorFormattingToolbar({ isEditable, onFormat, onInsertInternalLink, onOpenAI }) {
+export default function NotesEditorFormattingToolbar({ isEditable, onFormat, onInsertInternalLink }) {
   if (!isEditable) {
     return null;
   }
@@ -66,9 +66,6 @@ export default function NotesEditorFormattingToolbar({ isEditable, onFormat, onI
         </button>
         <button type="button" className="formatting-button" onClick={() => onFormat("hr")} title={t('notes.toolbar.hr')}>
           <SeparatorIcon />
-        </button>
-        <button type="button" className="formatting-button" onClick={() => onOpenAI()} title={t('notes.toolbar.ai')}>
-          <NeurologyIcon />
         </button>
       </div>
       <div className="formatting-toolbar-group">

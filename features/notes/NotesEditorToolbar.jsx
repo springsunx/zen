@@ -6,7 +6,7 @@ import isMobile from '../../commons/utils/isMobile.js';
 import { getLang, t } from "../../commons/i18n/index.js";
 import { showToast } from "../../commons/components/Toast.jsx";
 
-export default function NotesEditorToolbar({ note, isNewNote, isEditable, isModal, isSaveLoading, isExpanded, isExpandable, onSaveClick, onSaveAndCloseClick, onEditClick, onEditCancelClick, onCloseClick, onDeleteClick, onArchiveClick, onUnarchiveClick, onRestoreClick, onExpandToggleClick, onPinClick, onUnpinClick, onVersionsClick, onToggleShare, onOpenReadAI }) {
+export default function NotesEditorToolbar({ note, isNewNote, isEditable, isModal, isSaveLoading, isExpanded, isExpandable, onSaveClick, onSaveAndCloseClick, onEditClick, onEditCancelClick, onCloseClick, onDeleteClick, onArchiveClick, onUnarchiveClick, onRestoreClick, onExpandToggleClick, onPinClick, onUnpinClick, onVersionsClick, onToggleShare, onToggleAI }) {
   const saveButtonText = isSaveLoading ? t('common.saving') : t('common.save');
   const saveAndCloseText = t('editor.saveAndClose');
 
@@ -44,8 +44,8 @@ export default function NotesEditorToolbar({ note, isNewNote, isEditable, isModa
       },
       {
         key: 'ai',
-        condition: !isNewNote && !isEditable && note?.content != null && onOpenReadAI != null,
-        component: <Button variant="ghost" onClick={onOpenReadAI} data-tooltip={t('ai.preview.open')}>
+        condition: onToggleAI != null,
+        component: <Button variant="ghost" onClick={onToggleAI} data-tooltip={t('ai.preview.open')}>
           <BrainCogIcon />
         </Button>
       },

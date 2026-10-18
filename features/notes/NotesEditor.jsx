@@ -20,7 +20,6 @@ import { useNotes } from "../../commons/contexts/NotesContext.jsx";
 import { useAppContext, AppProvider } from '../../commons/contexts/AppContext.jsx';
 import { NotesProvider } from "../../commons/contexts/NotesContext.jsx";
 import NotesEditorModal from './NotesEditorModal.jsx';
-import { BrainCircuitIcon } from '../../commons/components/Icon.jsx';
 
 // How far the invisible page-edge grips reach outward from the reading column.
 const HANDLE_REACH = 40;
@@ -104,9 +103,6 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   const readScrollRef = useRef(0);
   const editScrollRef = useRef(0);
   const savedNoteRef = useRef(null);
-
-  // ─── Derived state ───
-  const lastCtrlPress = useRef(0); // for double-Ctrl detection
 
   function updateContent(value) {
     setContent(value);
@@ -862,18 +858,6 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   }
 
   function handleCodeMirrorKeyDown(e) {
-    // Double Ctrl detection: activate AI assistant.
-    if (e.key === 'Control' && !e.shiftKey && !e.altKey && !e.metaKey && !e.repeat) {
-      const now = Date.now();
-      if (now - lastCtrlPress.current < 400) {
-        e.preventDefault();
-        lastCtrlPress.current = 0;
-        handleToggleAI();
-        return true;
-      }
-      lastCtrlPress.current = now;
-      return false;
-    }
     if (handleTemplateSlashKeyDown(e)) return true;
     if (handleSlashKeyDown(e)) return true;
     if (handleSlashUndo(e)) return true;
@@ -983,7 +967,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
           onUnpinClick={handlePinToggleClick}
           onVersionsClick={handleVersionsClick}
           onToggleShare={onToggleShare}
-          onOpenReadAI={handleToggleAI}
+          onToggleAI={handleToggleAI}
         />
         <div className="notes-editor-header">
           <div className="notes-editor-title" spellCheck={spellcheckValue} contentEditable={isEditable} ref={titleRef} onBlur={handleTitleChange} dangerouslySetInnerHTML={{ __html: title }} />
@@ -1004,7 +988,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
               handleFileInputChange={handleFileInputChange}
             />
           )}
-          <NotesEditorFormattingToolbar isEditable={isEditable} onFormat={handleEditorActions} onInsertInternalLink={handleShowLinkPicker} onOpenAI={handleOpenAI} />
+          <NotesEditorFormattingToolbar isEditable={isEditable} onFormat={handleEditorActions} onInsertInternalLink={handleShowLinkPicker} />
           {isAIPanelOpen && (!isRightPanelManaged || activeRightPanel === 'ai') && (
             <AIPanel
               fullContent={textareaRef.current?.value || content}
@@ -1031,11 +1015,6 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
           )}
         </div>
       </div>
-      {isEditable && !isAIPanelOpen && (
-        <button type="button" className="ai-fab" onClick={handleOpenAI} title={t('notes.toolbar.ai')}>
-          <BrainCircuitIcon />
-        </button>
-      )}
       {editorLayout === null ? null : (
         <>
           <div

@@ -24,7 +24,7 @@ export default function useEditorKeyboardShortcuts({
   const handleKeyDown = useCallback(e => {
     const isTextAreaFocused = textareaRef.current?.hasFocus() === true;
 
-    if (!isEditable && onOpenAI && e.key === 'Control' && !e.shiftKey && !e.altKey && !e.metaKey && !e.repeat) {
+    if (onOpenAI && e.key === 'Control' && !e.shiftKey && !e.altKey && !e.metaKey && !e.repeat) {
       const now = Date.now();
       if (now - lastCtrlPress.current < 400) {
         e.preventDefault();
