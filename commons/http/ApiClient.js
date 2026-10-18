@@ -530,6 +530,10 @@ async function createToken(payload) {
   return await request('POST', '/api/v1/tokens/', payload);
 }
 
+async function updateToken(tokenId, payload) {
+  return await request('PUT', `/api/v1/tokens/${tokenId}/`, payload);
+}
+
 async function deleteToken(tokenId) {
   return await request('DELETE', `/api/v1/tokens/${tokenId}/`);
 }
@@ -674,6 +678,7 @@ export default {
   incrementTemplateUsage,
   getTokens,
   createToken,
+  updateToken,
   deleteToken,
   getCanvases,
   getCanvasById,

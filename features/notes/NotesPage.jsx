@@ -126,7 +126,7 @@ function NotesPageContent({ noteId }) {
   const isUntaggedPage = searchParams.get("isUntagged") === "true";
 
   const [selectedView, setSelectedView] = useState(() => {
-    return normalizeNotesView(ViewPreferences.getPreference(selectedFocusId, selectedTagId, isArchivesPage, isTrashPage));
+    return normalizeNotesView(ViewPreferences.getPreference(selectedFocusId, selectedTagId, isArchivesPage, isTrashPage, isUntaggedPage));
   });
 
   const [isGlobalView, setIsGlobalView] = useState(() => ViewPreferences.isGlobalMode());
@@ -162,7 +162,7 @@ function NotesPageContent({ noteId }) {
     refreshTags(selectedFocusId, isArchivesPage, isTrashPage);
 
     // Reload preference
-    const savedView = normalizeNotesView(ViewPreferences.getPreference(selectedFocusId, selectedTagId, isArchivesPage, isTrashPage));
+    const savedView = normalizeNotesView(ViewPreferences.getPreference(selectedFocusId, selectedTagId, isArchivesPage, isTrashPage, isUntaggedPage));
     setSelectedView(savedView);
   }, [selectedTagId, selectedFocusId, isArchivesPage, isTrashPage, isUntaggedPage, appliedNoteQuery, resetPagination, refreshNotes, refreshImages, refreshAttachments, refreshTags]);
 
@@ -290,7 +290,7 @@ function NotesPageContent({ noteId }) {
 
   function handleViewChange(newView) {
     setSelectedView(newView);
-    ViewPreferences.setPreference(newView, selectedFocusId, selectedTagId, isArchivesPage, isTrashPage);
+    ViewPreferences.setPreference(newView, selectedFocusId, selectedTagId, isArchivesPage, isTrashPage, isUntaggedPage);
   }
 
   function handleGlobalViewToggle() {
@@ -298,7 +298,7 @@ function NotesPageContent({ noteId }) {
     setIsGlobalView(next);
     ViewPreferences.setGlobalMode(next);
     // Persist current view into the new mode's storage so it stays consistent
-    ViewPreferences.setPreference(selectedView, selectedFocusId, selectedTagId, isArchivesPage, isTrashPage);
+    ViewPreferences.setPreference(selectedView, selectedFocusId, selectedTagId, isArchivesPage, isTrashPage, isUntaggedPage);
   }
 
   function handleMultiSelectStart(noteId) {

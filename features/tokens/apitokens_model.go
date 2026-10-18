@@ -156,6 +156,51 @@ func CreateAPIToken(name string, scopes []Scope) (string, APIToken, error) {
 	return plainToken, token, nil
 }
 
+func UpdateAPIToken(tokenID int, name string, scopes []Scope) (APIToken, error) {
+	tx, err := sqlite.DB.Begin()
+	if err != nil {
+		return APIToken{}, fmt.Errorf("error beginning transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	var token APIToken
+	query := `
+		UPDATE api_tokens
+		SET name = ?
+		WHERE token_id = ?
+		RETURNING token_id, name, created_at
+	`
+	if err := tx.QueryRow(query, name, tokenID).Scan(&token.TokenID, &token.Name, &token.CreatedAt); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return APIToken{}, fmt.Errorf("API token %d: %w", tokenID, utils.ErrNotFound)
+		}
+		return APIToken{}, fmt.Errorf("error updating API token: %w", err)
+	}
+
+	if _, err := tx.Exec("DELETE FROM api_token_scopes WHERE token_id = ?", tokenID); err != nil {
+		return APIToken{}, fmt.Errorf("error deleting API token scopes: %w", err)
+	}
+	if err := insertTokenScopes(tx, tokenID, scopes); err != nil {
+		return APIToken{}, err
+	}
+	token.Scopes = scopes
+
+	if err := tx.Commit(); err != nil {
+		return APIToken{}, fmt.Errorf("error committing API token update: %w", err)
+	}
+	return token, nil
+}
+
+func insertTokenScopes(tx *sql.Tx, tokenID int, scopes []Scope) error {
+	query := `INSERT INTO api_token_scopes (token_id, tag_id, can_read, can_write) VALUES (?, ?, ?, ?)`
+	for _, scope := range scopes {
+		if _, err := tx.Exec(query, tokenID, scope.TagID, scope.CanRead, scope.CanWrite); err != nil {
+			return fmt.Errorf("error saving API token scope: %w", err)
+		}
+	}
+	return nil
+}
+
 func RevokeAPIToken(tokenID int) error {
 	query := `
 		DELETE FROM

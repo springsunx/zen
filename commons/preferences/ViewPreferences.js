@@ -2,13 +2,13 @@ const VIEW_PREFERENCE_PREFIX = 'view-preference';
 const GLOBAL_VIEW_MODE_KEY = 'view-preference-global-mode';
 const DEFAULT_VIEW = 'list';
 
-function getPreference(focusId, tagId, isArchived, isDeleted) {
+function getPreference(focusId, tagId, isArchived, isDeleted, isUntagged = false) {
   try {
     if (isGlobalMode()) {
       const globalView = localStorage.getItem(`${VIEW_PREFERENCE_PREFIX}-all`);
       if (globalView) return globalView;
     }
-    const key = getKey(focusId, tagId, isArchived, isDeleted);
+    const key = getKey(focusId, tagId, isArchived, isDeleted, isUntagged);
     if (key === null) {
       return DEFAULT_VIEW;
     }
@@ -19,13 +19,13 @@ function getPreference(focusId, tagId, isArchived, isDeleted) {
 }
 
 // view: "list" || "card" || "gallery"
-function setPreference(view, focusId, tagId, isArchived, isDeleted) {
+function setPreference(view, focusId, tagId, isArchived, isDeleted, isUntagged = false) {
   try {
     if (isGlobalMode()) {
       localStorage.setItem(`${VIEW_PREFERENCE_PREFIX}-all`, view);
       return;
     }
-    const key = getKey(focusId, tagId, isArchived, isDeleted);
+    const key = getKey(focusId, tagId, isArchived, isDeleted, isUntagged);
     if (key === null) {
       return;
     }
@@ -34,13 +34,17 @@ function setPreference(view, focusId, tagId, isArchived, isDeleted) {
   }
 }
 
-function getKey(focusId, tagId, isArchived, isDeleted) {
+function getKey(focusId, tagId, isArchived, isDeleted, isUntagged) {
   if (isDeleted === true) {
     return null;
   }
 
   if (isArchived === true) {
     return `${VIEW_PREFERENCE_PREFIX}-archived`;
+  }
+
+  if (isUntagged === true) {
+    return `${VIEW_PREFERENCE_PREFIX}-untagged`;
   }
 
   if (focusId) {

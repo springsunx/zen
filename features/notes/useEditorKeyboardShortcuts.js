@@ -16,7 +16,8 @@ export default function useEditorKeyboardShortcuts({
   onFormatText,
   onSaveAndClose,
   onInsertInternalLink,
-  onOpenAI
+  onOpenAI,
+  onToggleAI
 }) {
   const lastCtrlPress = useRef(0);
 
@@ -28,7 +29,11 @@ export default function useEditorKeyboardShortcuts({
       if (now - lastCtrlPress.current < 400) {
         e.preventDefault();
         lastCtrlPress.current = 0;
-        onOpenAI();
+        if (onToggleAI) {
+          onToggleAI();
+        } else {
+          onOpenAI();
+        }
         return;
       }
       lastCtrlPress.current = now;
@@ -175,7 +180,7 @@ export default function useEditorKeyboardShortcuts({
         }
       }
     }
-  }, [isEditable, isModal, isExpanded, isExpandable, textareaRef, onSave, onEdit, onClose, onExpandToggle, onInsertAtCursor, onFormatText, onSaveAndClose, onOpenAI]);
+  }, [isEditable, isModal, isExpanded, isExpandable, textareaRef, onSave, onEdit, onClose, onExpandToggle, onInsertAtCursor, onFormatText, onSaveAndClose, onOpenAI, onToggleAI]);
 
   useEffect(() => {
     document.addEventListener("keydown", handleKeyDown);

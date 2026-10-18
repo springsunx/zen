@@ -590,7 +590,31 @@
                 }
             }
 
+            .api-token-actions {
+                display: flex;
+                gap: var(--spacing-2);
+                flex-shrink: 0;
+            }
+
+            &.api-token-item-editing {
+                display: block;
+            }
+
         }
+    }
+}
+
+.api-token-editor {
+    width: 100%;
+
+    .api-token-scopes {
+        margin-bottom: var(--spacing-3);
+    }
+
+    .api-token-editor-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: var(--spacing-2);
     }
 }
 

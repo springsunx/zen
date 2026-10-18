@@ -1,7 +1,7 @@
 import { h, useEffect, useState, useRef } from "../../assets/preact.esm.js"
 import ApiClient from "../../commons/http/ApiClient.js";
 import navigateTo from "../../commons/utils/navigateTo.js";
-import { SearchIcon, NoteIcon, ArchiveIcon, TrashIcon, TagIcon, PanelRightIcon } from "../../commons/components/Icon.jsx";
+import { SearchIcon, NoteIcon, ArchiveIcon, TrashIcon, TagIcon, PanelRightIcon, CloseIcon } from "../../commons/components/Icon.jsx";
 import { ModalBackdrop, ModalContainer, closeModal, openModal } from "../../commons/components/Modal.jsx";
 import Lightbox from "../../commons/components/Lightbox.jsx";
 import SearchHistory from "../../commons/preferences/SearchHistory.js";
@@ -442,6 +442,7 @@ export default function SearchMenu({ initialMode }) {
           />
           {isCommandMode !== true && (
             <button
+              type="button"
               className={`search-preview-toggle ${isPreviewVisible === true ? "is-active" : ""}`}
               onClick={handleTogglePreviewClick}
               data-tooltip={t('search.preview.toggle')}
@@ -449,6 +450,15 @@ export default function SearchMenu({ initialMode }) {
               <PanelRightIcon />
             </button>
           )}
+          <button
+            type="button"
+            className="search-close-button"
+            onClick={handleCloseModal}
+            title={t('common.close')}
+            aria-label={t('common.close')}
+          >
+            <CloseIcon />
+          </button>
         </div>
         {tabsSection}
         <div className={`search-modal-body ${showPreview === true ? "has-preview" : ""}`}>

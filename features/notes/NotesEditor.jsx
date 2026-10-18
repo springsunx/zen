@@ -157,6 +157,14 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
 
   const isAIPanelOpen = showAIModal || (isRightPanelManaged && activeRightPanel === 'ai');
 
+  const handleToggleAI = useCallback(() => {
+    if (isAIPanelOpen) {
+      handleCloseAI();
+    } else {
+      handleOpenAI();
+    }
+  }, [isAIPanelOpen, handleCloseAI, handleOpenAI]);
+
   // Opening the sharing panel closes a previously opened assistant without changing
   // the active right-panel state back from "share".
   useEffect(() => {
@@ -590,7 +598,8 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
     onInsertAtCursor: insertAtCursor,
     onFormatText: applyMarkdownFormat,
     onInsertInternalLink: handleShowLinkPicker,
-    onOpenAI: handleOpenAI
+    onOpenAI: handleOpenAI,
+    onToggleAI: handleToggleAI
   });
 
   function handleEditCancelClick() {
@@ -859,7 +868,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
       if (now - lastCtrlPress.current < 400) {
         e.preventDefault();
         lastCtrlPress.current = 0;
-        handleOpenAI();
+        handleToggleAI();
         return true;
       }
       lastCtrlPress.current = now;
@@ -974,7 +983,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
           onUnpinClick={handlePinToggleClick}
           onVersionsClick={handleVersionsClick}
           onToggleShare={onToggleShare}
-          onOpenReadAI={handleOpenAI}
+          onOpenReadAI={handleToggleAI}
         />
         <div className="notes-editor-header">
           <div className="notes-editor-title" spellCheck={spellcheckValue} contentEditable={isEditable} ref={titleRef} onBlur={handleTitleChange} dangerouslySetInnerHTML={{ __html: title }} />

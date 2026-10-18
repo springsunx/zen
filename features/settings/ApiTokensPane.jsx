@@ -18,6 +18,7 @@ export default function ApiTokensPane() {
   const [tokens, setTokens] = useState([]);
   const [tags, setTags] = useState([]);
   const [isTokensLoading, setIsTokensLoading] = useState(true);
+  const [editingTokenId, setEditingTokenId] = useState(null);
   const [newTokenName, setNewTokenName] = useState("");
   const [scopes, setScopes] = useState([newScope()]);
   const [newlyCreatedToken, setNewlyCreatedToken] = useState(null);
@@ -54,27 +55,33 @@ export default function ApiTokensPane() {
   }
 
   function handleScopeTagChange(index, tagId) {
+    if (isCreating) return;
     setScopes(scopes.map((scope, i) => i === index ? { ...scope, tagId } : scope));
   }
 
   function handleScopeAccessChange(index, value) {
+    if (isCreating) return;
     const canWrite = value === "write";
     setScopes(scopes.map((scope, i) => i === index ? { ...scope, canWrite } : scope));
   }
 
   function handleAddScopeClick() {
+    if (isCreating) return;
     setScopes([...scopes, newScope()]);
   }
 
   function handleRemoveScopeClick(index) {
+    if (isCreating) return;
     setScopes(scopes.filter((_, i) => i !== index));
   }
 
   function handleCreateTokenClick() {
+    if (isCreating) return;
     if (!newTokenName.trim()) {
       setError(t('settings.apiTokens.name.required'));
       return;
     }
+    if (!isFormValid) return;
 
     setIsCreating(true);
     setError("");
@@ -98,6 +105,11 @@ export default function ApiTokensPane() {
         setTokens(prevTokens => prevTokens.filter(token => token.tokenId !== tokenId));
       })
       .catch(() => { });
+  }
+
+  function handleEditSave(tokenInfo) {
+    setTokens(prevTokens => prevTokens.map(token => token.tokenId === tokenInfo.tokenId ? tokenInfo : token));
+    setEditingTokenId(null);
   }
 
   function tagNameFor(tagId) {
@@ -142,6 +154,7 @@ export default function ApiTokensPane() {
           options={tagOptions}
           value={scope.tagId}
           onChange={tagId => handleScopeTagChange(index, tagId)}
+          isDisabled={isCreating}
         />
         <SegmentedControl
           options={accessOptions}
@@ -149,27 +162,48 @@ export default function ApiTokensPane() {
           isDisabled={isCreating}
           onChange={value => handleScopeAccessChange(index, value)}
         />
-        <Button variant="ghost" onClick={() => handleRemoveScopeClick(index)} title={t('settings.apiTokens.remove')}>
+        <Button variant="ghost" onClick={() => handleRemoveScopeClick(index)} title={t('settings.apiTokens.remove')} isDisabled={isCreating}>
           <CloseIcon />
         </Button>
       </div>
     );
   });
 
-  const tokenItems = tokens.map(token => (
-    <div key={token.tokenId} className="api-token-item">
-      <div className="api-token-info">
-        <div className="api-token-name">{token.name}</div>
-        <div className="api-token-grants">{grantsSummary(token.scopes)}</div>
-        <div className="api-token-date" title={token.createdAt}>
-          {formatDate(new Date(token.createdAt))}
+  const tokenItems = tokens.map(token => {
+    if (editingTokenId === token.tokenId) {
+      return (
+        <div key={token.tokenId} className="api-token-item api-token-item-editing">
+          <TokenEditor
+            token={token}
+            tagOptions={tagOptions}
+            accessOptions={accessOptions}
+            onSave={handleEditSave}
+            onCancel={() => setEditingTokenId(null)}
+          />
+        </div>
+      );
+    }
+
+    return (
+      <div key={token.tokenId} className="api-token-item">
+        <div className="api-token-info">
+          <div className="api-token-name">{token.name}</div>
+          <div className="api-token-grants">{grantsSummary(token.scopes)}</div>
+          <div className="api-token-date" title={token.createdAt}>
+            {formatDate(new Date(token.createdAt))}
+          </div>
+        </div>
+        <div className="api-token-actions">
+          <Button variant="secondary" onClick={() => setEditingTokenId(token.tokenId)}>
+            {t('settings.apiTokens.edit')}
+          </Button>
+          <Button variant="danger" onClick={() => handleRevokeClick(token.tokenId)}>
+            {t('settings.apiTokens.revoke')}
+          </Button>
         </div>
       </div>
-      <Button variant="danger" onClick={() => handleRevokeClick(token.tokenId)}>
-        {t('settings.apiTokens.revoke')}
-      </Button>
-    </div>
-  ));
+    );
+  });
 
   const buttonText = isCreating ? t('settings.apiTokens.generating') : t('settings.apiTokens.generate');
 
@@ -250,7 +284,104 @@ function newScope() {
   return { tagId: ALL_TAGS, canRead: true, canWrite: false };
 }
 
-function ScopeTagDropdown({ options, value, onChange }) {
+function TokenEditor({ token, tagOptions, accessOptions, onSave, onCancel }) {
+  const [name, setName] = useState(token.name);
+  const [scopes, setScopes] = useState((token.scopes || []).map(scope => ({ ...scope })));
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState("");
+  const hasDuplicateTags = new Set(scopes.map(scope => scope.tagId)).size !== scopes.length;
+  const isValid = name.trim() !== "" && scopes.length > 0 && !hasDuplicateTags;
+
+  function updateScope(index, patch) {
+    if (isSaving) return;
+    setScopes(currentScopes => currentScopes.map((scope, i) => i === index ? { ...scope, ...patch } : scope));
+  }
+
+  function handleSave() {
+    if (isSaving) return;
+    if (!name.trim()) {
+      setError(t('settings.apiTokens.name.required'));
+      return;
+    }
+    if (!isValid) return;
+
+    setIsSaving(true);
+    setError("");
+    ApiClient.updateToken(token.tokenId, { name: name.trim(), scopes })
+      .then(onSave)
+      .catch(() => setError(t('settings.apiTokens.updateFailed')))
+      .finally(() => setIsSaving(false));
+  }
+
+  const scopeRows = scopes.map((scope, index) => (
+    <div key={index} className="api-token-scope-row">
+      <ScopeTagDropdown
+        options={tagOptions}
+        value={scope.tagId}
+        onChange={tagId => updateScope(index, { tagId })}
+        isDisabled={isSaving}
+      />
+      <SegmentedControl
+        options={accessOptions}
+        value={scope.canWrite ? "write" : "read"}
+        isDisabled={isSaving}
+        onChange={value => updateScope(index, { canWrite: value === "write" })}
+      />
+      <Button
+        variant="ghost"
+        onClick={() => {
+          if (!isSaving) {
+            setScopes(currentScopes => currentScopes.filter((_, i) => i !== index));
+          }
+        }}
+        title={t('settings.apiTokens.remove')}
+        isDisabled={isSaving}
+      >
+        <CloseIcon />
+      </Button>
+    </div>
+  ));
+
+  return (
+    <div className="api-token-editor">
+      <Input
+        id={`api-token-name-${token.tokenId}`}
+        label={t('settings.apiTokens.name')}
+        type="text"
+        value={name}
+        error={error}
+        isDisabled={isSaving}
+        onChange={event => setName(event.target.value)}
+      />
+      <div className="api-token-scopes">
+        <label className="api-token-field-label">{t('settings.apiTokens.access')}</label>
+        {scopeRows}
+        {hasDuplicateTags && <p className="api-token-scope-warning">{t('settings.apiTokens.duplicate')}</p>}
+        <Button
+          variant="secondary"
+          onClick={() => {
+            if (!isSaving) {
+              setScopes(currentScopes => [...currentScopes, newScope()]);
+            }
+          }}
+          isDisabled={isSaving}
+        >
+          {t('settings.apiTokens.addTag')}
+        </Button>
+      </div>
+      <div className="api-token-editor-actions">
+        <Button variant="secondary" onClick={() => !isSaving && onCancel()} isDisabled={isSaving}>
+          {t('settings.apiTokens.cancel')}
+        </Button>
+        <Button variant="primary" onClick={handleSave} isDisabled={isSaving || !isValid}>
+          {isSaving ? t('settings.apiTokens.saving') : t('settings.apiTokens.save')}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function ScopeTagDropdown({ options, value, onChange, isDisabled = false }) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef(null);
 
@@ -267,7 +398,14 @@ function ScopeTagDropdown({ options, value, onChange }) {
     };
   }, []);
 
+  useEffect(() => {
+    if (isDisabled) {
+      setIsOpen(false);
+    }
+  }, [isDisabled]);
+
   function handleOptionClick(optionValue) {
+    if (isDisabled) return;
     setIsOpen(false);
     onChange(optionValue);
   }
@@ -290,7 +428,7 @@ function ScopeTagDropdown({ options, value, onChange }) {
 
   return (
     <div ref={containerRef} className={`api-token-scope-tag dropdown-container ${isOpen ? "is-open" : ""}`}>
-      <Button className="dropdown-button" onClick={() => setIsOpen(prevIsOpen => !prevIsOpen)}>
+      <Button className="dropdown-button" onClick={() => !isDisabled && setIsOpen(prevIsOpen => !prevIsOpen)} isDisabled={isDisabled}>
         {selectedLabel}
         <ArrowDownIcon />
       </Button>
