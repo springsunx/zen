@@ -414,6 +414,7 @@
   "ai.context.none": "仅标题",
   "ai.context.selection": "选中内容",
   "ai.context.noSelection": "请先在笔记中选中要处理的内容",
+  "ai.context.noContent": "笔记内容尚未加载，请稍后再试",
   "ai.context.full": "全部内容",
   "ai.modal.result": "结果",
   "ai.modal.copy": "复制",

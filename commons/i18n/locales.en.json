@@ -413,6 +413,7 @@
   "ai.context.none": "Title only",
   "ai.context.selection": "Selection",
   "ai.context.noSelection": "Select content in the note first",
+  "ai.context.noContent": "The note content is still loading. Please try again shortly.",
   "ai.context.full": "Full content",
   "ai.modal.result": "Result",
   "ai.modal.copy": "Copy",

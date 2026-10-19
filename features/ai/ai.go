@@ -472,6 +472,13 @@ func buildPrompt(instruction string) string {
 	return fmt.Sprintf("<user_instruction>%s</user_instruction>", instruction)
 }
 
+func buildCurrentPrompt(prompt, content string) string {
+	if strings.TrimSpace(content) == "" {
+		return prompt
+	}
+	return fmt.Sprintf("<note_context>\n%s\n</note_context>\n\n%s", content, prompt)
+}
+
 // ─── LLM API Call ───
 
 type chatRequest struct {
@@ -503,22 +510,12 @@ func callLLM(config AIConfig, prompt string, history []chatMessage, content stri
 	// Append conversation history
 	messages = append(messages, history...)
 
-	// Each request may target a different selection or updated note. Keep the
-	// current content next to the current instruction so it remains prominent
-	// after a long conversation history.
-	if content != "" {
-		messages = append(messages, chatMessage{
-			Role:    "user",
-			Content: fmt.Sprintf("<content>\n%s\n</content>", content),
-		})
-		messages = append(messages, chatMessage{
-			Role:    "assistant",
-			Content: "I've received the current content. I'll use it as context for the next instruction.",
-		})
-	}
-
-	// Append current instruction
-	messages = append(messages, chatMessage{Role: "user", Content: prompt})
+	// Keep the current content and instruction in the same user message. Some
+	// local models do not reliably carry context from a preceding user message
+	// through a synthetic assistant acknowledgement, especially after several
+	// turns. Including both values together also makes each turn self-contained.
+	currentPrompt := buildCurrentPrompt(prompt, content)
+	messages = append(messages, chatMessage{Role: "user", Content: currentPrompt})
 
 	reqBody := chatRequest{
 		Model:    config.Model,

@@ -2,8 +2,29 @@ package ai
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 )
+
+func TestCurrentAIMessageKeepsNoteContextWithInstruction(t *testing.T) {
+	content := "标题\n正文"
+	prompt := buildPrompt("检查错误")
+	currentPrompt := buildCurrentPrompt(prompt, content)
+
+	if !strings.Contains(currentPrompt, "<note_context>\n"+content+"\n</note_context>") {
+		t.Fatalf("current prompt does not contain note context: %q", currentPrompt)
+	}
+	if !strings.Contains(currentPrompt, prompt) {
+		t.Fatalf("current prompt does not contain instruction: %q", currentPrompt)
+	}
+}
+
+func TestCurrentAIMessageOmitsEmptyNoteContext(t *testing.T) {
+	prompt := buildPrompt("总结笔记")
+	if got := buildCurrentPrompt(prompt, " \n\t "); got != prompt {
+		t.Fatalf("empty content changed prompt: %q", got)
+	}
+}
 
 func TestAIConfigModelDisplayNameDoesNotReplaceModel(t *testing.T) {
 	config := AIConfig{

@@ -991,7 +991,12 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
           <NotesEditorFormattingToolbar isEditable={isEditable} onFormat={handleEditorActions} onInsertInternalLink={handleShowLinkPicker} />
           {isAIPanelOpen && (!isRightPanelManaged || activeRightPanel === 'ai') && (
             <AIPanel
-              fullContent={textareaRef.current?.value || content}
+              // Reading mode must use the selected note as its source of truth.
+              // The editor ref can be absent or still point at the previous note
+              // while CodeMirror is mounting/unmounting during a mode switch.
+              fullContent={isEditable
+                ? (textareaRef.current?.value ?? content)
+                : (selectedNote?.content ?? '')}
               selectedText={aiSelectedText}
               getSelectedText={captureCurrentSelection}
               noteId={noteId}

@@ -81,15 +81,6 @@ export default function AIPanel({ fullContent, selectedText, getSelectedText, no
       return;
     }
 
-    // Add user message
-    const userMsg = { role: "user", content: text };
-    setMessages(prev => [...prev, userMsg]);
-    setInstruction("");
-    // Reset textarea height
-    if (inputRef.current) inputRef.current.style.height = 'auto';
-
-    setIsProcessing(true);
-
     let content = "";
     // Local AI providers are stateless, so every turn must include the chosen note context.
     if (contentMode === "full") {
@@ -99,6 +90,26 @@ export default function AIPanel({ fullContent, selectedText, getSelectedText, no
     } else if (contentMode === "none" && noteTitle) {
       content = noteTitle;
     }
+
+    // Never send a context-dependent prompt without its context. This can happen
+    // briefly while switching notes or while the editor is mounting; sending the
+    // request anyway makes the model ask the user to provide the note contents.
+    if ((contentMode === "full" || contentMode === "selection") && !content.trim()) {
+      showToast(contentMode === "selection"
+        ? t('ai.context.noSelection')
+        : t('ai.context.noContent'));
+      return;
+    }
+
+    // Add user message only after validating the context. Otherwise a failed
+    // context check would leave a phantom message and a stuck processing state.
+    const userMsg = { role: "user", content: text };
+    setMessages(prev => [...prev, userMsg]);
+    setInstruction("");
+    // Reset textarea height
+    if (inputRef.current) inputRef.current.style.height = 'auto';
+
+    setIsProcessing(true);
 
     const controller = new AbortController();
     requestControllerRef.current = controller;
